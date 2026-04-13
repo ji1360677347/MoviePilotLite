@@ -22,6 +22,9 @@ class SearchIndexPage extends GetView<SearchIndexController> {
   static const double _scrollBottomGap = 96;
   static const String _defaultPagerSubcategory = 'TMDB 热门电影';
 
+  static const Color _sectionBgColor = Color(0xFF0B1220);
+  static final Color _backgroundColor = Color(0xFF111827);
+
   @override
   Widget build(BuildContext context) {
     final baseTheme = Theme.of(context);
@@ -29,17 +32,17 @@ class SearchIndexPage extends GetView<SearchIndexController> {
     return Theme(
       data: baseTheme.copyWith(
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0B1220),
+        scaffoldBackgroundColor: _backgroundColor,
         colorScheme: baseTheme.colorScheme.copyWith(
           brightness: Brightness.dark,
-          surface: const Color(0xFF0F172A),
+          surface: _backgroundColor,
           onSurface: Colors.white,
           onSurfaceVariant: const Color(0xFF94A3B8),
           surfaceContainerHighest: const Color(0xFF1E293B),
         ),
       ),
       child: Scaffold(
-        backgroundColor: const Color(0xFF0B1220),
+        // backgroundColor: const Color(0xFF0B1220),
         body: Obx(() {
           final isQuery = controller.isEditing.value;
           return CustomScrollView(
@@ -146,98 +149,94 @@ class SearchIndexPage extends GetView<SearchIndexController> {
     final colorScheme = theme.colorScheme;
     const barH = 52.0;
     const radius = 26.0;
-    final textFontSize = theme.textTheme.bodyLarge?.fontSize ?? 17.0;
-    final onSurface = theme.textTheme.bodyLarge?.color ?? colorScheme.onSurface;
+    final textFontSize = theme.textTheme.bodyMedium?.fontSize ?? 14.0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(radius),
-          child: Material(
-            color: colorScheme.surfaceContainerLow.withValues(alpha: 0.55),
-            child: SizedBox(
-              height: barH,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    child: CupertinoTextField(
-                      controller: controller.textController,
-                      focusNode: controller.focusNode,
-                      decoration: const BoxDecoration(
-                        color: Colors.transparent,
-                      ),
-                      placeholder: '搜索媒体 / 订阅 / 站点资源',
-                      placeholderStyle: TextStyle(
-                        color: colorScheme.onSurfaceVariant,
-                        fontSize: textFontSize,
-                        fontWeight: FontWeight.w400,
-                        height: 1.0,
-                      ),
-                      style: TextStyle(
-                        color: onSurface,
-                        fontSize: textFontSize,
-                        fontWeight: FontWeight.w600,
-                        height: 1.0,
-                      ),
-                      strutStyle: StrutStyle(
-                        fontSize: textFontSize,
-                        height: 1.0,
-                        leadingDistribution: TextLeadingDistribution.even,
-                        forceStrutHeight: true,
-                      ),
-                      prefix: Padding(
-                        padding: const EdgeInsetsDirectional.only(
-                          start: 12,
-                          end: 4,
-                        ),
-                        child: Icon(
-                          CupertinoIcons.search,
-                          size: 20,
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      prefixMode: OverlayVisibilityMode.always,
-                      clearButtonMode: OverlayVisibilityMode.editing,
-                      padding: EdgeInsets.zero,
-                      textAlignVertical: TextAlignVertical.center,
-                      maxLines: 1,
-                      textInputAction: TextInputAction.search,
-                      cursorColor: colorScheme.primary,
-                      onChanged: (value) => controller.keyword.value = value,
-                      onSubmitted: controller.submit,
-                    ),
-                  ),
-                  VerticalDivider(
-                    width: 1,
-                    thickness: 1,
-                    indent: 12,
-                    endIndent: 12,
-                    color: colorScheme.outline.withValues(alpha: 0.08),
-                  ),
-                  Obx(() {
-                    final enabled =
-                        Get.find<AppService>().showSearchButton.value;
-                    if (!enabled) return const SizedBox.shrink();
-                    return InkWell(
-                      onTap: () =>
-                          controller.submit(controller.textController.text),
-                      child: SizedBox(
-                        width: 48,
-                        height: barH,
-                        child: Center(
-                          child: Icon(
-                            Icons.search_rounded,
-                            size: 22,
-                            color: colorScheme.primary,
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-                ],
+          child: Container(
+            height: barH,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(radius),
+              border: Border.all(
+                color: controller.focusNode.hasFocus
+                    ? colorScheme.primary.withOpacity(0.45)
+                    : Colors.white.withOpacity(0.06),
+                width: controller.focusNode.hasFocus ? 1.2 : 1,
               ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: CupertinoTextField(
+                    controller: controller.textController,
+                    focusNode: controller.focusNode,
+                    decoration: const BoxDecoration(color: Colors.transparent),
+                    placeholder: '搜索媒体 / 订阅 / 站点资源',
+                    placeholderStyle: TextStyle(
+                      color: Colors.white.withOpacity(0.42),
+                      fontSize: textFontSize,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.92),
+                      fontSize: textFontSize,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    prefix: Padding(
+                      padding: const EdgeInsetsDirectional.only(
+                        start: 12,
+                        end: 6,
+                      ),
+                      child: Icon(
+                        CupertinoIcons.search,
+                        size: 18,
+                        color: Colors.white.withOpacity(0.52),
+                      ),
+                    ),
+                    prefixMode: OverlayVisibilityMode.always,
+                    clearButtonMode: OverlayVisibilityMode.editing,
+                    padding: const EdgeInsetsDirectional.only(
+                      top: 10,
+                      bottom: 10,
+                      end: 12,
+                    ),
+                    cursorColor: colorScheme.primary,
+                    onChanged: (value) => controller.keyword.value = value,
+                    onSubmitted: controller.submit,
+                  ),
+                ),
+                VerticalDivider(
+                  width: 1,
+                  thickness: 1,
+                  indent: 12,
+                  endIndent: 12,
+                  color: Colors.white.withOpacity(0.07),
+                ),
+                Obx(() {
+                  final enabled = Get.find<AppService>().showSearchButton.value;
+                  if (!enabled) return const SizedBox.shrink();
+
+                  return InkWell(
+                    onTap: () =>
+                        controller.submit(controller.textController.text),
+                    child: SizedBox(
+                      width: 48,
+                      height: barH,
+                      child: Center(
+                        child: Icon(
+                          Icons.search_rounded,
+                          size: 22,
+                          color: colorScheme.primary.withOpacity(0.95),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ],
             ),
           ),
         ),
@@ -250,7 +249,7 @@ class SearchIndexPage extends GetView<SearchIndexController> {
           return Padding(
             padding: const EdgeInsets.only(top: 10),
             child: Material(
-              color: colorScheme.surface,
+              color: _sectionBgColor,
               borderRadius: BorderRadius.circular(20),
               elevation: 8,
               shadowColor: Colors.black.withValues(alpha: 0.2),
@@ -267,7 +266,7 @@ class SearchIndexPage extends GetView<SearchIndexController> {
                 itemBuilder: (context, index) {
                   final e = suggestions[index];
                   return InkWell(
-                    onTap: () => controller.applyHistorySuggestion(e),
+                    onTap: () => controller.fillKeyword(e.keyword, focus: true),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
@@ -278,7 +277,8 @@ class SearchIndexPage extends GetView<SearchIndexController> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w300,
+                          fontSize: 14,
                         ),
                       ),
                     ),
@@ -593,6 +593,7 @@ class SearchIndexPage extends GetView<SearchIndexController> {
     if (mediaSuggestions.isNotEmpty) {
       addSection(
         Section(
+          color: _sectionBgColor,
           header: SectionHeader(title: '媒体推荐'),
           child: _buildSuggestionSection(
             context,
@@ -605,6 +606,7 @@ class SearchIndexPage extends GetView<SearchIndexController> {
     if (siteSuggestions.isNotEmpty) {
       addSection(
         Section(
+          color: _sectionBgColor,
           header: SectionHeader(title: '站点资源'),
           child: _buildSuggestionSection(
             context,
@@ -617,6 +619,7 @@ class SearchIndexPage extends GetView<SearchIndexController> {
     if (historyItems.isNotEmpty) {
       addSection(
         Section(
+          color: _sectionBgColor,
           header: SectionHeader(title: '整理历史'),
           child: _buildSuggestionSection(
             context,
@@ -672,7 +675,7 @@ class _SuggestionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final titleStyle = theme.textTheme.bodyLarge!;
+    final titleStyle = theme.textTheme.bodyMedium!;
     final highlightStyle = titleStyle.copyWith(
       color: theme.colorScheme.primary,
       fontWeight: FontWeight.w600,
@@ -704,9 +707,7 @@ class _SuggestionTile extends StatelessWidget {
                     Text(
                       item.subtitle!,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.textTheme.bodySmall?.color?.withValues(
-                          alpha: 0.7,
-                        ),
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
