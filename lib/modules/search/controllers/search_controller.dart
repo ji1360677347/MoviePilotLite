@@ -205,7 +205,7 @@ class SearchMediaController extends GetxController {
       // 构建查询参数
       final queryParameters = <String, dynamic>{
         'mtype': mtype,
-        'area': area,
+        'area': area == 'title' ? 'title' : 'imdbid',
         if (searchText.value.isNotEmpty) 'title': searchText.value,
         if (year.isNotEmpty) 'year': year,
         'sites': sites.join(','),
