@@ -1,7 +1,7 @@
 name: moviepilot_mobile
 description: MoviePilot Flutter mobile client
 publish_to: none
-version: 1.0.9+10
+version: 1.1.0+21
 license: BSL-1.1
 environment:
   sdk: ^3.8.1
@@ -31,7 +31,7 @@ dependencies:
   modal_bottom_sheet: ^3.0.0
   skeletonizer: ^2.1.2
   url_launcher: ^6.3.2
-  liquid_tabbar_minimize: ^1.0.9
+  flutter_floating_bottom_bar: ^1.4.0
   path_provider: ^2.1.5
   palette_generator: ^0.3.3+7
   webview_flutter: ^4.4.2

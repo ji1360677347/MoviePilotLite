@@ -9,9 +9,8 @@ import 'package:moviepilot_mobile/applog/app_log.dart';
 import 'package:moviepilot_mobile/modules/login/repositories/auth_repository.dart';
 import 'package:moviepilot_mobile/modules/recommend/controllers/recommend_api_item_ext.dart';
 import 'package:moviepilot_mobile/modules/recommend/models/recommend_api_item.dart';
-import 'package:moviepilot_mobile/modules/subscribe/controllers/subscribe_controller.dart';
+import 'package:moviepilot_mobile/modules/search/services/search_keyword_hints_service.dart';
 import 'package:moviepilot_mobile/modules/subscribe/controllers/subscribe_service.dart';
-import 'package:moviepilot_mobile/modules/subscribe/models/subscribe_models.dart';
 import 'package:moviepilot_mobile/services/app_service.dart';
 import 'package:moviepilot_mobile/services/api_client.dart';
 import 'package:path_provider/path_provider.dart';
@@ -490,6 +489,7 @@ class RecommendController extends GetxController {
       itemsByKey[key] = items;
       itemsByKey.refresh();
       _lastFetchAt[key] = DateTime.now();
+      unawaited(Get.find<SearchKeywordHintsService>().ingestFromItems(items));
       for (final item in items) {
         _fetchItemsSubscribeStatus(item);
       }

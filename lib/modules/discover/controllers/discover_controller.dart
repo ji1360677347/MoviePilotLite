@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:get/get.dart';
@@ -6,6 +7,7 @@ import 'package:moviepilot_mobile/modules/discover/defines/discover_filter_defin
 import 'package:moviepilot_mobile/modules/discover/models/discover_filters.dart';
 import 'package:moviepilot_mobile/modules/login/repositories/auth_repository.dart';
 import 'package:moviepilot_mobile/modules/recommend/models/recommend_api_item.dart';
+import 'package:moviepilot_mobile/modules/search/services/search_keyword_hints_service.dart';
 import 'package:moviepilot_mobile/services/app_service.dart';
 import 'package:moviepilot_mobile/services/api_client.dart';
 
@@ -207,6 +209,7 @@ class DiscoverController extends GetxController {
       itemsByKey[key] = items;
       itemsByKey.refresh();
       _lastFetchAt[key] = DateTime.now();
+      unawaited(Get.find<SearchKeywordHintsService>().ingestFromItems(items));
     } catch (e, st) {
       _log.handle(e, stackTrace: st, message: '探索数据请求异常');
       errorByKey[key] = '请求异常';
