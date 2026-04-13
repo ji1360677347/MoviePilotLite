@@ -1,11 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:moviepilot_mobile/modules/search/pages/search_mid_sheet.dart';
+import 'package:moviepilot_mobile/modules/search/services/search_keyword_hints_service.dart';
 import 'package:moviepilot_mobile/utils/toast_util.dart';
 
 import '../models/search_history.dart';
 import '../models/search_suggestion.dart';
 import '../repositories/search_history_repository.dart';
+
+class SearchInputPick {
+  const SearchInputPick({required this.keyword, this.sourceEntry});
+
+  final String keyword;
+  final SearchHistoryEntry? sourceEntry;
+}
 
 class SearchIndexController extends GetxController {
   SearchIndexController({SearchHistoryRepository? historyRepository})
@@ -62,23 +70,39 @@ class SearchIndexController extends GetxController {
     super.onClose();
   }
 
-  List<SearchHistoryEntry> get historyInputSuggestions {
+  List<SearchInputPick> get historyInputSuggestions {
     final q = keyword.value.trim().toLowerCase();
-    final copy = List<SearchHistoryEntry>.from(histories);
-    copy.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-    if (q.isEmpty) {
-      return copy.take(_maxHistorySuggestions).toList();
+    final hintSvc = Get.find<SearchKeywordHintsService>();
+    hintSvc.hints.length;
+    final hintStrings = hintSvc.hints;
+    final fromHistory = List<SearchHistoryEntry>.from(histories)
+      ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    final seen = <String>{};
+    final out = <SearchInputPick>[];
+    void addPick(String kw, {SearchHistoryEntry? entry}) {
+      final k = kw.trim();
+      if (k.isEmpty) return;
+      final lo = k.toLowerCase();
+      if (!seen.add(lo)) return;
+      if (q.isNotEmpty && !lo.contains(q)) return;
+      out.add(SearchInputPick(keyword: k, sourceEntry: entry));
     }
-    return copy
-        .where((e) => e.keyword.toLowerCase().contains(q))
-        .take(_maxHistorySuggestions)
-        .toList();
+
+    for (final e in fromHistory) {
+      if (out.length >= _maxHistorySuggestions) break;
+      addPick(e.keyword, entry: e);
+    }
+    for (final h in hintStrings) {
+      if (out.length >= _maxHistorySuggestions) break;
+      addPick(h);
+    }
+    return out;
   }
 
-  void applyHistorySuggestion(SearchHistoryEntry entry) {
-    fillKeyword(entry.keyword, focus: false);
+  void applyHistorySuggestion(SearchInputPick pick) {
+    fillKeyword(pick.keyword, focus: false);
     focusNode.unfocus();
-    submit(entry.keyword);
+    submit(pick.keyword);
   }
 
   void loadHistories() {
