@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:get/get_connect/http/src/utils/utils.dart';
 import 'package:moviepilot_mobile/modules/search/pages/search_mid_sheet.dart';
 import 'package:moviepilot_mobile/utils/toast_util.dart';
 
@@ -23,14 +22,23 @@ class SearchIndexController extends GetxController {
   final RxBool isEditing = false.obs;
   final RxList<SearchHistoryEntry> histories = <SearchHistoryEntry>[].obs;
   final RxList<SearchSuggestionItem> suggestions = <SearchSuggestionItem>[].obs;
+  final RxBool hasSearchFocus = false.obs;
 
   late final Worker _keywordWorker;
   final SearchHistoryRepository _historyRepository;
+
+  final PageController recommendPagerController = PageController(
+    viewportFraction: 0.94,
+  );
+
+  static const int _maxHistorySuggestions = 12;
 
   @override
   void onInit() {
     super.onInit();
     textController.addListener(_handleTextChange);
+    focusNode.addListener(_syncSearchFocus);
+    _syncSearchFocus();
     _keywordWorker = debounce<String>(
       keyword,
       (_) => _refreshSuggestions(),
@@ -39,27 +47,42 @@ class SearchIndexController extends GetxController {
     loadHistories();
   }
 
+  void _syncSearchFocus() {
+    hasSearchFocus.value = focusNode.hasFocus;
+  }
+
   @override
   void onClose() {
     textController.removeListener(_handleTextChange);
+    focusNode.removeListener(_syncSearchFocus);
     textController.dispose();
     focusNode.dispose();
+    recommendPagerController.dispose();
     _keywordWorker.dispose();
     super.onClose();
   }
 
+  List<SearchHistoryEntry> get historyInputSuggestions {
+    final q = keyword.value.trim().toLowerCase();
+    final copy = List<SearchHistoryEntry>.from(histories);
+    copy.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    if (q.isEmpty) {
+      return copy.take(_maxHistorySuggestions).toList();
+    }
+    return copy
+        .where((e) => e.keyword.toLowerCase().contains(q))
+        .take(_maxHistorySuggestions)
+        .toList();
+  }
+
+  void applyHistorySuggestion(SearchHistoryEntry entry) {
+    fillKeyword(entry.keyword, focus: false);
+    focusNode.unfocus();
+    submit(entry.keyword);
+  }
+
   void loadHistories() {
     histories.assignAll(_historyRepository.load());
-  }
-
-  void clearHistories() {
-    _historyRepository.clearAll();
-    histories.clear();
-  }
-
-  void removeHistory(SearchHistoryEntry entry) {
-    _historyRepository.remove(entry.keyword);
-    histories.removeWhere((element) => element.id == entry.id);
   }
 
   void saveHistory(String term) {
@@ -120,6 +143,7 @@ class SearchIndexController extends GetxController {
           'area': area,
           'sites': sites.join(','),
           'title': term,
+          'type': 'title',
         };
         Get.toNamed('/search-media-result', parameters: params);
         break;
