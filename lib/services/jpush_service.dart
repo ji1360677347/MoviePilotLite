@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import 'package:jpush_flutter/jpush_flutter.dart';
 import 'package:jpush_flutter/jpush_interface.dart';
 import 'package:moviepilot_mobile/applog/app_log.dart';
+import 'package:moviepilot_mobile/services/ios_widget_navigation_service.dart';
 
 class JPushService extends GetxService {
   static const String _appKey = 'e462379fa18ab59e31fd7ac2';
@@ -63,6 +64,7 @@ class JPushService extends GetxService {
       },
       onOpenNotification: (event) async {
         _talker.info('JPush 打开通知: $event');
+        _handleNotificationOpened(Map<String, dynamic>.from(event));
       },
       onReceiveMessage: (event) async {
         _talker.info('JPush 收到透传消息: $event');
@@ -80,6 +82,67 @@ class JPushService extends GetxService {
         _talker.info('JPush 收到设备凭证: $event');
       },
     );
+  }
+
+  void _handleNotificationOpened(Map<String, dynamic> event) {
+    if (!Get.isRegistered<IosWidgetNavigationService>()) return;
+    final nav = Get.find<IosWidgetNavigationService>();
+    final raw = _moviePilotUrlFromJPushEvent(event) ??
+        _systemMessageHintFromJPushEvent(event);
+    if (raw == null) return;
+    nav.enqueueDeepLink(raw);
+  }
+
+  String? _moviePilotUrlFromJPushEvent(Map<String, dynamic> event) {
+    String? hit;
+    void walk(dynamic n) {
+      if (hit != null) return;
+      if (n is String) {
+        final t = n.trim();
+        if (t.startsWith('moviepilot://')) hit = t;
+        return;
+      }
+      if (n is Map) {
+        for (final v in n.values) {
+          walk(v);
+          if (hit != null) return;
+        }
+      }
+    }
+
+    walk(event);
+    return hit;
+  }
+
+  String? _systemMessageHintFromJPushEvent(Map<String, dynamic> event) {
+    const keys = {'page', 'open_page', 'target_page', 'type'};
+    const values = {'system_message', 'system-message', 'systemmessage'};
+    for (final map in _jpushMapsToScan(event)) {
+      for (final k in keys) {
+        final v = map[k];
+        if (v is! String) continue;
+        final t = v.trim().toLowerCase();
+        if (values.contains(t) || t == '/system-message') {
+          return 'moviepilot://system-message';
+        }
+      }
+    }
+    return null;
+  }
+
+  Iterable<Map<String, dynamic>> _jpushMapsToScan(
+    Map<String, dynamic> root,
+  ) sync* {
+    yield root;
+    final ex = root['extras'];
+    if (ex is! Map) return;
+    final top = Map<String, dynamic>.from(ex);
+    yield top;
+    for (final v in top.values) {
+      if (v is Map) {
+        yield Map<String, dynamic>.from(v);
+      }
+    }
   }
 
   void _requestPermissions() {

@@ -485,10 +485,14 @@ class SearchIndexPage extends GetView<SearchIndexController> {
           builder: (context, constraints) {
             const spacing = 10.0;
             const ratio = 1.55;
+            const targetItemWidth = 150.0;
             final w = constraints.maxWidth;
-            final cellW = (w - spacing) / 2;
+            var crossAxisCount = ((w + spacing) / (targetItemWidth + spacing))
+                .floor();
+            crossAxisCount = crossAxisCount.clamp(2, 10);
+            final cellW = (w - (crossAxisCount - 1) * spacing) / crossAxisCount;
             final cellH = cellW / ratio;
-            final rows = (categories.length / 2).ceil();
+            final rows = (categories.length / crossAxisCount).ceil();
             final h = rows * cellH + (rows - 1) * spacing;
             return SizedBox(
               height: h,
@@ -496,7 +500,7 @@ class SearchIndexPage extends GetView<SearchIndexController> {
                 padding: EdgeInsets.zero,
                 physics: const NeverScrollableScrollPhysics(),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
+                  crossAxisCount: crossAxisCount,
                   mainAxisSpacing: spacing,
                   crossAxisSpacing: spacing,
                   childAspectRatio: ratio,

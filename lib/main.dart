@@ -133,6 +133,7 @@ import 'package:altman_downloader_control/page/torrent_list_page.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   Get.put(AppLog());
+  await Get.put(IosWidgetNavigationService()).init();
   await Get.put(JPushService()).init();
   Get.put(AppService());
   Get.put(RealmService());
@@ -156,7 +157,6 @@ Future<void> main() async {
 
   registerProxmoxVeBackupRenderer();
   registerAppLitePushRenderer();
-  await Get.put(IosWidgetNavigationService()).init();
   runApp(const MyApp());
 }
 
