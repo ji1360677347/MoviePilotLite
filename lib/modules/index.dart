@@ -128,6 +128,12 @@ class _IndexState extends State<Index> {
           onTap: () {
             _restoreSuppressed = true;
             _stopCurrentScrollMomentum();
+            if (index == kIndexMaxTab && _selectedIndex == kIndexMaxTab) {
+              if (Get.isRegistered<SearchIndexController>()) {
+                Get.find<SearchIndexController>().requestSearchBarFocus();
+              }
+              return;
+            }
             setState(() => _selectedIndex = index);
             _persistSelectedIndex(index);
           },

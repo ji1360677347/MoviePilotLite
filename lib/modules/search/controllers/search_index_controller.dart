@@ -190,6 +190,13 @@ class SearchIndexController extends GetxController {
     }
   }
 
+  void requestSearchBarFocus() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!focusNode.canRequestFocus) return;
+      focusNode.requestFocus();
+    });
+  }
+
   void _handleTextChange() {
     final value = textController.text;
     keyword.value = value;
