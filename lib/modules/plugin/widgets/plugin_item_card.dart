@@ -29,14 +29,24 @@ class PluginItemCard extends StatelessWidget {
   final int installCount;
   final Function(PluginHandleType type)? onHandleTap;
 
-  static const double _cardRadius = 12;
-  static const double _iconSize = 48;
+  static const double _cardRadius = 16;
+  static const double _iconSize = 52;
 
   @override
   Widget build(BuildContext context) {
-    return Obx(() {
-      final themeColor = _resolveThemeColor();
-      return RepaintBoundary(
+    final themeColor = _resolveThemeColor();
+    return RepaintBoundary(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(_cardRadius),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.07),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
         child: Section(
           padding: const EdgeInsets.all(0),
           child: ClipRRect(
@@ -51,15 +61,15 @@ class PluginItemCard extends StatelessWidget {
             ),
           ),
         ),
-      );
-    });
+      ),
+    );
   }
 
   /// 仅读缓存，不订阅 Rx，避免任一 palette 更新导致所有卡片重建引发卡顿
   Color _resolveThemeColor() {
     try {
       final cache = Get.find<PluginPaletteCache>();
-      return cache.watchColor(iconUrl) ?? PluginPaletteCache.defaultColor;
+      return cache.getCached(iconUrl) ?? PluginPaletteCache.defaultColor;
     } catch (_) {
       return PluginPaletteCache.defaultColor;
     }
@@ -67,16 +77,18 @@ class PluginItemCard extends StatelessWidget {
 
   Widget _buildDarkSection(BuildContext context, Color themeColor) {
     return SizedBox(
-      height: 100,
+      height: 108,
       child: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
             colors: [
-              Colors.black.withValues(alpha: 0.9),
-              themeColor.withValues(alpha: 0.8),
+              Colors.black.withValues(alpha: 0.92),
+              themeColor.withValues(alpha: 0.72),
+              themeColor.withValues(alpha: 0.88),
             ],
+            stops: const [0.0, 0.45, 1.0],
           ),
         ),
         padding: const EdgeInsets.all(14),
@@ -108,7 +120,8 @@ class PluginItemCard extends StatelessWidget {
                               item.pluginName,
                               style: const TextStyle(
                                 fontSize: 16,
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -0.2,
                                 color: Colors.white,
                               ),
                               maxLines: 1,
@@ -194,12 +207,18 @@ class PluginItemCard extends StatelessWidget {
   }
 
   Widget _buildLightSection(BuildContext context) {
-    final surfaceColor = Theme.of(context).colorScheme.surfaceContainerHighest;
+    final surfaceColor = Theme.of(context).colorScheme.surface;
     final onSurface = Theme.of(context).colorScheme.onSurface;
+    final outline = Theme.of(context).colorScheme.outline;
 
     return Container(
-      color: surfaceColor,
-      padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        border: Border(
+          top: BorderSide(color: outline.withValues(alpha: 0.08)),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -296,6 +315,13 @@ class PluginItemCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: fallbackColor.withValues(alpha: 0.5),
           shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.35),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
         ),
         child: Icon(Icons.extension_outlined, size: 24, color: Colors.white),
       );
@@ -306,9 +332,16 @@ class PluginItemCard extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.3),
-          width: 1,
+          color: Colors.white.withValues(alpha: 0.35),
+          width: 1.5,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: ClipOval(
         child: CachedNetworkImage(
@@ -381,8 +414,6 @@ class PluginItemCard extends StatelessWidget {
       case PluginHandleType.uninstall:
         return Theme.of(context).colorScheme.error;
       case PluginHandleType.web:
-        return Theme.of(context).colorScheme.primary;
-      default:
         return Theme.of(context).colorScheme.primary;
     }
   }
