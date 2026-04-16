@@ -21,6 +21,7 @@ import 'package:moviepilot_mobile/utils/media_source_util.dart';
 import 'package:moviepilot_mobile/utils/open_url.dart';
 import 'package:moviepilot_mobile/utils/toast_util.dart';
 import 'package:moviepilot_mobile/widgets/cached_image.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 import 'package:soft_edge_blur/soft_edge_blur.dart';
 
@@ -830,28 +831,80 @@ class MediaDetailPage extends GetWidget<MediaDetailController> {
     List<SeasonInfo> seasons,
     MediaDetail detail,
   ) {
+    final useTwoRowPager = seasons.length >= 4;
     return Padding(
       padding: const EdgeInsets.only(top: 16.0, bottom: 16.0),
       child: SizedBox(
-        height: 350,
-        child: PageView.builder(
-          padEnds: false,
-          controller: controller.seasonPageCntroller,
-          scrollDirection: Axis.horizontal,
-          itemCount: seasons.length,
-          itemBuilder: (context, index) {
-            final season = seasons[index];
-            return Padding(
-              padding: EdgeInsets.only(left: index == 0 ? 16 : 12),
-              child: _buildSeasonListContent(context, season),
-            );
-          },
-        ),
+        height: useTwoRowPager ? 196 : 350,
+        child: useTwoRowPager
+            ? PageView.builder(
+                padEnds: false,
+                controller: PageController(viewportFraction: 0.9),
+                scrollDirection: Axis.horizontal,
+                itemCount: (seasons.length / 2).ceil(),
+                itemBuilder: (context, pageIndex) {
+                  final firstIndex = pageIndex * 2;
+                  final secondIndex = firstIndex + 1;
+                  final first = seasons[firstIndex];
+                  final second = secondIndex < seasons.length
+                      ? seasons[secondIndex]
+                      : null;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    child: Column(
+                      children: [
+                        Expanded(
+                          child: _buildSeasonListContent(
+                            context,
+                            first,
+                            compact: true,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.outline.withValues(alpha: 0.08),
+                        ),
+                        const SizedBox(height: 6),
+                        Expanded(
+                          child: second != null
+                              ? _buildSeasonListContent(
+                                  context,
+                                  second,
+                                  compact: true,
+                                )
+                              : const SizedBox.shrink(),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              )
+            : PageView.builder(
+                padEnds: false,
+                controller: PageController(viewportFraction: 0.9),
+                scrollDirection: Axis.horizontal,
+                itemCount: seasons.length,
+                itemBuilder: (context, index) {
+                  final season = seasons[index];
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    child: _buildSeasonListContent(context, season),
+                  );
+                },
+              ),
       ),
     );
   }
 
-  Widget _buildSeasonListContent(BuildContext context, SeasonInfo season) {
+  Widget _buildSeasonListContent(
+    BuildContext context,
+    SeasonInfo season, {
+    bool compact = false,
+  }) {
     return Obx(() {
       final posterUrl = ImageUtil.convertMediaSeasonImageUrl(
         season.poster_path ?? '',
@@ -899,6 +952,7 @@ class MediaDetailPage extends GetWidget<MediaDetailController> {
           seasonEpisodeCount: season.episode_count?.toString() ?? '',
           seasonVoteAverage: season.vote_average?.toString() ?? '',
           seasonName: _seasonTitle(season),
+          compact: compact,
         ),
       );
     });
@@ -1310,9 +1364,12 @@ class MediaDetailPage extends GetWidget<MediaDetailController> {
   void _openSearch(BuildContext context) async {
     final searchKey = controller.args.path;
     final detail = controller.mediaDetail.value;
-    final season = detail?.season_info?.firstOrNull?.season_number;
     final result = await Get.bottomSheet<({String area, List<int> sites})>(
-      SiteSelectSheet(hasSegment: true),
+      SiteSelectSheet(
+        hasSegment: true,
+        seasons: detail == null ? null : _availableSeasons(detail),
+        mediaSearchKey: searchKey,
+      ),
     );
     if (result == null) return;
     final (area, sites) = (result.area, result.sites);
@@ -1320,6 +1377,7 @@ class MediaDetailPage extends GetWidget<MediaDetailController> {
       ToastUtil.info('请至少选择一个站点');
       return;
     }
+    final selectedSeason = await _loadLastSelectedSeason(searchKey);
     var params = <String, String>{
       'mediaSearchKey': searchKey,
       'area': area,
@@ -1330,10 +1388,43 @@ class MediaDetailPage extends GetWidget<MediaDetailController> {
       if ((detail?.backdrop_path ?? '').isNotEmpty)
         'backdrop': detail!.backdrop_path!,
     };
-    if (season != null) {
-      params['season'] = season.toString();
+    if (detail != null && _isTv(detail) && selectedSeason > 0) {
+      params['season'] = selectedSeason.toString();
     }
     Get.toNamed('/search-media-result', parameters: params);
+  }
+
+  Future<int> _loadLastSelectedSeason(String mediaSearchKey) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final baseUrl = Get.find<AppService>().baseUrl ?? 'unknown';
+      final userId = Get.find<AppService>().loginResponse?.userId ?? 0;
+      final key = 'media_search_last_season:$baseUrl:$userId:$mediaSearchKey';
+      return prefs.getInt(key) ?? 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  List<int> _availableSeasons(MediaDetail detail) {
+    final set = <int>{};
+    final seasons = detail.season_info;
+    if (seasons != null && seasons.isNotEmpty) {
+      for (final s in seasons) {
+        final n = s.season_number;
+        if (n != null && n > 0) set.add(n);
+      }
+    }
+    if (set.isEmpty) {
+      final n = detail.number_of_seasons ?? 0;
+      if (n > 0) {
+        for (var i = 1; i <= n; i++) {
+          set.add(i);
+        }
+      }
+    }
+    final list = set.toList()..sort();
+    return list;
   }
 
   String? _tmdbUrl(MediaDetail detail) {
@@ -1433,13 +1524,6 @@ class MediaDetailPage extends GetWidget<MediaDetailController> {
       return ImageUtil.convertCacheImageUrl(avatar.normal!);
     }
     return null;
-  }
-
-  String? _resolveCreatedByUrl(CreatedBy creator) {
-    if (creator.profile_path == null || creator.profile_path!.trim().isEmpty) {
-      return "https://image.tmdb.org/t/p/w600_and_h900_bestv2/${creator.profile_path}";
-    }
-    return ImageUtil.convertCacheImageUrl(creator.profile_path!);
   }
 
   MediaDetail _skeletonDetail() {
