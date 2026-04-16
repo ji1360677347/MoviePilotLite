@@ -371,69 +371,101 @@ class MediaDetailPage extends GetWidget<MediaDetailController> {
   }
 
   Widget _buildMetaChip(String? text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Text(
-        text ?? '',
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 24),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(16),
         ),
-      ),
-    );
-  }
-
-  Widget _buildInLibraryChip() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFF81C784).withOpacity(0.35),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: const Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.check_circle_rounded, size: 14, color: Color(0xFF81C784)),
-          SizedBox(width: 4),
-          Text(
-            '已入库',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildScoreChip(double? score) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFF7C4DFF).withOpacity(0.9),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(CupertinoIcons.star_fill, size: 12, color: Colors.white),
-          const SizedBox(width: 4),
-          Text(
-            score?.toStringAsFixed(1) ?? '',
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          child: Text(
+            text ?? '',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            softWrap: false,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
           ),
-        ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInLibraryChip() {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 24),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: const Color(0xFF81C784).withOpacity(0.35),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.check_circle_rounded,
+                size: 14,
+                color: Color(0xFF81C784),
+              ),
+              SizedBox(width: 4),
+              Text(
+                '已入库',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                softWrap: false,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildScoreChip(double? score) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 24),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: const Color(0xFF7C4DFF).withOpacity(0.9),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                CupertinoIcons.star_fill,
+                size: 12,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                score?.toStringAsFixed(1) ?? '',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                softWrap: false,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -831,53 +863,60 @@ class MediaDetailPage extends GetWidget<MediaDetailController> {
     List<SeasonInfo> seasons,
     MediaDetail detail,
   ) {
-    final useTwoRowPager = seasons.length >= 4;
+    final viewportFraction = MediaQuery.of(context).size.width > 600
+        ? 0.6
+        : 0.9;
+    final useThreePagePager = seasons.length >= 3;
+    final perPage = useThreePagePager ? (seasons.length / 3).ceil() : 1;
+    final compactItemHeight = 104.0;
+    final dividerBlockHeight = 13.0; // 6 + 1 + 6
+    final threePagerHeight =
+        perPage * compactItemHeight + (perPage - 1) * dividerBlockHeight;
     return Padding(
       padding: const EdgeInsets.only(top: 16.0, bottom: 16.0),
       child: SizedBox(
-        height: useTwoRowPager ? 196 : 350,
-        child: useTwoRowPager
+        height: useThreePagePager ? threePagerHeight : 350,
+        child: useThreePagePager
             ? PageView.builder(
                 padEnds: false,
-                controller: PageController(viewportFraction: 0.9),
+                controller: PageController(viewportFraction: viewportFraction),
                 scrollDirection: Axis.horizontal,
-                itemCount: (seasons.length / 2).ceil(),
+                itemCount: 3,
                 itemBuilder: (context, pageIndex) {
-                  final firstIndex = pageIndex * 2;
-                  final secondIndex = firstIndex + 1;
-                  final first = seasons[firstIndex];
-                  final second = secondIndex < seasons.length
-                      ? seasons[secondIndex]
-                      : null;
+                  final start = pageIndex * perPage;
+                  final endExclusive = (start + perPage) > seasons.length
+                      ? seasons.length
+                      : (start + perPage);
+                  final pageItems = start < seasons.length
+                      ? seasons.sublist(start, endExclusive)
+                      : const <SeasonInfo>[];
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 6),
                     child: Column(
                       children: [
-                        Expanded(
-                          child: _buildSeasonListContent(
-                            context,
-                            first,
-                            compact: true,
+                        for (var i = 0; i < perPage; i++) ...[
+                          SizedBox(
+                            height: compactItemHeight,
+                            child: i < pageItems.length
+                                ? _buildSeasonListContent(
+                                    context,
+                                    pageItems[i],
+                                    compact: true,
+                                  )
+                                : const SizedBox.shrink(),
                           ),
-                        ),
-                        const SizedBox(height: 6),
-                        Divider(
-                          height: 1,
-                          thickness: 1,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.outline.withValues(alpha: 0.08),
-                        ),
-                        const SizedBox(height: 6),
-                        Expanded(
-                          child: second != null
-                              ? _buildSeasonListContent(
-                                  context,
-                                  second,
-                                  compact: true,
-                                )
-                              : const SizedBox.shrink(),
-                        ),
+                          if (i != perPage - 1) ...[
+                            const SizedBox(height: 6),
+                            Divider(
+                              height: 1,
+                              thickness: 1,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.outline.withValues(alpha: 0.08),
+                            ),
+                            const SizedBox(height: 6),
+                          ],
+                        ],
                       ],
                     ),
                   );
@@ -885,7 +924,7 @@ class MediaDetailPage extends GetWidget<MediaDetailController> {
               )
             : PageView.builder(
                 padEnds: false,
-                controller: PageController(viewportFraction: 0.9),
+                controller: PageController(viewportFraction: viewportFraction),
                 scrollDirection: Axis.horizontal,
                 itemCount: seasons.length,
                 itemBuilder: (context, index) {
