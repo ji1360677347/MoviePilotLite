@@ -91,6 +91,8 @@ If needed, you can further use the `web_scraper.py` file to scrape the web page 
 
 # Scratchpad
 
+## Done: 已安装插件页（PluginPage）与插件市场同风格 bottom floating bar + visibleItems 缓存 + palette 预加载限制 + await loadFromCache
+
 ## Current Task: Dashboard 页面编辑功能（隐藏/显示 + 换位）
 
 [ ] 理清 DashboardConfig / DashboardOrder 与 displayedWidgets 的映射关系

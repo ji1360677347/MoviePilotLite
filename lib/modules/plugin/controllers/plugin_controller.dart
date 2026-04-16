@@ -16,12 +16,33 @@ class PluginController extends GetxController {
   final isLoading = false.obs;
   final errorText = RxnString();
 
-  void updateKeyword(String value) => keyword.value = value.trim();
+  bool _visibleCacheDirty = true;
+  List<PluginItem> _cachedVisible = [];
+
+  @override
+  void onInit() {
+    super.onInit();
+    ever(keyword, (_) => _visibleCacheDirty = true);
+    ever(items, (_) => _visibleCacheDirty = true);
+  }
+
+  void updateKeyword(String value) {
+    keyword.value = value.trim();
+    _visibleCacheDirty = true;
+  }
 
   List<PluginItem> get visibleItems {
+    keyword.value;
+    items.length;
+    if (!_visibleCacheDirty) return _cachedVisible;
     final key = keyword.value.trim().toLowerCase();
-    if (key.isEmpty) return items.toList();
-    return items.where((item) => _matchKeyword(item, key)).toList();
+    if (key.isEmpty) {
+      _cachedVisible = items.toList();
+    } else {
+      _cachedVisible = items.where((item) => _matchKeyword(item, key)).toList();
+    }
+    _visibleCacheDirty = false;
+    return _cachedVisible;
   }
 
   bool _matchKeyword(PluginItem item, String keywordLower) {
@@ -120,7 +141,7 @@ class PluginController extends GetxController {
     isLoading.value = true;
     errorText.value = null;
     if (!force) {
-      loadFromCache();
+      await loadFromCache();
     }
     final installCount = await loadInstallCount();
     try {
@@ -150,7 +171,8 @@ class PluginController extends GetxController {
         }
       }
       items.assignAll(parsed);
-      _preloadPalettes();
+      _visibleCacheDirty = true;
+      _preloadPalettes(limit: 12);
       _saveToCache();
     } catch (e, st) {
       _log.handle(e, stackTrace: st, message: '获取插件列表失败');
@@ -161,12 +183,14 @@ class PluginController extends GetxController {
     }
   }
 
-  void _preloadPalettes() {
+  void _preloadPalettes({int limit = 12}) {
     try {
       final cache = Get.isRegistered<PluginPaletteCache>()
           ? Get.find<PluginPaletteCache>()
           : Get.put(PluginPaletteCache(), permanent: true);
-      final urls = visibleItems
+      final all = visibleItems;
+      final slice = all.length <= limit ? all : all.take(limit);
+      final urls = slice
           .map(
             (e) => e.pluginIcon != null && e.pluginIcon!.isNotEmpty
                 ? ImageUtil.convertPluginIconUrl(e.pluginIcon!)

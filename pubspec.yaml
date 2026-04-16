@@ -42,9 +42,14 @@ dependencies:
   package_info_plus: ^9.0.0
   jpush_flutter: ^3.1.8
   altman_downloader_control:
-    path: ./altman_downloader_control
+    git: https://github.com/singleton-altman/altman_downloader_control.git
   altman_totp:
     path: ./altman_totp
+dependency_overrides:
+  get:
+    git:
+      url: https://github.com/singleton-altman/get.git
+      ref: main
 dev_dependencies:
   flutter_test:
     sdk: flutter

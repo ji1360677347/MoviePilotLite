@@ -12,9 +12,11 @@ packages:
   altman_downloader_control:
     dependency: "direct main"
     description:
-      path: altman_downloader_control
-      relative: true
-    source: path
+      path: "."
+      ref: HEAD
+      resolved-ref: dfa850eaf779a2ad188b8d5fb7323305e76f4daa
+      url: "https://github.com/singleton-altman/altman_downloader_control.git"
+    source: git
     version: "1.0.0+1"
   altman_totp:
     dependency: "direct main"
@@ -590,10 +592,11 @@ packages:
   get:
     dependency: "direct main"
     description:
-      name: get
-      sha256: "5ed34a7925b85336e15d472cc4cfe7d9ebf4ab8e8b9f688585bf6b50f4c3d79a"
-      url: "https://pub.dev"
-    source: hosted
+      path: "."
+      ref: main
+      resolved-ref: "1c680b39dad460b49af73d4c1a30523a86e7a3e4"
+      url: "https://github.com/singleton-altman/get.git"
+    source: git
     version: "4.7.3"
   glob:
     dependency: transitive
@@ -1588,10 +1591,10 @@ packages:
     dependency: transitive
     description:
       name: vm_service
-      sha256: "45caa6c5917fa127b5dbcfbd1fa60b14e583afdc08bfc96dda38886ca252eb60"
+      sha256: "046d3928e16fa4dc46e8350415661755ab759d9fc97fc21b5ab295f71e4f0499"
       url: "https://pub.dev"
     source: hosted
-    version: "15.0.2"
+    version: "15.1.0"
   watcher:
     dependency: transitive
     description:
@@ -1652,10 +1655,10 @@ packages:
     dependency: "direct main"
     description:
       name: webview_flutter_wkwebview
-      sha256: d7219cfabc6f5fc2032e0fa980ec36d71f308a35a823395af1abc34d9a2ede83
+      sha256: e15d8828e014291324a4d0cf6e272090167f4fa5673ffcf8fe446f4a4cd35861
       url: "https://pub.dev"
     source: hosted
-    version: "3.24.2"
+    version: "3.24.3"
   win32:
     dependency: transitive
     description:
