@@ -2,6 +2,10 @@
 
 基于 [MoviePilot](https://github.com/jxxghp/MoviePilot) 项目的 Flutter 移动端客户端。
 
+## 功能预览（Web）
+
+在线体验：[https://web-brown-kappa-21.vercel.app](https://web-brown-kappa-21.vercel.app)
+
 ## HarmonyOS（OHOS）
 
 - OHOS 适配在独立分支 `ohos`
