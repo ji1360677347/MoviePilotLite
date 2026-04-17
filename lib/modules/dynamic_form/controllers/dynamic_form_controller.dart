@@ -12,6 +12,25 @@ import 'package:moviepilot_mobile/services/api_client.dart';
 import 'package:moviepilot_mobile/services/app_service.dart';
 import 'package:moviepilot_mobile/services/jpush_service.dart';
 
+class ApplyPushAliasOutcome {
+  const ApplyPushAliasOutcome._({this.appliedToken, this.errorMessage});
+
+  final String? appliedToken;
+  final String? errorMessage;
+
+  bool get isSuccess => appliedToken != null;
+
+  factory ApplyPushAliasOutcome.ok(String token) =>
+      ApplyPushAliasOutcome._(appliedToken: token);
+
+  factory ApplyPushAliasOutcome.err(String message) {
+    final t = message.trim();
+    return ApplyPushAliasOutcome._(
+      errorMessage: t.isEmpty ? '未知错误' : t,
+    );
+  }
+}
+
 /// 动态表单控制器：可插件化入口，根据 render_mode 分流 vuetify/vue 渲染
 class DynamicFormController extends GetxController {
   final _apiClient = Get.find<ApiClient>();
@@ -458,24 +477,34 @@ class DynamicFormController extends GetxController {
     return null;
   }
 
-  Future<String?> applyCurrentPushTokenAsAlias() async {
-    if (!showApplyPushAliasAction || isApplyingPushAlias.value) return null;
+  Future<ApplyPushAliasOutcome> applyCurrentPushTokenAsAlias() async {
+    if (!showApplyPushAliasAction) {
+      return ApplyPushAliasOutcome.err('当前插件不支持此操作');
+    }
+    if (isApplyingPushAlias.value) {
+      return ApplyPushAliasOutcome.err('正在应用中，请稍候');
+    }
 
     isApplyingPushAlias.value = true;
     try {
       final pushToken = _configuredPushToken();
       if (pushToken == null || pushToken.isEmpty) {
-        return null;
+        return ApplyPushAliasOutcome.err(
+          '表单中未找到 Token，请填写 token、push_token、pushToken 等字段',
+        );
       }
 
-      final success = await _jpushService.setAlias(pushToken);
-      if (!success) {
-        return null;
+      final jResult = await _jpushService.setAlias(pushToken);
+      if (!jResult.ok) {
+        return ApplyPushAliasOutcome.err(
+          jResult.errorMessage ?? '设置 JPush Alias 失败',
+        );
       }
-      return pushToken;
+      return ApplyPushAliasOutcome.ok(pushToken);
     } catch (e, st) {
       _log.handle(e, stackTrace: st, message: '应用 App Push Token 失败');
-      return null;
+      final msg = e.toString().trim();
+      return ApplyPushAliasOutcome.err(msg.isEmpty ? '应用失败' : msg);
     } finally {
       isApplyingPushAlias.value = false;
     }

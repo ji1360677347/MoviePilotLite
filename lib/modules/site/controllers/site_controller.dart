@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:moviepilot_mobile/applog/app_log.dart';
 import 'package:moviepilot_mobile/modules/site/models/site_icon_cache.dart';
@@ -248,6 +249,7 @@ class SiteController extends GetxController {
   }
 
   void loadFromCache() {
+    if (kIsWeb) return;
     final siteCaches = _realm.realm.all<SiteModelCache>();
     if (siteCaches.isEmpty) return;
 
@@ -425,6 +427,7 @@ class SiteController extends GetxController {
   }
 
   void _saveToCache() {
+    if (kIsWeb) return;
     final siteCaches = items.map((item) {
       final s = item.site;
       return SiteModelCache(
@@ -492,6 +495,10 @@ class SiteController extends GetxController {
     final url = site.url;
     if (url.isEmpty) return _fetchIconBytesFromApi(site.id, url);
 
+    if (kIsWeb) {
+      return _fetchIconBytesFromApi(site.id, url);
+    }
+
     final cached = _realm.realm.find<SiteIconCache>(url);
     if (cached != null && cached.iconBase64.isNotEmpty) {
       return _decodeBase64ToBytes(cached.iconBase64);
@@ -539,7 +546,7 @@ class SiteController extends GetxController {
       final bytes = base64Decode(base64);
       if (bytes.isEmpty) return null;
 
-      if (siteUrl.isNotEmpty) {
+      if (!kIsWeb && siteUrl.isNotEmpty) {
         _realm.realm.write(() {
           _realm.realm.add(SiteIconCache(siteUrl, base64), update: true);
         });

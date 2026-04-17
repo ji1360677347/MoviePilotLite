@@ -136,7 +136,7 @@ Future<void> main() async {
   await Get.put(IosWidgetNavigationService()).init();
   await Get.put(JPushService()).init();
   Get.put(AppService());
-  Get.put(RealmService());
+  Get.put(RealmService(), permanent: true);
   Get.put(IosSharedSessionService());
   Get.put(ApiClient());
   Get.put(MediaDetailService());

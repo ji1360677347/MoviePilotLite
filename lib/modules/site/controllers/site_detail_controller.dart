@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:moviepilot_mobile/applog/app_log.dart';
 import 'package:moviepilot_mobile/modules/site/models/site_icon_cache.dart';
@@ -82,7 +83,7 @@ class SiteDetailController extends GetxController {
     final siteUrl = site?.url ?? '';
     if (id == null) return;
 
-    if (siteUrl.isNotEmpty) {
+    if (!kIsWeb && siteUrl.isNotEmpty) {
       final cached = _realm.realm.find<SiteIconCache>(siteUrl);
       if (cached != null && cached.iconBase64.isNotEmpty) {
         String base64 = cached.iconBase64.trim();
@@ -112,7 +113,7 @@ class SiteDetailController extends GetxController {
       }
       if (base64.isEmpty || iconBase64.value == base64) return;
       iconBase64.value = base64;
-      if (siteUrl.isNotEmpty) {
+      if (!kIsWeb && siteUrl.isNotEmpty) {
         _realm.realm.write(() {
           _realm.realm.add(SiteIconCache(siteUrl, base64), update: true);
         });

@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'dart:math' as math;
-import 'dart:typed_data';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:moviepilot_mobile/utils/prefs_keys.dart';
 import 'package:moviepilot_mobile/modules/login/models/login_response.dart';
 import 'package:moviepilot_mobile/modules/profile/models/user_info.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -78,6 +79,13 @@ class AppService extends GetxService {
 
     if (backgroundImageEnabled.value && backgroundImageUseServer.value) {
       await cacheBackgroundImageFromServerUrl();
+    }
+
+    if (kIsWeb) {
+      final storedCookie = prefs.getString(kAppSessionCookieKey);
+      if (storedCookie != null && storedCookie.isNotEmpty) {
+        _cookie = storedCookie;
+      }
     }
   }
 
@@ -200,10 +208,7 @@ class AppService extends GetxService {
           connectTimeout: const Duration(seconds: 20),
           receiveTimeout: const Duration(seconds: 20),
           responseType: ResponseType.bytes,
-          headers: const {
-            'cache-control': 'no-cache',
-            'pragma': 'no-cache',
-          },
+          headers: const {'cache-control': 'no-cache', 'pragma': 'no-cache'},
         ),
       );
       final resp = await dio.get<List<int>>(_cacheBustingUrl(raw));
@@ -260,12 +265,26 @@ class AppService extends GetxService {
 
   /// 设置缓存的cookie
   void setCookie(String cookie) {
-    _cookie = cookie;
+    _cookie = cookie.isEmpty ? null : cookie;
+    if (kIsWeb) {
+      SharedPreferences.getInstance().then((p) async {
+        if (cookie.isEmpty) {
+          await p.remove(kAppSessionCookieKey);
+        } else {
+          await p.setString(kAppSessionCookieKey, cookie);
+        }
+      });
+    }
   }
 
   /// 清除缓存的cookie
   void clearCookie() {
     _cookie = null;
+    if (kIsWeb) {
+      SharedPreferences.getInstance().then(
+        (p) => p.remove(kAppSessionCookieKey),
+      );
+    }
   }
 
   /// 清除登录态（内存）
@@ -273,6 +292,11 @@ class AppService extends GetxService {
     _loginResponse = null;
     _userInfo = null;
     _cookie = null;
+    if (kIsWeb) {
+      SharedPreferences.getInstance().then(
+        (p) => p.remove(kAppSessionCookieKey),
+      );
+    }
   }
 
   saveProfile(String server, LoginResponse login) {

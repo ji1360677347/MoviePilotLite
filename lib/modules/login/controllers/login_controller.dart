@@ -224,10 +224,13 @@ class LoginController extends GetxController {
   }
 
   void _loadProfiles() {
-    profiles.assignAll(_repository.getProfiles());
+    _repository.getProfilesAsync().then(_applyProfilesList);
+  }
+
+  void _applyProfilesList(List<LoginProfile> list) {
+    profiles.assignAll(list);
     if (profiles.isEmpty) return;
 
-    // 尽量保持上次选中的账号；否则默认选择最新的一个。
     final currentId = selectedProfile.value?.id;
     LoginProfile? match;
     if (currentId != null) {
