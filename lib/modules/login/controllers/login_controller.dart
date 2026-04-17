@@ -61,8 +61,7 @@ class LoginController extends GetxController {
   void onInit() {
     _totpService.load();
     _loadSavedWallpapers();
-    _loadProfiles();
-    _autoLogin();
+    unawaited(_loadProfilesThenAutoLogin());
     serverController.addListener(_autofillTotpIfMatched);
     usernameController.addListener(_autofillTotpIfMatched);
     super.onInit();
@@ -223,8 +222,14 @@ class LoginController extends GetxController {
     }
   }
 
-  void _loadProfiles() {
-    _repository.getProfilesAsync().then(_applyProfilesList);
+  Future<void> _loadProfilesThenAutoLogin() async {
+    await _loadProfiles();
+    await _autoLogin();
+  }
+
+  Future<void> _loadProfiles() async {
+    final list = await _repository.getProfilesAsync();
+    _applyProfilesList(list);
   }
 
   void _applyProfilesList(List<LoginProfile> list) {
@@ -279,7 +284,7 @@ class LoginController extends GetxController {
       );
       await _saveWallpapers();
       imageUtil.loadGlobalCachedConfig();
-      _loadProfiles();
+      await _loadProfiles();
       ToastUtil.success(
         '已保存账号信息',
         title: '登录成功',
