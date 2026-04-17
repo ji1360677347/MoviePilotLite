@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:modal_bottom_sheet/modal_bottom_sheet.dart';
@@ -14,16 +15,15 @@ import 'package:moviepilot_mobile/modules/recognize/controllers/recognize_contro
 import 'package:moviepilot_mobile/modules/recognize/pages/recognize_page.dart';
 import 'package:moviepilot_mobile/modules/system_message/controllers/system_message_controller.dart';
 
-import 'package:moviepilot_mobile/services/realm_service.dart';
-import 'package:moviepilot_mobile/services/app_service.dart';
 import 'package:moviepilot_mobile/modules/login/models/login_profile.dart';
+import 'package:moviepilot_mobile/services/app_service.dart';
+import 'package:moviepilot_mobile/services/realm_service.dart';
 
 import '../controllers/dashboard_controller.dart';
 import '../widgets/dashboard_widgets.dart';
 
 class DashboardPage extends GetView<DashboardController> {
   const DashboardPage({super.key});
-  RealmService get _realmService => Get.find<RealmService>();
 
   @override
   Widget build(BuildContext context) {
@@ -117,19 +117,20 @@ class DashboardPage extends GetView<DashboardController> {
     return 100;
   }
 
-  /// 获取最新的登录配置文件
-  LoginProfile? _getLatestLoginProfile() {
+  String? _dashboardBarAvatar() {
+    if (kIsWeb) {
+      final app = Get.find<AppService>();
+      final u = app.userInfo?.avatar;
+      if (u != null && u.isNotEmpty) return u;
+      return app.loginResponse?.avatar;
+    }
     try {
-      final profiles = _realmService.realm.all<LoginProfile>();
-      if (profiles.isEmpty) {
-        return null;
-      }
-      // 按更新时间排序，返回最新的登录配置
-      final sortedProfiles = profiles.toList()
+      final profiles = Get.find<RealmService>().realm.all<LoginProfile>();
+      if (profiles.isEmpty) return null;
+      final sorted = profiles.toList()
         ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-      return sortedProfiles.first;
-    } catch (e) {
-      // 如果获取失败，返回null
+      return sorted.first.avatar;
+    } catch (_) {
       return null;
     }
   }
@@ -156,8 +157,7 @@ class DashboardPage extends GetView<DashboardController> {
 
   /// 构建导航栏
   AppBar _buildNavigationBar(BuildContext context, {bool transparent = false}) {
-    // 获取最新的登录配置文件
-    final loginProfile = _getLatestLoginProfile();
+    final avatarStr = _dashboardBarAvatar();
 
     return AppBar(
       backgroundColor: transparent ? Colors.transparent : null,
@@ -217,11 +217,9 @@ class DashboardPage extends GetView<DashboardController> {
           padding: EdgeInsets.symmetric(horizontal: 12),
           onPressed: () => _showProfile(context),
           child:
-              loginProfile != null &&
-                  loginProfile.avatar != null &&
-                  loginProfile.avatar!.isNotEmpty
+              avatarStr != null && avatarStr.isNotEmpty
               ? () {
-                  final avatarBytes = _decodeAvatar(loginProfile.avatar!);
+                  final avatarBytes = _decodeAvatar(avatarStr);
                   if (avatarBytes.isNotEmpty) {
                     return Container(
                       width: 34,

@@ -677,6 +677,7 @@ class RecommendPage extends GetView<RecommendController> {
             return Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: horizontalPadding,
+                vertical: 8,
               ),
               child: Row(
                 children: [

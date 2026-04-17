@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:moviepilot_mobile/applog/app_log.dart';
 import 'package:moviepilot_mobile/modules/plugin/models/installed_plugin_model_cache.dart';
@@ -73,6 +74,7 @@ class PluginController extends GetxController {
   }
 
   Future<void> loadFromCache() async {
+    if (kIsWeb) return;
     final cache = _realm.realm.all<InstalledPluginModelCache>();
     if (cache.isEmpty) return;
     final locals = cache
@@ -105,6 +107,7 @@ class PluginController extends GetxController {
   }
 
   void _saveToCache() {
+    if (kIsWeb) return;
     late final List<InstalledPluginModelCache> list = [];
     for (final item in items) {
       final cache = InstalledPluginModelCache(

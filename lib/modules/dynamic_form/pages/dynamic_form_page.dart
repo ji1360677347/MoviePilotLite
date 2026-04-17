@@ -323,9 +323,9 @@ class DynamicFormPage extends GetView<DynamicFormController> {
   }
 
   Future<void> _onApplyPushAlias() async {
-    final token = await controller.applyCurrentPushTokenAsAlias();
-    if (token == null || token.isEmpty) {
-      ToastUtil.error('应用失败，请确认已完成推送初始化');
+    final outcome = await controller.applyCurrentPushTokenAsAlias();
+    if (!outcome.isSuccess) {
+      ToastUtil.error(outcome.errorMessage ?? '应用失败');
       return;
     }
     ToastUtil.success('已将当前 App Push Token 应用为 JPush Alias');

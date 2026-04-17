@@ -1,4 +1,6 @@
 import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:moviepilot_mobile/applog/app_log.dart';
 import 'package:moviepilot_mobile/modules/login/models/login_profile.dart';
@@ -151,7 +153,12 @@ class ServerLogController extends GetxController {
 
   Future<bool> _refreshToken() async {
     try {
-      final profiles = _realmService.realm.all<LoginProfile>().toList();
+      final List<LoginProfile> profiles;
+      if (kIsWeb) {
+        profiles = await _authRepository.getProfilesAsync();
+      } else {
+        profiles = _realmService.realm.all<LoginProfile>().toList();
+      }
       if (profiles.isEmpty) return false;
       profiles.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
       final latest = profiles.first;

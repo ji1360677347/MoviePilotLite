@@ -1,6 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:moviepilot_mobile/modules/dynamic_form/adapters/plugin_form_adapter_registry.dart';
 import 'package:moviepilot_mobile/modules/dynamic_form/controllers/dynamic_form_controller.dart';
 import 'package:moviepilot_mobile/modules/dynamic_form/models/form_block_models.dart';
@@ -76,6 +80,8 @@ class AppLitePushRenderer extends StatelessWidget {
             value: controller.getValue('token')?.toString(),
             onChanged: (value) => controller.updateField('token', value),
           ),
+          const SizedBox(height: 8),
+          const _IosAppBuildSection(),
           const SizedBox(height: 8),
           Section(
             child: Column(
@@ -196,5 +202,174 @@ class AppLitePushRenderer extends StatelessWidget {
     } else {
       ToastUtil.error('测试消息发送失败');
     }
+  }
+}
+
+class _IosAppBuildSection extends StatefulWidget {
+  const _IosAppBuildSection();
+
+  @override
+  State<_IosAppBuildSection> createState() => _IosAppBuildSectionState();
+}
+
+class _IosAppBuildSectionState extends State<_IosAppBuildSection> {
+  String? _bundleId;
+  String? _version;
+  String? _buildNumber;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (kIsWeb || !Platform.isIOS) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _bundleId = null;
+          _version = null;
+          _buildNumber = null;
+        });
+      }
+      return;
+    }
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          final bid = info.packageName.trim();
+          final ver = info.version.trim();
+          final build = info.buildNumber.trim();
+          _bundleId = bid.isEmpty ? null : bid;
+          _version = ver.isEmpty ? null : ver;
+          _buildNumber = build.isEmpty ? null : build;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _bundleId = null;
+          _version = null;
+          _buildNumber = null;
+        });
+      }
+    }
+  }
+
+  Widget _infoRow({
+    required String title,
+    required String? value,
+    required Color labelColor,
+    required Color secondary,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              height: 1.3,
+              color: secondary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          SelectableText(
+            value ?? '—',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              height: 1.35,
+              color: labelColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final labelColor = CupertinoDynamicColor.resolve(
+      CupertinoColors.label,
+      context,
+    );
+    final secondary = CupertinoDynamicColor.resolve(
+      CupertinoColors.secondaryLabel,
+      context,
+    );
+
+    return Section(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '本机 iOS 应用信息',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: labelColor,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Bundle ID、Version（CFBundleShortVersionString）与 Build（CFBundleVersion）。',
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.45,
+              color: secondary,
+            ),
+          ),
+          const SizedBox(height: 10),
+          if (_loading)
+            SizedBox(
+              height: 20,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: CupertinoActivityIndicator(
+                  radius: 10,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            )
+          else if (kIsWeb || !Platform.isIOS)
+            SelectableText(
+              '当前非 iOS 客户端',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                color: labelColor,
+              ),
+            )
+          else ...[
+            _infoRow(
+              title: 'Bundle ID',
+              value: _bundleId,
+              labelColor: labelColor,
+              secondary: secondary,
+            ),
+            _infoRow(
+              title: 'Version',
+              value: _version,
+              labelColor: labelColor,
+              secondary: secondary,
+            ),
+            _infoRow(
+              title: 'Build',
+              value: _buildNumber,
+              labelColor: labelColor,
+              secondary: secondary,
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }

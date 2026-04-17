@@ -61,8 +61,7 @@ class LoginController extends GetxController {
   void onInit() {
     _totpService.load();
     _loadSavedWallpapers();
-    _loadProfiles();
-    _autoLogin();
+    unawaited(_loadProfilesThenAutoLogin());
     serverController.addListener(_autofillTotpIfMatched);
     usernameController.addListener(_autofillTotpIfMatched);
     super.onInit();
@@ -223,11 +222,20 @@ class LoginController extends GetxController {
     }
   }
 
-  void _loadProfiles() {
-    profiles.assignAll(_repository.getProfiles());
+  Future<void> _loadProfilesThenAutoLogin() async {
+    await _loadProfiles();
+    await _autoLogin();
+  }
+
+  Future<void> _loadProfiles() async {
+    final list = await _repository.getProfilesAsync();
+    _applyProfilesList(list);
+  }
+
+  void _applyProfilesList(List<LoginProfile> list) {
+    profiles.assignAll(list);
     if (profiles.isEmpty) return;
 
-    // 尽量保持上次选中的账号；否则默认选择最新的一个。
     final currentId = selectedProfile.value?.id;
     LoginProfile? match;
     if (currentId != null) {
@@ -276,7 +284,7 @@ class LoginController extends GetxController {
       );
       await _saveWallpapers();
       imageUtil.loadGlobalCachedConfig();
-      _loadProfiles();
+      await _loadProfiles();
       ToastUtil.success(
         '已保存账号信息',
         title: '登录成功',

@@ -93,6 +93,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
                   child: _sectionCard(child: _moduleEntryTile(context, module)),
                 );
               }),
+              const SizedBox(height: 50),
             ],
           ),
         );

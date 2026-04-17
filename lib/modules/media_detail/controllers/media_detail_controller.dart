@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:moviepilot_mobile/applog/app_log.dart';
 import 'package:moviepilot_mobile/modules/login/repositories/auth_repository.dart';
@@ -138,6 +139,7 @@ class MediaDetailController extends GetxController {
   }
 
   void _loadCachedDetailIfValid() {
+    if (kIsWeb) return;
     final cacheKey = _cacheKey(_args);
     if (cacheKey.isEmpty) return;
     final cache = _realmService.realm.find<MediaDetailCache>(cacheKey);
@@ -159,6 +161,7 @@ class MediaDetailController extends GetxController {
   }
 
   void _cacheDetail(MediaDetail detail) {
+    if (kIsWeb) return;
     final cacheKey = _cacheKey(_args);
     if (cacheKey.isEmpty) return;
     try {

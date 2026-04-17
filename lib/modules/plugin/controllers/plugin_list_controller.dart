@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:moviepilot_mobile/applog/app_log.dart';
@@ -15,7 +16,8 @@ import 'package:realm/realm.dart';
 class PluginListController extends GetxController {
   final _apiClient = Get.find<ApiClient>();
   final _log = Get.find<AppLog>();
-  final Realm _realm = Get.find<RealmService>().realm;
+
+  Realm get _realm => Get.find<RealmService>().realm;
   final _appService = Get.find<AppService>();
   final _authRepository = Get.find<AuthRepository>();
   static const int _pageSize = 40;
@@ -150,6 +152,7 @@ class PluginListController extends GetxController {
   }
 
   Future<void> loadFromCache() async {
+    if (kIsWeb) return;
     final cache = _realm.all<PluginModelCache>();
     if (cache.isEmpty) return;
     final locals = cache
@@ -183,6 +186,7 @@ class PluginListController extends GetxController {
   }
 
   void _saveToCache() {
+    if (kIsWeb) return;
     late final List<PluginModelCache> list = [];
     for (final item in items) {
       final cache = PluginModelCache(

@@ -1,9 +1,9 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:moviepilot_mobile/modules/plugin/models/plugin_models.dart';
 import 'package:moviepilot_mobile/modules/plugin/services/plugin_palette_cache.dart';
 import 'package:moviepilot_mobile/theme/section.dart';
+import 'package:moviepilot_mobile/widgets/cached_image.dart';
 
 enum PluginHandleType {
   settings,
@@ -344,14 +344,14 @@ class PluginItemCard extends StatelessWidget {
         ],
       ),
       child: ClipOval(
-        child: CachedNetworkImage(
+        child: CachedImage(
           imageUrl: iconUrl,
           width: _iconSize,
           height: _iconSize,
           fit: BoxFit.cover,
           memCacheWidth: 96,
           memCacheHeight: 96,
-          placeholder: (_, __) => Container(
+          placeholder: Container(
             color: fallbackColor.withValues(alpha: 0.5),
             child: const Center(
               child: SizedBox(
@@ -364,7 +364,7 @@ class PluginItemCard extends StatelessWidget {
               ),
             ),
           ),
-          errorWidget: (_, __, ___) => Container(
+          errorWidget: Container(
             color: fallbackColor.withValues(alpha: 0.5),
             child: Icon(Icons.extension_outlined, color: Colors.white),
           ),
