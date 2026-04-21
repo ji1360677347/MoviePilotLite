@@ -165,14 +165,8 @@ _$MediaInfoImpl _$$MediaInfoImplFromJson(Map<String, dynamic> json) =>
       popularity: _doubleFromJson(json['popularity']),
       runtime: _intFromJson(json['runtime']),
       next_episode_to_air: _nextEpisodeFromJson(json['next_episode_to_air']),
-      episode_groups: (json['episode_groups'] as List<dynamic>?)
-          ?.map((e) => EpisodeGroup.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      episode_group: json['episode_group'] == null
-          ? null
-          : EpisodeGroup.fromJson(
-              json['episode_group'] as Map<String, dynamic>,
-            ),
+      episode_groups: _episodeGroupsFromJson(json['episode_groups']),
+      episode_group: _episodeGroupFromJson(json['episode_group']),
     );
 
 Map<String, dynamic> _$$MediaInfoImplToJson(_$MediaInfoImpl instance) =>
@@ -230,8 +224,8 @@ Map<String, dynamic> _$$MediaInfoImplToJson(_$MediaInfoImpl instance) =>
       'popularity': instance.popularity,
       'runtime': instance.runtime,
       'next_episode_to_air': _nextEpisodeToJson(instance.next_episode_to_air),
-      'episode_groups': instance.episode_groups,
-      'episode_group': instance.episode_group,
+      'episode_groups': _episodeGroupsToJson(instance.episode_groups),
+      'episode_group': _episodeGroupToJson(instance.episode_group),
     };
 
 _$SeasonEpisodesImpl _$$SeasonEpisodesImplFromJson(Map<String, dynamic> json) =>
@@ -447,9 +441,7 @@ _$EpisodeGroupImpl _$$EpisodeGroupImplFromJson(Map<String, dynamic> json) =>
       episode_count: _intFromJson(json['episode_count']),
       group_count: _intFromJson(json['group_count']),
       type: json['type'] as String?,
-      network: json['network'] == null
-          ? null
-          : Network.fromJson(json['network'] as Map<String, dynamic>),
+      network: _networkFromJson(json['network']),
     );
 
 Map<String, dynamic> _$$EpisodeGroupImplToJson(_$EpisodeGroupImpl instance) =>
@@ -460,7 +452,7 @@ Map<String, dynamic> _$$EpisodeGroupImplToJson(_$EpisodeGroupImpl instance) =>
       'episode_count': instance.episode_count,
       'group_count': instance.group_count,
       'type': instance.type,
-      'network': instance.network,
+      'network': _networkToJson(instance.network),
     };
 
 _$NextEpisodeToAirImpl _$$NextEpisodeToAirImplFromJson(

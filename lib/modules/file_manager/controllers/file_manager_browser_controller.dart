@@ -297,16 +297,107 @@ class FileManagerBrowserController extends GetxController {
     if (data == null) return null;
     try {
       if (data is Map) {
-        return RecognizeResponse.fromJson(Map<String, dynamic>.from(data));
+        return RecognizeResponse.fromJson(
+          _normalizeRecognizePayload(Map<String, dynamic>.from(data)),
+        );
       }
       if (data is String && data.trim().startsWith('{')) {
         final decoded = jsonDecode(data);
         if (decoded is Map) {
-          return RecognizeResponse.fromJson(Map<String, dynamic>.from(decoded));
+          return RecognizeResponse.fromJson(
+            _normalizeRecognizePayload(Map<String, dynamic>.from(decoded)),
+          );
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      _log.handle(e, message: '解析识别结果失败');
+    }
     return null;
+  }
+
+  static const Set<String> _recognizeStringKeys = {
+    'source',
+    'type',
+    'title',
+    'subtitle',
+    'name',
+    'cn_name',
+    'en_name',
+    'year',
+    'org_string',
+    'season_episode',
+    'part',
+    'resource_type',
+    'resource_effect',
+    'resource_pix',
+    'resource_team',
+    'video_encode',
+    'audio_encode',
+    'edition',
+    'web_source',
+    'en_title',
+    'title_year',
+    'imdb_id',
+    'mediaid_prefix',
+    'media_id',
+    'original_language',
+    'original_title',
+    'release_date',
+    'backdrop_path',
+    'poster_path',
+    'overview',
+    'category',
+    'detail_link',
+    'first_air_date',
+    'homepage',
+    'last_air_date',
+    'original_name',
+    'status',
+    'tagline',
+    'air_date',
+    'known_for_department',
+    'profile_path',
+    'character',
+    'credit_id',
+    'job',
+    'logo_path',
+    'origin_country',
+    'iso_3166_1',
+    'english_name',
+    'iso_639_1',
+    'certification',
+    'note',
+    'description',
+    'production_code',
+    'still_path',
+  };
+
+  Map<String, dynamic> _normalizeRecognizePayload(Map<String, dynamic> source) {
+    final normalized = <String, dynamic>{};
+    source.forEach((key, value) {
+      normalized[key] = _normalizeRecognizeValue(key, value);
+    });
+    return normalized;
+  }
+
+  dynamic _normalizeRecognizeValue(String key, dynamic value) {
+    if (value is Map) {
+      return _normalizeRecognizePayload(Map<String, dynamic>.from(value));
+    }
+    if (value is List) {
+      return value.map((item) {
+        if (item is Map) {
+          return _normalizeRecognizePayload(Map<String, dynamic>.from(item));
+        }
+        return item;
+      }).toList();
+    }
+    if (_recognizeStringKeys.contains(key) &&
+        value != null &&
+        value is! String) {
+      return value.toString();
+    }
+    return value;
   }
 
   /// 刮削文件/文件夹 - POST /api/v1/media/scrape/{storage}
