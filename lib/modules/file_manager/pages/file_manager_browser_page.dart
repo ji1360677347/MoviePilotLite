@@ -9,6 +9,7 @@ import 'package:skeletonizer/skeletonizer.dart';
 
 import '../controllers/file_manager_browser_controller.dart';
 import '../file_manager_picker_service.dart';
+import '../widgets/file_manual_transfer_sheet.dart';
 import '../widgets/file_recognize_result_sheet.dart';
 import '../widgets/file_rename_sheet.dart';
 
@@ -663,6 +664,9 @@ class FileManagerBrowserPage extends GetView<FileManagerBrowserController> {
             case 'rename':
               _handleRename(file);
               break;
+            case 'organize':
+              _handleOrganize(file);
+              break;
             case 'scrape':
               _handleScrape(file);
               break;
@@ -683,6 +687,19 @@ class FileManagerBrowserPage extends GetView<FileManagerBrowserController> {
                 SizedBox(width: 12),
                 Text(
                   '重命名',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          ),
+          const PopupMenuItem(
+            value: 'organize',
+            child: Row(
+              children: [
+                Icon(CupertinoIcons.arrow_2_circlepath_circle, size: 20),
+                SizedBox(width: 12),
+                Text(
+                  '整理',
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
                 ),
               ],
@@ -963,6 +980,66 @@ class FileManagerBrowserPage extends GetView<FileManagerBrowserController> {
       Get.context!,
       file: file,
       recognizeFuture: controller.recognizeFile,
+    );
+  }
+
+  void _handleOrganize(MediaOrganizeFileItem file) {
+    if (!Get.context!.mounted) return;
+    final storages = Get.isRegistered<StorageListController>()
+        ? Get.find<StorageListController>().storages.toList()
+        : <StorageSetting>[];
+    final fallbackStorageType =
+        controller.selectedStorage.value?.type ?? file.storage ?? 'local';
+    final hasFallback = storages.any(
+      (item) => item.type == fallbackStorageType,
+    );
+    final availableStorages = hasFallback
+        ? storages
+        : [
+            ...storages,
+            StorageSetting(
+              type: fallbackStorageType,
+              name: fallbackStorageType,
+            ),
+          ];
+    FileManualTransferSheet.show(
+      Get.context!,
+      file: file,
+      availableStorages: availableStorages,
+      defaultTargetStorage: fallbackStorageType,
+      submitTransfer:
+          ({
+            required mode,
+            required targetStorage,
+            required transferType,
+            required targetPath,
+            required scrape,
+            required libraryTypeFolder,
+            required libraryCategoryFolder,
+            required tmdbId,
+            required part,
+            required minFileSize,
+            required episodeGroup,
+            required season,
+            required episodeFormat,
+            required episodeOffset,
+          }) => controller.manualTransfer(
+            file,
+            mode: mode,
+            targetStorage: targetStorage,
+            transferType: transferType,
+            targetPath: targetPath,
+            scrape: scrape,
+            libraryTypeFolder: libraryTypeFolder,
+            libraryCategoryFolder: libraryCategoryFolder,
+            tmdbId: tmdbId,
+            part: part,
+            minFileSize: minFileSize,
+            episodeGroup: episodeGroup,
+            season: season,
+            episodeFormat: episodeFormat,
+            episodeOffset: episodeOffset,
+          ),
     );
   }
 

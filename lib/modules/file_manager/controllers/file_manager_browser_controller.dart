@@ -9,6 +9,13 @@ import 'package:moviepilot_mobile/modules/recognize/models/recognize_model.dart'
 import 'package:moviepilot_mobile/modules/storage/controllers/storage_list_controller.dart';
 import 'package:moviepilot_mobile/services/api_client.dart';
 
+class FileActionResult {
+  const FileActionResult({required this.success, this.message = ''});
+
+  final bool success;
+  final String message;
+}
+
 /// 文件浏览器控制器 - 使用 Get.to 页面级导航，每页单一 currentPath
 class FileManagerBrowserController extends GetxController {
   final _apiClient = Get.find<ApiClient>();
@@ -483,6 +490,121 @@ class FileManagerBrowserController extends GetxController {
     } catch (e) {
       _log.handle(e, message: '重命名失败');
       return false;
+    }
+  }
+
+  Future<FileActionResult> manualTransfer(
+    MediaOrganizeFileItem file, {
+    required String mode,
+    required String targetStorage,
+    required String transferType,
+    required String targetPath,
+    required bool scrape,
+    required bool libraryTypeFolder,
+    required bool libraryCategoryFolder,
+    required String tmdbId,
+    required String part,
+    required String minFileSize,
+    required String episodeGroup,
+    required String season,
+    required String episodeFormat,
+    required String episodeOffset,
+  }) async {
+    final sourceStorage = selectedStorage.value?.type ?? file.storage ?? '';
+    if (sourceStorage.isEmpty || targetStorage.trim().isEmpty) {
+      return const FileActionResult(success: false, message: '缺少源存储或目标存储');
+    }
+
+    final normalizedTransferType = transferType.trim();
+    final normalizedTargetPath = targetPath.trim();
+    final normalizedTmdbId = tmdbId.trim();
+    final normalizedPart = part.trim();
+    final normalizedEpisodeGroup = episodeGroup.trim();
+    final normalizedSeason = season.trim();
+    final normalizedEpisodeFormat = episodeFormat.trim();
+    final normalizedEpisodeOffset = episodeOffset.trim();
+    final parsedMinFileSize =
+        double.tryParse(minFileSize.trim())?.floor().clamp(0, 1 << 31) ?? 0;
+
+    final payload = <String, dynamic>{
+      'fileitem': _buildStorageFilePayload(file, storageType: sourceStorage),
+      'logid': 0,
+      'target_storage': targetStorage.trim(),
+      'transfer_type': normalizedTransferType == 'auto'
+          ? ''
+          : normalizedTransferType,
+      'target_path': normalizedTargetPath,
+      'min_filesize': parsedMinFileSize,
+      'scrape': scrape,
+      'from_history': false,
+      'library_category_folder': libraryCategoryFolder,
+      'library_type_folder': libraryTypeFolder,
+    };
+
+    if (mode == 'movie') {
+      payload['type_name'] = '';
+    } else if (mode == 'tv') {
+      payload['type_name'] = '电视剧';
+    }
+
+    if (normalizedTmdbId.isNotEmpty) {
+      payload['tmdbid'] = normalizedTmdbId;
+    }
+
+    if (normalizedPart.isNotEmpty) {
+      payload[mode == 'tv' ? 'episode_part' : 'part'] = normalizedPart;
+    }
+
+    if (mode == 'tv') {
+      if (normalizedEpisodeGroup.isNotEmpty) {
+        payload['episode_group'] = normalizedEpisodeGroup;
+      }
+      final parsedSeason = int.tryParse(normalizedSeason);
+      if (parsedSeason != null) {
+        payload['season'] = parsedSeason;
+      }
+      if (normalizedEpisodeFormat.isNotEmpty) {
+        payload['episode_format'] = normalizedEpisodeFormat;
+      }
+      if (normalizedEpisodeOffset.isNotEmpty) {
+        payload['episode_offset'] = normalizedEpisodeOffset;
+      }
+    }
+
+    try {
+      final response = await _apiClient.postJson<dynamic>(
+        '/api/v1/transfer/manual',
+        payload,
+        queryParameters: {'background': false},
+      );
+      final status = response.statusCode ?? 0;
+      if (status >= 200 && status < 300) {
+        final data = response.data;
+        if (data is Map) {
+          final result = Map<String, dynamic>.from(data);
+          final success = result['success'] is bool
+              ? result['success'] as bool
+              : false;
+          final message = result['message']?.toString().trim() ?? '';
+          if (success) {
+            loadFiles();
+          }
+          return FileActionResult(success: success, message: message);
+        }
+        return const FileActionResult(success: false, message: '整理响应格式异常');
+      }
+      final data = response.data;
+      String message = '整理失败 (HTTP $status)';
+      if (data is Map && data['message'] != null) {
+        final serverMessage = data['message']?.toString().trim() ?? '';
+        if (serverMessage.isNotEmpty) {
+          message = serverMessage;
+        }
+      }
+      return FileActionResult(success: false, message: message);
+    } catch (e, st) {
+      _log.handle(e, stackTrace: st, message: '手动整理失败');
+      return const FileActionResult(success: false, message: '手动整理失败');
     }
   }
 

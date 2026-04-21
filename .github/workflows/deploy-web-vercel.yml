@@ -41,6 +41,9 @@ jobs:
       - name: Precache web
         run: flutter precache --web
 
+      - name: Refresh altman_downloader_control
+        run: flutter pub upgrade altman_downloader_control
+
       - name: Get dependencies
         run: flutter pub get
 
