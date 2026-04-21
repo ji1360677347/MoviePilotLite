@@ -14,10 +14,10 @@ packages:
     description:
       path: "."
       ref: HEAD
-      resolved-ref: dfa850eaf779a2ad188b8d5fb7323305e76f4daa
+      resolved-ref: "9888cef7dc09ef6b6f524f55effcf61100c7f317"
       url: "https://github.com/singleton-altman/altman_downloader_control.git"
     source: git
-    version: "1.0.0+1"
+    version: "1.0.1+2"
   altman_totp:
     dependency: "direct main"
     description:
@@ -592,11 +592,10 @@ packages:
   get:
     dependency: "direct main"
     description:
-      path: "."
-      ref: main
-      resolved-ref: "1c680b39dad460b49af73d4c1a30523a86e7a3e4"
-      url: "https://github.com/singleton-altman/get.git"
-    source: git
+      name: get
+      sha256: "5ed34a7925b85336e15d472cc4cfe7d9ebf4ab8e8b9f688585bf6b50f4c3d79a"
+      url: "https://pub.dev"
+    source: hosted
     version: "4.7.3"
   glob:
     dependency: transitive

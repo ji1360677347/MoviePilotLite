@@ -13,7 +13,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   dio: ^5.7.0
   dio_cookie_manager: ^3.1.1
-  get: ^4.6.6
+  get: ^4.7.2
   freezed_annotation: ^2.4.4
   json_annotation: ^4.9.0
   cookie_jar: ^4.0.8
@@ -45,11 +45,6 @@ dependencies:
     git: https://github.com/singleton-altman/altman_downloader_control.git
   altman_totp:
     path: ./altman_totp
-dependency_overrides:
-  get:
-    git:
-      url: https://github.com/singleton-altman/get.git
-      ref: main
 dev_dependencies:
   flutter_test:
     sdk: flutter

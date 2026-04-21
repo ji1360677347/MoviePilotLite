@@ -227,7 +227,31 @@ class SubscribePopularController extends GetxController {
     return '${voteMin.value}分+';
   }
 
+  bool get hasActiveFilters =>
+      selectedGenres.isNotEmpty || voteMin.value > 0;
+
   List<RecommendApiItem> get visibleItems {
-    return items.toList();
+    var list = items.toList();
+    final key = keyword.value.trim().toLowerCase();
+    if (key.isNotEmpty) {
+      list = list.where((e) {
+        final blob = [
+          e.title,
+          e.original_title,
+          e.en_title,
+          e.overview,
+        ].whereType<String>().join(' ').toLowerCase();
+        return blob.contains(key);
+      }).toList();
+    }
+    final min = voteMin.value;
+    if (min > 0) {
+      list = list.where((e) {
+        final v = e.vote_average;
+        if (v == null) return false;
+        return v >= min;
+      }).toList();
+    }
+    return list;
   }
 }
