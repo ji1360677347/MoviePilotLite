@@ -1,7 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:moviepilot_mobile/gen/assets.gen.dart';
 import 'package:moviepilot_mobile/utils/file_storage_utils.dart';
 import 'package:moviepilot_mobile/utils/toast_util.dart';
 import 'package:moviepilot_mobile/modules/media_organize/models/media_organize_models.dart';
@@ -263,25 +262,21 @@ class FileManagerBrowserPage extends GetView<FileManagerBrowserController> {
   }
 
   void _navigateToDirectory(String nextPath) {
-    try {
-      final args = <String, dynamic>{
-        'initialPath': nextPath,
-        'initialStorage': controller.selectedStorage.value?.type,
-        'allowSelectStorage': controller.allowSelectStorage,
-        'isPickerMode': controller.isPickerMode,
-        'allowMultipleSelection': controller.allowMultipleSelection,
-        'allowFileSelection': controller.allowFileSelection,
-        'allowDirSelection': controller.allowDirSelection,
-        '_controllerTag': 'fm-${DateTime.now().millisecondsSinceEpoch}',
-      };
-      Get.toNamed(
-        '/file-manager?${args.entries.map((e) => '${e.key}=${e.value}').join('&')}',
-        arguments: args,
-        preventDuplicates: true,
-      );
-    } catch (e) {
-      print('Failed to navigate to directory: $e');
-    }
+    final args = <String, dynamic>{
+      'initialPath': nextPath,
+      'initialStorage': controller.selectedStorage.value?.type,
+      'allowSelectStorage': controller.allowSelectStorage,
+      'isPickerMode': controller.isPickerMode,
+      'allowMultipleSelection': controller.allowMultipleSelection,
+      'allowFileSelection': controller.allowFileSelection,
+      'allowDirSelection': controller.allowDirSelection,
+      '_controllerTag': 'fm-${DateTime.now().millisecondsSinceEpoch}',
+    };
+    Get.toNamed(
+      '/file-manager?${args.entries.map((e) => '${e.key}=${e.value}').join('&')}',
+      arguments: args,
+      preventDuplicates: true,
+    );
   }
 
   Widget _buildPathBreadcrumb(BuildContext context) {

@@ -236,16 +236,12 @@ class FileManagerBrowserController extends GetxController {
     final storage = selectedStorage.value;
     if (storage == null) return false;
 
-    final body = file.toJson();
-    // 确保 storage 字段正确
-    if (body['storage'] == null || (body['storage'] as String).isEmpty) {
-      body['storage'] = storage.type;
-    }
+    final body = _buildStorageFilePayload(file, storageType: storage.type);
 
     try {
-      final response = await _apiClient.post<dynamic>(
+      final response = await _apiClient.postJson<dynamic>(
         '/api/v1/storage/delete',
-        data: body,
+        body,
       );
       final status = response.statusCode ?? 0;
       if (status >= 200 && status < 300) {
@@ -318,15 +314,12 @@ class FileManagerBrowserController extends GetxController {
     final storage = selectedStorage.value;
     if (storage == null) return false;
 
-    final body = file.toJson();
-    if (body['storage'] == null || (body['storage'] as String).isEmpty) {
-      body['storage'] = storage.type;
-    }
+    final body = _buildStorageFilePayload(file, storageType: storage.type);
 
     try {
-      final response = await _apiClient.post<dynamic>(
+      final response = await _apiClient.postJson<dynamic>(
         '/api/v1/media/scrape/${storage.type}',
-        data: body,
+        body,
       );
       final status = response.statusCode ?? 0;
       return status >= 200 && status < 300;
@@ -379,19 +372,16 @@ class FileManagerBrowserController extends GetxController {
     final storage = selectedStorage.value;
     if (storage == null) return false;
 
-    final body = file.toJson();
-    if (body['storage'] == null || (body['storage'] as String).isEmpty) {
-      body['storage'] = storage.type;
-    }
+    final body = _buildStorageFilePayload(file, storageType: storage.type);
     if (renameDirFiles) {
       body['rename_dir_files'] = true;
     }
 
     try {
-      final response = await _apiClient.post<dynamic>(
+      final response = await _apiClient.postJson<dynamic>(
         '/api/v1/storage/rename',
+        body,
         queryParameters: {'new_name': newName},
-        data: body,
       );
       final status = response.statusCode ?? 0;
       if (status >= 200 && status < 300) {
@@ -403,6 +393,32 @@ class FileManagerBrowserController extends GetxController {
       _log.handle(e, message: '重命名失败');
       return false;
     }
+  }
+
+  Map<String, dynamic> _buildStorageFilePayload(
+    MediaOrganizeFileItem file, {
+    required String storageType,
+  }) {
+    final path = (file.path?.trim().isNotEmpty ?? false)
+        ? file.path!.trim()
+        : getNextPath(file);
+    return {
+      'path': path,
+      'storage': storageType,
+      'type': file.type,
+      'name': file.name,
+      'basename': file.basename,
+      'extension': file.extension,
+      'size': file.size,
+      'modify_time': file.modifyTime,
+      'children': file.children,
+      'fileid': file.fileid,
+      'parent_fileid': file.parent_fileid,
+      'thumbnail': file.thumbnail,
+      'pickcode': file.pickcode,
+      'drive_id': file.drive_id,
+      'url': file.url,
+    };
   }
 
   void retryLoadStorages() {
