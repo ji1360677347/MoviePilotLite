@@ -432,6 +432,7 @@ class SearchIndexPage extends GetView<SearchIndexController> {
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w800,
+                    color: Colors.white,
                   ),
                 ),
                 if (overview != null && overview.isNotEmpty) ...[

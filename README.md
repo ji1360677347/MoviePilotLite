@@ -76,6 +76,12 @@ Android 用户可参考 iOS TestFlight 用户的使用步骤：
 - **数据解析**: Freezed
 - **本地数据库**: Realm
 
+## 开发与 CI 说明
+
+- `altman_downloader_control` 通过 Git 依赖引入，默认跟随仓库远端最新提交。
+- 为避免 GitHub Actions 继续使用 `pubspec.lock` 中旧的 `resolved-ref`，CI 在执行 `flutter pub get` 前会先执行 `flutter pub upgrade altman_downloader_control`。
+- 如果你本地也需要同步该依赖的最新源码，可以手动执行同样的命令后再运行 `flutter pub get`。
+
 ## 许可证
 
 本项目采用 **Business Source License 1.1 (BSL-1.1)** 许可证。

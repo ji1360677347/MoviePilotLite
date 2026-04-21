@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
-import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:modal_bottom_sheet/modal_bottom_sheet.dart';
@@ -9,9 +9,9 @@ import 'package:moviepilot_mobile/modules/download/controllers/download_controll
 import 'package:moviepilot_mobile/modules/download/widgets/download_sheet.dart';
 import 'package:moviepilot_mobile/modules/recognize/controllers/recognize_controller.dart';
 import 'package:moviepilot_mobile/modules/recognize/pages/recognize_page.dart';
+import 'package:moviepilot_mobile/modules/setting/controllers/setting_controller.dart';
 import 'package:moviepilot_mobile/modules/site/controllers/site_controller.dart';
 import 'package:moviepilot_mobile/modules/site/models/site_models.dart';
-import 'package:moviepilot_mobile/modules/setting/controllers/setting_controller.dart';
 import 'package:moviepilot_mobile/theme/app_theme.dart';
 import 'package:moviepilot_mobile/utils/open_url.dart';
 import 'package:moviepilot_mobile/utils/size_formatter.dart';
@@ -27,21 +27,23 @@ class SearchResultTorrentItem extends StatelessWidget {
     this.invertColors = false,
     this.onRecognizeInfoTap,
   });
+
   final SearchResultItem item;
   final List<SearchResultItem>? similarItems;
-  static final Map<int, Future<List<int>?>> _iconFutures = {};
   final bool immersive;
   final bool invertColors;
   final Function(SearchResultItem)? onRecognizeInfoTap;
+
+  static final Map<int, Future<List<int>?>> _iconFutures = {};
 
   bool _isInverted() => immersive || invertColors;
 
   Color cardColor(BuildContext context) => _isInverted()
       ? Color.alphaBlend(
-          Colors.black.withValues(alpha: 0.1),
-          AppTheme.darkBackgroundColor,
+          Colors.black.withValues(alpha: 0.18),
+          AppTheme.darkCardBackgroundColor,
         )
-      : Theme.of(context).cardColor;
+      : Theme.of(context).colorScheme.surface;
 
   Color themeColor(BuildContext context) =>
       _isInverted() ? CupertinoColors.activeBlue : context.primaryColor;
@@ -51,7 +53,23 @@ class SearchResultTorrentItem extends StatelessWidget {
 
   Color secondaryTextColor(BuildContext context) => _isInverted()
       ? Colors.white.withValues(alpha: 0.72)
-      : AppTheme.textSecondaryColor;
+      : Theme.of(context).colorScheme.onSurfaceVariant;
+
+  Color _cardBorderColor(BuildContext context) => _isInverted()
+      ? Colors.white.withValues(alpha: 0.08)
+      : Theme.of(context).colorScheme.outline.withValues(alpha: 0.32);
+
+  Color _cardBottomTint(BuildContext context) => _isInverted()
+      ? const Color(0xFF101826)
+      : Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.76);
+
+  Color _footerSurface(BuildContext context) => _isInverted()
+      ? Colors.white.withValues(alpha: 0.03)
+      : Theme.of(
+          context,
+        ).colorScheme.surfaceContainerLow.withValues(alpha: 0.96);
 
   @override
   Widget build(BuildContext context) {
@@ -62,74 +80,126 @@ class SearchResultTorrentItem extends StatelessWidget {
     final season = _seasonLabel(item);
     final tags = _buildTags(item);
     final promotion = _promotionBadgeLabel(item);
+
     return GestureDetector(
       onTap: () => _openDownloadSheet(context, item),
       child: Container(
-        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: cardColor(context),
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(
-            color: (_isInverted()
-                ? Colors.white.withValues(alpha: 0.08)
-                : Theme.of(context).dividerColor.withValues(alpha: 0.08)),
-            width: 1,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: _cardBorderColor(context)),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [cardColor(context), _cardBottomTint(context)],
           ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: primaryTextColor(context),
-                    ),
-                  ),
-                ),
-                if (season != null) _buildSeasonChip(season, accent: accent),
-                if (promotion != null) ...[
-                  const SizedBox(width: 8),
-                  _buildPromotionBadge(promotion),
-                ],
-              ],
-            ),
-            const SizedBox(height: 8),
-            _buildSiteAndStatsRow(context, torrent),
-            const SizedBox(height: 10),
-            Text(
-              torrent?.title ?? meta?.title ?? '',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: secondaryTextColor(context),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(
+                alpha: _isInverted() ? 0.18 : 0.06,
               ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+              blurRadius: 22,
+              offset: const Offset(0, 10),
             ),
-            if ((meta?.subtitle ?? torrent?.description)?.isNotEmpty ??
-                false) ...[
-              const SizedBox(height: 6),
-              Text(
-                meta?.subtitle ?? torrent?.description ?? '',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: secondaryTextColor(context),
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-            const SizedBox(height: 10),
-            _buildMetaRow(context, item),
-            if (tags.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Wrap(spacing: 8, runSpacing: 8, children: tags),
-            ],
-            _buildMoreFooter(context, item),
           ],
         ),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            if (promotion != null)
+              Positioned(
+                top: 0,
+                right: 0,
+                child: _buildPromotionBadge(
+                  promotion,
+                  prominent: true,
+                  compact: true,
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(
+                    context,
+                    title: title,
+                    season: season,
+                    promotion: promotion,
+                    accent: accent,
+                  ),
+                  const SizedBox(height: 10),
+                  _buildSiteAndStatsRow(context, torrent),
+                  const SizedBox(height: 10),
+                  Text(
+                    torrent?.title ?? meta?.title ?? '',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontSize: 15.5,
+                      height: 1.4,
+                      fontWeight: FontWeight.w600,
+                      color: primaryTextColor(context).withValues(alpha: 0.92),
+                    ),
+                  ),
+                  if ((meta?.subtitle ?? torrent?.description)?.isNotEmpty ??
+                      false) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      meta?.subtitle ?? torrent?.description ?? '',
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontSize: 14.5,
+                        height: 1.45,
+                        color: secondaryTextColor(context),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  _buildMetaRow(context, item),
+                  if (tags.isNotEmpty) ...[
+                    const SizedBox(height: 14),
+                    Wrap(spacing: 8, runSpacing: 8, children: tags),
+                  ],
+                  const SizedBox(height: 14),
+                  _buildMoreFooter(context, item),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(
+    BuildContext context, {
+    required String title,
+    required String? season,
+    required String? promotion,
+    required Color accent,
+  }) {
+    return Padding(
+      padding: EdgeInsets.only(right: promotion != null ? 70 : 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontSize: 18,
+              height: 1.15,
+              fontWeight: FontWeight.w700,
+              color: primaryTextColor(context),
+            ),
+          ),
+          if (season != null) ...[
+            const SizedBox(height: 10),
+            _buildSeasonChip(season, accent: accent),
+          ],
+        ],
       ),
     );
   }
@@ -137,73 +207,187 @@ class SearchResultTorrentItem extends StatelessWidget {
   Widget _buildMoreFooter(BuildContext context, SearchResultItem item) {
     final accent = themeColor(context);
     return Container(
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
       decoration: BoxDecoration(
-        color: _isInverted() ? Colors.transparent : Theme.of(context).cardColor,
+        color: _footerSurface(context),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: _isInverted()
+              ? Colors.white.withValues(alpha: 0.06)
+              : Theme.of(context).colorScheme.outlineVariant,
+        ),
       ),
-      child: Column(
+      child: Row(
         children: [
-          const SizedBox(height: 10),
-          const Divider(height: 1),
-          const SizedBox(height: 10),
-          Row(
+          GestureDetector(
+            onTap: () async {
+              if (onRecognizeInfoTap != null) {
+                onRecognizeInfoTap?.call(item);
+                return;
+              }
+              await _showRecognizeSheet(context, item);
+            },
+            child: _buildFooterAction(
+              context,
+              icon: CupertinoIcons.sparkles,
+              label: '识别',
+              color: accent,
+            ),
+          ),
+          if (similarItems != null && similarItems!.isNotEmpty) ...[
+            const SizedBox(width: 8),
+            _buildFooterHint(
+              context,
+              label: '相似 ${similarItems!.length}',
+              icon: CupertinoIcons.square_stack_3d_up,
+            ),
+          ],
+          const Spacer(),
+          _buildSizePill(context, item, compact: true),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: () => _openInfoSheet(context, item),
+            child: _buildFooterIconAction(
+              context,
+              icon: Icons.info_outline_rounded,
+              color: accent,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFooterAction(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: Ink(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(999),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              color.withValues(alpha: _isInverted() ? 0.22 : 0.16),
+              color.withValues(alpha: _isInverted() ? 0.14 : 0.10),
+            ],
+          ),
+          border: Border.all(
+            color: color.withValues(alpha: _isInverted() ? 0.26 : 0.18),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: _isInverted() ? 0.10 : 0.08),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              GestureDetector(
-                onTap: () async {
-                  if (onRecognizeInfoTap != null) {
-                    onRecognizeInfoTap?.call(item);
-                    return;
-                  }
-                  await _showRecognizeSheet(context, item);
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: accent.withValues(
-                      alpha: _isInverted() ? 0.22 : 0.14,
-                    ),
-                    borderRadius: BorderRadius.circular(25),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(CupertinoIcons.sparkles, size: 12, color: accent),
-                      SizedBox(width: 6),
-                      Text(
-                        '识别',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              if (similarItems != null && similarItems!.isNotEmpty) ...[
-                Text(
-                  '相似资源',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(width: 6),
-                Icon(
-                  Icons.arrow_forward_ios,
-                  size: 16,
-                  color: secondaryTextColor(context),
-                ),
-              ],
-              Spacer(),
-              _buildSizePill(context, item),
+              Icon(icon, size: 14, color: color),
               const SizedBox(width: 6),
-              GestureDetector(
-                onTap: () => _openInfoSheet(context, item),
-                child: Icon(Icons.arrow_forward_ios, size: 16, color: accent),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFooterIconAction(
+    BuildContext context, {
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            color.withValues(alpha: _isInverted() ? 0.18 : 0.14),
+            color.withValues(alpha: _isInverted() ? 0.10 : 0.08),
+          ],
+        ),
+        border: Border.all(
+          color: color.withValues(alpha: _isInverted() ? 0.26 : 0.18),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: _isInverted() ? 0.10 : 0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Icon(icon, size: 18, color: color),
+    );
+  }
+
+  Widget _buildFooterHint(
+    BuildContext context, {
+    required String label,
+    required IconData icon,
+  }) {
+    final color = secondaryTextColor(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: _isInverted()
+              ? [
+                  Colors.white.withValues(alpha: 0.07),
+                  Colors.white.withValues(alpha: 0.04),
+                ]
+              : [
+                  Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.92),
+                  Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainerHigh.withValues(alpha: 0.78),
+                ],
+        ),
+        border: Border.all(
+          color: _isInverted()
+              ? Colors.white.withValues(alpha: 0.06)
+              : Theme.of(
+                  context,
+                ).colorScheme.outlineVariant.withValues(alpha: 0.8),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -216,24 +400,27 @@ class SearchResultTorrentItem extends StatelessWidget {
   ) {
     final seeders = torrent?.seeders ?? 0;
     final peers = torrent?.peers ?? 0;
+
     return Row(
       children: [
-        _buildSiteIndicator(context),
-        const Spacer(),
+        Flexible(fit: FlexFit.loose, child: _buildSiteIndicator(context)),
+        if (seeders > 0 || peers > 0) const SizedBox(width: 12),
+        if (seeders > 0 || peers > 0) const Spacer(),
         if (seeders > 0)
           _buildStatPill(
             context,
-            icon: Icons.arrow_upward,
+            icon: Icons.arrow_upward_rounded,
             label: '$seeders',
-            color: const Color(0xFF16A34A),
+            color: const Color(0xFF84CC16),
+            prominent: true,
           ),
-        if (seeders > 0 && peers > 0) const SizedBox(width: 6),
+        if (seeders > 0 && peers > 0) const SizedBox(width: 8),
         if (peers > 0)
           _buildStatPill(
             context,
-            icon: Icons.arrow_downward,
+            icon: Icons.arrow_downward_rounded,
             label: '$peers',
-            color: const Color(0xFFDC2626),
+            color: const Color(0xFFFB7185),
           ),
       ],
     );
@@ -289,17 +476,35 @@ class SearchResultTorrentItem extends StatelessWidget {
 
       final icon = _buildSiteIcon(context, controller, siteItem);
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        constraints: const BoxConstraints(maxWidth: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: _isInverted()
+              ? Colors.white.withValues(alpha: 0.06)
+              : theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.72,
+                ),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: _isInverted()
+                ? Colors.white.withValues(alpha: 0.06)
+                : theme.colorScheme.outlineVariant,
+          ),
+        ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             icon,
-            const SizedBox(width: 6),
-            Text(
-              siteName,
-              style: theme.textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: primaryTextColor(context),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                siteName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: primaryTextColor(context),
+                ),
               ),
             ),
           ],
@@ -338,11 +543,11 @@ class SearchResultTorrentItem extends StatelessWidget {
 
   Widget _imageFromBytes(List<int> bytes) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(25),
+      borderRadius: BorderRadius.circular(999),
       child: Image.memory(
         Uint8List.fromList(bytes),
-        width: 18,
-        height: 18,
+        width: 20,
+        height: 20,
         fit: BoxFit.cover,
         gaplessPlayback: true,
       ),
@@ -351,11 +556,11 @@ class SearchResultTorrentItem extends StatelessWidget {
 
   Widget _placeholderIcon(BuildContext context) {
     return Container(
-      width: 18,
-      height: 18,
+      width: 20,
+      height: 20,
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(25),
+        borderRadius: BorderRadius.circular(999),
       ),
       child: Icon(
         Icons.public,
@@ -373,18 +578,22 @@ class SearchResultTorrentItem extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: dense ? 8 : 12,
-        vertical: dense ? 4 : 6,
+        vertical: dense ? 5 : 7,
       ),
       decoration: BoxDecoration(
-        color: accent.withValues(alpha: _isInverted() ? 0.22 : 0.16),
-        borderRadius: BorderRadius.circular(25),
+        color: accent.withValues(alpha: _isInverted() ? 0.26 : 0.18),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: accent.withValues(alpha: _isInverted() ? 0.26 : 0.12),
+        ),
       ),
       child: Text(
         text,
         style: TextStyle(
           color: accent,
-          fontWeight: FontWeight.bold,
-          fontSize: dense ? 11 : 12,
+          fontWeight: FontWeight.w800,
+          fontSize: dense ? 11 : 12.5,
+          letterSpacing: 0.2,
         ),
       ),
     );
@@ -392,25 +601,33 @@ class SearchResultTorrentItem extends StatelessWidget {
 
   Widget _buildMetaRow(BuildContext context, SearchResultItem item) {
     final timeLabel = _timeLabel(item);
-    final size = item.torrent_info?.size;
-    final sizeLabel = size == null ? '未知大小' : SizeFormatter.formatSize(size, 2);
-    final accent = themeColor(context);
+    final grabs = item.torrent_info?.grabs ?? 0;
+    final freeLabel = _freeDeadlineLabel(item);
+
     return Wrap(
       spacing: 8,
       runSpacing: 6,
       children: [
         _buildMetaPill(
           context,
-          icon: Icons.schedule,
+          icon: CupertinoIcons.clock,
           label: timeLabel,
-          color: const Color(0xFF0EA5E9),
+          color: const Color(0xFF94A3B8),
         ),
-        _buildMetaPill(
-          context,
-          icon: Icons.sd_storage_rounded,
-          label: sizeLabel,
-          color: accent,
-        ),
+        if (grabs > 0)
+          _buildMetaPill(
+            context,
+            icon: CupertinoIcons.arrow_down_circle,
+            label: '$grabs 次下载',
+            color: const Color(0xFF22C55E),
+          ),
+        if (freeLabel != null)
+          _buildMetaPill(
+            context,
+            icon: CupertinoIcons.gift,
+            label: freeLabel,
+            color: const Color(0xFFF59E0B),
+          ),
       ],
     );
   }
@@ -422,10 +639,15 @@ class SearchResultTorrentItem extends StatelessWidget {
     required Color color,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: _isInverted() ? 0.22 : 0.14),
-        borderRadius: BorderRadius.circular(25),
+        color: _isInverted()
+            ? color.withValues(alpha: 0.14)
+            : color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: color.withValues(alpha: _isInverted() ? 0.20 : 0.14),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -449,21 +671,41 @@ class SearchResultTorrentItem extends StatelessWidget {
     required IconData icon,
     required String label,
     required Color color,
+    bool prominent = false,
   }) {
+    final textStyle = Theme.of(context).textTheme.bodySmall;
+    if (prominent) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 19, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: textStyle?.copyWith(
+              color: color,
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      );
+    }
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: _isInverted() ? 0.22 : 0.14),
-        borderRadius: BorderRadius.circular(25),
+        color: color.withValues(alpha: _isInverted() ? 0.16 : 0.10),
+        borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: color),
+          Icon(icon, size: 13, color: color),
           const SizedBox(width: 4),
           Text(
             label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            style: textStyle?.copyWith(
               color: color,
               fontWeight: FontWeight.w700,
             ),
@@ -477,25 +719,38 @@ class SearchResultTorrentItem extends StatelessWidget {
     BuildContext context,
     SearchResultItem item, {
     bool dense = false,
+    bool compact = false,
   }) {
     final accent = themeColor(context);
     final size = item.torrent_info?.size;
     final label = size == null ? '--' : SizeFormatter.formatSize(size, 2);
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: dense ? 10 : 12,
-        vertical: dense ? 4 : 6,
+        horizontal: compact ? 12 : (dense ? 10 : 14),
+        vertical: compact ? 7 : (dense ? 5 : 8),
       ),
       decoration: BoxDecoration(
-        color: accent.withValues(alpha: _isInverted() ? 0.22 : 0.14),
-        borderRadius: BorderRadius.circular(25),
+        borderRadius: BorderRadius.circular(compact ? 10 : 12),
+        gradient: LinearGradient(
+          colors: [
+            accent.withValues(alpha: _isInverted() ? 0.82 : 0.74),
+            accent.withValues(alpha: _isInverted() ? 0.64 : 0.58),
+          ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withValues(alpha: _isInverted() ? 0.12 : 0.10),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Text(
         label,
         style: TextStyle(
-          color: accent,
-          fontWeight: FontWeight.w600,
-          fontSize: dense ? 11 : 12,
+          color: Colors.white,
+          fontWeight: FontWeight.w700,
+          fontSize: compact ? 12 : (dense ? 11.5 : 13),
         ),
       ),
     );
@@ -505,9 +760,13 @@ class SearchResultTorrentItem extends StatelessWidget {
     final meta = item.meta_info;
     final torrent = item.torrent_info;
     final tags = <String>[
+      if ((meta?.web_source ?? '').isNotEmpty) meta!.web_source!,
       if ((meta?.resource_type ?? '').isNotEmpty) meta!.resource_type!,
       if ((meta?.resource_pix ?? '').isNotEmpty) meta!.resource_pix!,
       if ((meta?.video_encode ?? '').isNotEmpty) meta!.video_encode!,
+      if ((meta?.audio_encode ?? '').isNotEmpty) meta!.audio_encode!,
+      if ((meta?.resource_effect ?? '').isNotEmpty) meta!.resource_effect!,
+      if ((meta?.edition ?? '').isNotEmpty) meta!.edition!,
       if ((meta?.resource_team ?? '').isNotEmpty) meta!.resource_team!,
       ...?torrent?.labels,
     ];
@@ -525,54 +784,138 @@ class SearchResultTorrentItem extends StatelessWidget {
   }
 
   Widget _buildTagChip(String text) {
-    final color = _tagColor(text);
+    final style = _tagStyle(text);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: _isInverted() ? 0.22 : 0.16),
-        borderRadius: BorderRadius.circular(25),
+        color: style.background,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: style.background.withValues(alpha: 0.18),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Text(
         text,
         style: TextStyle(
-          color: color,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
+          color: style.foreground,
+          fontSize: 11.5,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
   }
 
-  Widget _buildPromotionBadge(String text, {bool dense = false}) {
+  Widget _buildPromotionBadge(
+    String text, {
+    bool dense = false,
+    bool prominent = false,
+    bool compact = false,
+  }) {
     final color = _promotionColor(text);
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: dense ? 8 : 10,
-        vertical: dense ? 4 : 6,
+        horizontal: prominent ? (compact ? 12 : 16) : (dense ? 8 : 10),
+        vertical: prominent ? (compact ? 8 : 10) : (dense ? 4 : 6),
       ),
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(25),
+        borderRadius: BorderRadius.only(
+          topRight: const Radius.circular(24),
+          bottomLeft: Radius.circular(prominent ? (compact ? 13 : 16) : 12),
+          bottomRight: Radius.circular(prominent ? 0 : 12),
+          topLeft: Radius.circular(prominent ? 0 : 12),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.22),
+            blurRadius: compact ? 8 : 12,
+            offset: Offset(0, compact ? 4 : 6),
+          ),
+        ],
       ),
       child: Text(
         text,
         style: TextStyle(
           color: Colors.white,
           fontWeight: FontWeight.w700,
-          fontSize: dense ? 11 : 12,
+          fontSize: prominent ? (compact ? 12 : 13.5) : (dense ? 11 : 12),
         ),
       ),
     );
   }
 
-  Color _tagColor(String text) {
+  _ChipStyle _tagStyle(String text) {
+    final normalized = text.toLowerCase();
+    if (normalized.contains('apple tv')) {
+      return const _ChipStyle(
+        background: Color(0xFF7C3AED),
+        foreground: Colors.white,
+      );
+    }
+    if (normalized.contains('web-dl') || normalized.contains('webrip')) {
+      return const _ChipStyle(
+        background: Color(0xFFFF5B3A),
+        foreground: Colors.white,
+      );
+    }
+    if (normalized.contains('2160') || normalized == '4k') {
+      return const _ChipStyle(
+        background: Color(0xFF6D5EF8),
+        foreground: Colors.white,
+      );
+    }
+    if (normalized.contains('h265') ||
+        normalized.contains('x265') ||
+        normalized.contains('10bit')) {
+      return const _ChipStyle(
+        background: Color(0xFFF59E0B),
+        foreground: Colors.white,
+      );
+    }
+    if (normalized.contains('hdr') || normalized.contains('dolby')) {
+      return const _ChipStyle(
+        background: Color(0xFF8B2BBF),
+        foreground: Colors.white,
+      );
+    }
+    if (normalized.contains('atmos') ||
+        normalized.contains('ddp') ||
+        normalized.contains('dts')) {
+      return const _ChipStyle(
+        background: Color(0xFFEF4444),
+        foreground: Colors.white,
+      );
+    }
+    if (normalized.contains('中字') ||
+        normalized.contains('字幕') ||
+        normalized.contains('简') ||
+        normalized.contains('繁')) {
+      return const _ChipStyle(
+        background: Color(0xFF6274D8),
+        foreground: Colors.white,
+      );
+    }
+    if (normalized.contains('cmctv') ||
+        normalized.contains('mteam') ||
+        normalized.contains('team') ||
+        normalized.contains('aru')) {
+      return const _ChipStyle(
+        background: Color(0xFF0F9B8E),
+        foreground: Colors.white,
+      );
+    }
+
     final palette = [
-      const Color(0xFF7C3AED),
-      const Color(0xFF2563EB),
-      const Color(0xFF059669),
-      const Color(0xFFF97316),
-      const Color(0xFFDB2777),
-      const Color(0xFF0EA5E9),
+      const _ChipStyle(background: Color(0xFF7C3AED), foreground: Colors.white),
+      const _ChipStyle(background: Color(0xFF2563EB), foreground: Colors.white),
+      const _ChipStyle(background: Color(0xFF059669), foreground: Colors.white),
+      const _ChipStyle(background: Color(0xFFF97316), foreground: Colors.white),
+      const _ChipStyle(background: Color(0xFFDB2777), foreground: Colors.white),
+      const _ChipStyle(background: Color(0xFF0EA5E9), foreground: Colors.white),
     ];
     final index = text.codeUnits.fold<int>(0, (a, b) => a + b);
     return palette[index % palette.length];
@@ -581,6 +924,7 @@ class SearchResultTorrentItem extends StatelessWidget {
   String? _promotionBadgeLabel(SearchResultItem item) {
     final torrent = item.torrent_info;
     if (torrent == null) return null;
+
     final downloadFactor = torrent.downloadvolumefactor;
     if (downloadFactor != null) {
       if (downloadFactor == 0) return '免费';
@@ -588,6 +932,7 @@ class SearchResultTorrentItem extends StatelessWidget {
         return '${(downloadFactor * 100).round()}%';
       }
     }
+
     final volume = torrent.volume_factor ?? '';
     if (volume.contains('%')) return volume;
     if (volume.contains('免费')) return '免费';
@@ -595,8 +940,24 @@ class SearchResultTorrentItem extends StatelessWidget {
   }
 
   Color _promotionColor(String text) {
-    if (text.contains('免费')) return const Color.fromARGB(255, 176, 239, 68);
-    return const Color(0xFFF97316);
+    if (text.contains('免费')) return const Color(0xFF94C83D);
+    return const Color(0xFFFF6B2C);
+  }
+
+  String? _freeDeadlineLabel(SearchResultItem item) {
+    final torrent = item.torrent_info;
+    final freeDiff = torrent?.freedate_diff?.trim();
+    if (freeDiff != null && freeDiff.isNotEmpty) {
+      return '限免 $freeDiff';
+    }
+    final freeDate = torrent?.freedate?.trim();
+    if (freeDate != null && freeDate.isNotEmpty) {
+      return '限免中';
+    }
+    if ((torrent?.downloadvolumefactor ?? 1) == 0) {
+      return '免费';
+    }
+    return null;
   }
 
   String _displayTitle(SearchResultItem item) {
@@ -604,8 +965,8 @@ class SearchResultTorrentItem extends StatelessWidget {
         ? item.media_info!.title!.trim()
         : null;
     if (mediaTitle != null) return mediaTitle;
-    final meta = item.meta_info;
 
+    final meta = item.meta_info;
     return meta?.name?.trim().isNotEmpty == true
         ? meta!.name!.trim()
         : meta?.cn_name?.trim().isNotEmpty == true
@@ -620,6 +981,7 @@ class SearchResultTorrentItem extends StatelessWidget {
   String? _seasonLabel(SearchResultItem item) {
     final season = item.meta_info?.season_episode?.trim();
     if (season != null && season.isNotEmpty) return season;
+
     final value = item.meta_info?.begin_season ?? item.meta_info?.total_season;
     if (value != null && value > 0) {
       return 'S${value.toString().padLeft(2, '0')}';
@@ -637,11 +999,16 @@ class SearchResultTorrentItem extends StatelessWidget {
     if (elapsed != null && elapsed.isNotEmpty) {
       return elapsed;
     }
+
     final raw = torrent?.pubdate;
     if (raw == null || raw.isEmpty) return '未知时间';
+
     final parsed = _parseDate(raw);
     if (parsed == null) return raw;
+
     final diff = DateTime.now().difference(parsed);
+    if (diff.inDays >= 365) return '${(diff.inDays / 365).floor()}年前';
+    if (diff.inDays >= 30) return '${(diff.inDays / 30).floor()}个月前';
     if (diff.inDays >= 1) return '${diff.inDays}天前';
     if (diff.inHours >= 1) return '${diff.inHours}小时前';
     if (diff.inMinutes >= 1) return '${diff.inMinutes}分钟前';
@@ -661,12 +1028,14 @@ class SearchResultTorrentItem extends StatelessWidget {
     }
   }
 
-  _openInfoSheet(BuildContext context, SearchResultItem item) async {
+  Future<void> _openInfoSheet(
+    BuildContext context,
+    SearchResultItem item,
+  ) async {
     WebUtil.open(url: item.torrent_info?.page_url);
   }
 
   void _openDownloadSheet(BuildContext context, SearchResultItem item) {
-    // 确保 SettingController 和 DownloadController 已初始化
     if (!Get.isRegistered<SettingController>()) {
       Get.put(SettingController());
     }
@@ -681,4 +1050,11 @@ class SearchResultTorrentItem extends StatelessWidget {
       builder: (context) => DownloadSheet(item: item),
     );
   }
+}
+
+class _ChipStyle {
+  const _ChipStyle({required this.background, required this.foreground});
+
+  final Color background;
+  final Color foreground;
 }

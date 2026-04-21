@@ -104,7 +104,14 @@ class DownloadController extends GetxController {
 
   /// 获取目录建议列表
   List<String> get directorySuggestions {
-    return _settingController.directorySuggestions;
+    final seen = <String>{};
+    for (final value in _settingController.directorySuggestions) {
+      final normalized = value.trim();
+      if (normalized.isNotEmpty) {
+        seen.add(normalized);
+      }
+    }
+    return seen.toList();
   }
 
   /// 获取目录列表（从目录设置中提取）
