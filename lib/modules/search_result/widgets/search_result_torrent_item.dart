@@ -79,6 +79,8 @@ class SearchResultTorrentItem extends StatelessWidget {
     final title = _displayTitle(item);
     final season = _seasonLabel(item);
     final tags = _buildTags(item);
+    final primaryTags = tags.where((tag) => tag.prominent).toList();
+    final secondaryTags = tags.where((tag) => !tag.prominent).toList();
     final promotion = _promotionBadgeLabel(item);
 
     return GestureDetector(
@@ -126,9 +128,8 @@ class SearchResultTorrentItem extends StatelessWidget {
                     season: season,
                     promotion: promotion,
                     accent: accent,
+                    torrent: torrent,
                   ),
-                  const SizedBox(height: 10),
-                  _buildSiteAndStatsRow(context, torrent),
                   const SizedBox(height: 10),
                   Text(
                     torrent?.title ?? meta?.title ?? '',
@@ -157,9 +158,13 @@ class SearchResultTorrentItem extends StatelessWidget {
                   ],
                   const SizedBox(height: 12),
                   _buildMetaRow(context, item),
-                  if (tags.isNotEmpty) ...[
+                  if (primaryTags.isNotEmpty || secondaryTags.isNotEmpty) ...[
                     const SizedBox(height: 14),
-                    Wrap(spacing: 8, runSpacing: 8, children: tags),
+                    _buildTagSection(
+                      context,
+                      primaryTags: primaryTags,
+                      secondaryTags: secondaryTags,
+                    ),
                   ],
                   const SizedBox(height: 14),
                   _buildMoreFooter(context, item),
@@ -178,29 +183,80 @@ class SearchResultTorrentItem extends StatelessWidget {
     required String? season,
     required String? promotion,
     required Color accent,
+    required SearchTorrentInfo? torrent,
   }) {
-    return Padding(
-      padding: EdgeInsets.only(right: promotion != null ? 70 : 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
+    final hasMetaRow =
+        (torrent?.seeders ?? 0) > 0 ||
+        (torrent?.peers ?? 0) > 0 ||
+        season != null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(right: promotion != null ? 70 : 0),
+          child: Text(
             title,
-            maxLines: 2,
+            maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               fontSize: 18,
-              height: 1.15,
+              height: 1.1,
               fontWeight: FontWeight.w700,
               color: primaryTextColor(context),
             ),
           ),
-          if (season != null) ...[
-            const SizedBox(height: 10),
-            _buildSeasonChip(season, accent: accent),
-          ],
+        ),
+        if (hasMetaRow) ...[
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(child: _buildSiteIndicator(context)),
+                    if (season != null) ...[
+                      const SizedBox(width: 8),
+                      _buildSeasonChip(season, accent: accent, dense: true),
+                    ],
+                  ],
+                ),
+              ),
+              if ((torrent?.seeders ?? 0) > 0 || (torrent?.peers ?? 0) > 0) ...[
+                const SizedBox(width: 12),
+                _buildTorrentStats(context, torrent),
+              ],
+            ],
+          ),
         ],
-      ),
+      ],
+    );
+  }
+
+  Widget _buildTorrentStats(BuildContext context, SearchTorrentInfo? torrent) {
+    final seeders = torrent?.seeders ?? 0;
+    final peers = torrent?.peers ?? 0;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (seeders > 0)
+          _buildStatPill(
+            context,
+            icon: Icons.arrow_upward_rounded,
+            label: '$seeders',
+            color: const Color(0xFF84CC16),
+            prominent: true,
+          ),
+        if (seeders > 0 && peers > 0) const SizedBox(width: 8),
+        if (peers > 0)
+          _buildStatPill(
+            context,
+            icon: Icons.arrow_downward_rounded,
+            label: '$peers',
+            color: const Color(0xFFFB7185),
+          ),
+      ],
     );
   }
 
@@ -210,7 +266,7 @@ class SearchResultTorrentItem extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
       decoration: BoxDecoration(
         color: _footerSurface(context),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: _isInverted()
               ? Colors.white.withValues(alpha: 0.06)
@@ -268,7 +324,7 @@ class SearchResultTorrentItem extends StatelessWidget {
       color: Colors.transparent,
       child: Ink(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(10),
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -283,22 +339,23 @@ class SearchResultTorrentItem extends StatelessWidget {
           boxShadow: [
             BoxShadow(
               color: color.withValues(alpha: _isInverted() ? 0.10 : 0.08),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 14, color: color),
-              const SizedBox(width: 6),
+              Icon(icon, size: 13, color: color),
+              const SizedBox(width: 5),
               Text(
                 label,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: color,
+                  fontSize: 11.5,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -315,8 +372,8 @@ class SearchResultTorrentItem extends StatelessWidget {
     required Color color,
   }) {
     return Container(
-      width: 36,
-      height: 36,
+      width: 32,
+      height: 32,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: LinearGradient(
@@ -338,7 +395,7 @@ class SearchResultTorrentItem extends StatelessWidget {
           ),
         ],
       ),
-      child: Icon(icon, size: 18, color: color),
+      child: Icon(icon, size: 16, color: color),
     );
   }
 
@@ -349,9 +406,9 @@ class SearchResultTorrentItem extends StatelessWidget {
   }) {
     final color = secondaryTextColor(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(10),
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
@@ -380,49 +437,18 @@ class SearchResultTorrentItem extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 13, color: color),
-          const SizedBox(width: 6),
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 5),
           Text(
             label,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: color,
+              fontSize: 11.5,
               fontWeight: FontWeight.w600,
             ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildSiteAndStatsRow(
-    BuildContext context,
-    SearchTorrentInfo? torrent,
-  ) {
-    final seeders = torrent?.seeders ?? 0;
-    final peers = torrent?.peers ?? 0;
-
-    return Row(
-      children: [
-        Flexible(fit: FlexFit.loose, child: _buildSiteIndicator(context)),
-        if (seeders > 0 || peers > 0) const SizedBox(width: 12),
-        if (seeders > 0 || peers > 0) const Spacer(),
-        if (seeders > 0)
-          _buildStatPill(
-            context,
-            icon: Icons.arrow_upward_rounded,
-            label: '$seeders',
-            color: const Color(0xFF84CC16),
-            prominent: true,
-          ),
-        if (seeders > 0 && peers > 0) const SizedBox(width: 8),
-        if (peers > 0)
-          _buildStatPill(
-            context,
-            icon: Icons.arrow_downward_rounded,
-            label: '$peers',
-            color: const Color(0xFFFB7185),
-          ),
-      ],
     );
   }
 
@@ -477,14 +503,14 @@ class SearchResultTorrentItem extends StatelessWidget {
       final icon = _buildSiteIcon(context, controller, siteItem);
       return Container(
         constraints: const BoxConstraints(maxWidth: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
         decoration: BoxDecoration(
           color: _isInverted()
               ? Colors.white.withValues(alpha: 0.06)
               : theme.colorScheme.surfaceContainerHighest.withValues(
                   alpha: 0.72,
                 ),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: _isInverted()
                 ? Colors.white.withValues(alpha: 0.06)
@@ -495,13 +521,14 @@ class SearchResultTorrentItem extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             icon,
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
             Flexible(
               child: Text(
                 siteName,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodySmall?.copyWith(
+                  fontSize: 11.5,
                   fontWeight: FontWeight.w700,
                   color: primaryTextColor(context),
                 ),
@@ -546,8 +573,8 @@ class SearchResultTorrentItem extends StatelessWidget {
       borderRadius: BorderRadius.circular(999),
       child: Image.memory(
         Uint8List.fromList(bytes),
-        width: 20,
-        height: 20,
+        width: 18,
+        height: 18,
         fit: BoxFit.cover,
         gaplessPlayback: true,
       ),
@@ -556,15 +583,15 @@ class SearchResultTorrentItem extends StatelessWidget {
 
   Widget _placeholderIcon(BuildContext context) {
     return Container(
-      width: 20,
-      height: 20,
+      width: 18,
+      height: 18,
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Icon(
         Icons.public,
-        size: 12,
+        size: 11,
         color: Theme.of(context).colorScheme.onSurfaceVariant,
       ),
     );
@@ -577,12 +604,12 @@ class SearchResultTorrentItem extends StatelessWidget {
   }) {
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: dense ? 8 : 12,
-        vertical: dense ? 5 : 7,
+        horizontal: dense ? 7 : 10,
+        vertical: dense ? 3 : 5,
       ),
       decoration: BoxDecoration(
         color: accent.withValues(alpha: _isInverted() ? 0.26 : 0.18),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: accent.withValues(alpha: _isInverted() ? 0.26 : 0.12),
         ),
@@ -592,7 +619,7 @@ class SearchResultTorrentItem extends StatelessWidget {
         style: TextStyle(
           color: accent,
           fontWeight: FontWeight.w800,
-          fontSize: dense ? 11 : 12.5,
+          fontSize: dense ? 10 : 11.5,
           letterSpacing: 0.2,
         ),
       ),
@@ -639,12 +666,12 @@ class SearchResultTorrentItem extends StatelessWidget {
     required Color color,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
         color: _isInverted()
             ? color.withValues(alpha: 0.14)
             : color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: color.withValues(alpha: _isInverted() ? 0.20 : 0.14),
         ),
@@ -652,12 +679,13 @@ class SearchResultTorrentItem extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: color),
+          Icon(icon, size: 12, color: color),
           const SizedBox(width: 4),
           Text(
             label,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: color,
+              fontSize: 11.5,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -678,13 +706,13 @@ class SearchResultTorrentItem extends StatelessWidget {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 19, color: color),
-          const SizedBox(width: 4),
+          Icon(icon, size: 17, color: color),
+          const SizedBox(width: 3),
           Text(
             label,
             style: textStyle?.copyWith(
               color: color,
-              fontSize: 16,
+              fontSize: 14.5,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -693,20 +721,21 @@ class SearchResultTorrentItem extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: _isInverted() ? 0.16 : 0.10),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(9),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 13, color: color),
-          const SizedBox(width: 4),
+          Icon(icon, size: 11, color: color),
+          const SizedBox(width: 3),
           Text(
             label,
             style: textStyle?.copyWith(
               color: color,
+              fontSize: 11.5,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -726,11 +755,11 @@ class SearchResultTorrentItem extends StatelessWidget {
     final label = size == null ? '--' : SizeFormatter.formatSize(size, 2);
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: compact ? 12 : (dense ? 10 : 14),
-        vertical: compact ? 7 : (dense ? 5 : 8),
+        horizontal: compact ? 10 : (dense ? 9 : 12),
+        vertical: compact ? 5 : (dense ? 4 : 6),
       ),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(compact ? 10 : 12),
+        borderRadius: BorderRadius.circular(compact ? 10 : 10),
         gradient: LinearGradient(
           colors: [
             accent.withValues(alpha: _isInverted() ? 0.82 : 0.74),
@@ -740,8 +769,8 @@ class SearchResultTorrentItem extends StatelessWidget {
         boxShadow: [
           BoxShadow(
             color: accent.withValues(alpha: _isInverted() ? 0.12 : 0.10),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -750,60 +779,136 @@ class SearchResultTorrentItem extends StatelessWidget {
         style: TextStyle(
           color: Colors.white,
           fontWeight: FontWeight.w700,
-          fontSize: compact ? 12 : (dense ? 11.5 : 13),
+          fontSize: compact ? 11 : (dense ? 10.5 : 12),
         ),
       ),
     );
   }
 
-  List<Widget> _buildTags(SearchResultItem item, {int? maxCount}) {
+  Widget _buildTagSection(
+    BuildContext context, {
+    required List<_TorrentTag> primaryTags,
+    required List<_TorrentTag> secondaryTags,
+  }) {
+    final visiblePrimary = primaryTags.take(6).toList();
+    final visibleSecondary = secondaryTags.take(3).toList();
+    final overflowCount =
+        primaryTags.length +
+        secondaryTags.length -
+        visiblePrimary.length -
+        visibleSecondary.length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (visiblePrimary.isNotEmpty)
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              ...visiblePrimary.map(_buildPrimaryTagChip),
+              if (overflowCount > 0)
+                _buildMutedTagChip(context, '+$overflowCount'),
+            ],
+          ),
+        if (visibleSecondary.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: visibleSecondary.map((tag) {
+              return _buildMutedTagChip(context, tag.text);
+            }).toList(),
+          ),
+        ],
+      ],
+    );
+  }
+
+  List<_TorrentTag> _buildTags(SearchResultItem item, {int? maxCount}) {
     final meta = item.meta_info;
     final torrent = item.torrent_info;
-    final tags = <String>[
-      if ((meta?.web_source ?? '').isNotEmpty) meta!.web_source!,
-      if ((meta?.resource_type ?? '').isNotEmpty) meta!.resource_type!,
-      if ((meta?.resource_pix ?? '').isNotEmpty) meta!.resource_pix!,
-      if ((meta?.video_encode ?? '').isNotEmpty) meta!.video_encode!,
-      if ((meta?.audio_encode ?? '').isNotEmpty) meta!.audio_encode!,
-      if ((meta?.resource_effect ?? '').isNotEmpty) meta!.resource_effect!,
-      if ((meta?.edition ?? '').isNotEmpty) meta!.edition!,
-      if ((meta?.resource_team ?? '').isNotEmpty) meta!.resource_team!,
-      ...?torrent?.labels,
+    final tags = <_TorrentTag>[
+      if ((meta?.web_source ?? '').isNotEmpty)
+        _TorrentTag(text: meta!.web_source!, prominent: true),
+      if ((meta?.resource_type ?? '').isNotEmpty)
+        _TorrentTag(text: meta!.resource_type!, prominent: true),
+      if ((meta?.resource_pix ?? '').isNotEmpty)
+        _TorrentTag(text: meta!.resource_pix!, prominent: true),
+      if ((meta?.video_encode ?? '').isNotEmpty)
+        _TorrentTag(text: meta!.video_encode!, prominent: true),
+      if ((meta?.audio_encode ?? '').isNotEmpty)
+        _TorrentTag(text: meta!.audio_encode!, prominent: true),
+      if ((meta?.resource_effect ?? '').isNotEmpty)
+        _TorrentTag(text: meta!.resource_effect!, prominent: true),
+      if ((meta?.edition ?? '').isNotEmpty)
+        _TorrentTag(text: meta!.edition!, prominent: false),
+      if ((meta?.resource_team ?? '').isNotEmpty)
+        _TorrentTag(text: meta!.resource_team!, prominent: false),
+      ...?torrent?.labels?.map(
+        (label) => _TorrentTag(text: label, prominent: false),
+      ),
     ];
 
     final unique = <String>{};
-    final result = <Widget>[];
+    final result = <_TorrentTag>[];
     for (final tag in tags) {
-      final cleaned = tag.trim();
+      final cleaned = tag.text.trim();
       if (cleaned.isEmpty || unique.contains(cleaned)) continue;
       unique.add(cleaned);
-      result.add(_buildTagChip(cleaned));
+      result.add(_TorrentTag(text: cleaned, prominent: tag.prominent));
       if (maxCount != null && result.length >= maxCount) break;
     }
     return result;
   }
 
-  Widget _buildTagChip(String text) {
-    final style = _tagStyle(text);
+  Widget _buildPrimaryTagChip(_TorrentTag tag) {
+    final style = _tagStyle(tag.text);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: style.background,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
             color: style.background.withValues(alpha: 0.18),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
       child: Text(
-        text,
+        tag.text,
         style: TextStyle(
           color: style.foreground,
-          fontSize: 11.5,
+          fontSize: 10.5,
           fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMutedTagChip(BuildContext context, String text) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: _isInverted()
+            ? Colors.white.withValues(alpha: 0.05)
+            : scheme.surfaceContainerHighest.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: _isInverted()
+              ? Colors.white.withValues(alpha: 0.06)
+              : scheme.outlineVariant.withValues(alpha: 0.85),
+        ),
+      ),
+      child: Text(
+        text,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          fontSize: 10.5,
+          color: secondaryTextColor(context),
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
@@ -818,8 +923,8 @@ class SearchResultTorrentItem extends StatelessWidget {
     final color = _promotionColor(text);
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: prominent ? (compact ? 12 : 16) : (dense ? 8 : 10),
-        vertical: prominent ? (compact ? 8 : 10) : (dense ? 4 : 6),
+        horizontal: prominent ? (compact ? 10 : 14) : (dense ? 7 : 9),
+        vertical: prominent ? (compact ? 6 : 8) : (dense ? 3 : 5),
       ),
       decoration: BoxDecoration(
         color: color,
@@ -832,8 +937,8 @@ class SearchResultTorrentItem extends StatelessWidget {
         boxShadow: [
           BoxShadow(
             color: color.withValues(alpha: 0.22),
-            blurRadius: compact ? 8 : 12,
-            offset: Offset(0, compact ? 4 : 6),
+            blurRadius: compact ? 6 : 10,
+            offset: Offset(0, compact ? 3 : 5),
           ),
         ],
       ),
@@ -842,7 +947,7 @@ class SearchResultTorrentItem extends StatelessWidget {
         style: TextStyle(
           color: Colors.white,
           fontWeight: FontWeight.w700,
-          fontSize: prominent ? (compact ? 12 : 13.5) : (dense ? 11 : 12),
+          fontSize: prominent ? (compact ? 10.5 : 12) : (dense ? 10 : 11),
         ),
       ),
     );
@@ -1057,4 +1162,11 @@ class _ChipStyle {
 
   final Color background;
   final Color foreground;
+}
+
+class _TorrentTag {
+  const _TorrentTag({required this.text, required this.prominent});
+
+  final String text;
+  final bool prominent;
 }
