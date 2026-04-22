@@ -167,7 +167,9 @@ class DownloadSheet extends GetView<DownloadController> {
                 const SizedBox(width: 8),
                 _buildCompactRateBadge(
                   context,
-                  label: '${(downloadFactor * 100).round()}%',
+                  label: downloadFactor == 0
+                      ? '免费'
+                      : '${(downloadFactor * 100).round()}%',
                   prefix: '下',
                   color: const Color(0xFFFF6B2C),
                 ),
@@ -714,10 +716,6 @@ class DownloadSheet extends GetView<DownloadController> {
                       color: scheme.onSurfaceVariant,
                     ),
                   ),
-                  if (trailing != null) ...[
-                    const SizedBox(height: 8),
-                    trailing,
-                  ],
                 ],
               ),
             ),
