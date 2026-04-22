@@ -501,8 +501,8 @@ class ApiClient extends g.GetxController {
     final authToken = token ?? this.token;
     _log.info('API请求: $path, token: ${authToken != null ? '***' : 'null'}');
     final options = Options(
-      sendTimeout: Duration(seconds: timeout ?? 30),
-      receiveTimeout: Duration(seconds: timeout ?? 30),
+      sendTimeout: Duration(seconds: timeout ?? 120),
+      receiveTimeout: Duration(seconds: timeout ?? 120),
       headers: {
         if (authToken != null) 'authorization': 'Bearer $authToken',
         ...?headers,

@@ -287,6 +287,10 @@ class SiteDetailController extends GetxController {
 
   /// 下拉刷新：同时刷新用户数据历史与资源列表
   Future<void> refreshAll() async {
-    await Future.wait([loadSiteDetail(), loadUserdataHistory(), loadResources()]);
+    await Future.wait([
+      loadSiteDetail(),
+      loadUserdataHistory(),
+      loadResources(),
+    ]);
   }
 }
