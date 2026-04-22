@@ -8,6 +8,7 @@ import 'package:moviepilot_mobile/modules/dynamic_form/adapters/plugin_form_adap
 import 'package:moviepilot_mobile/modules/dynamic_form/models/dynamic_form_models.dart';
 import 'package:moviepilot_mobile/modules/dynamic_form/models/form_block_models.dart';
 import 'package:moviepilot_mobile/modules/dynamic_form/services/form_block_converter.dart';
+import 'package:moviepilot_mobile/modules/dynamic_form/utils/vuetify_component_subset.dart';
 import 'package:moviepilot_mobile/services/api_client.dart';
 import 'package:moviepilot_mobile/services/app_service.dart';
 import 'package:moviepilot_mobile/services/jpush_service.dart';
@@ -25,9 +26,7 @@ class ApplyPushAliasOutcome {
 
   factory ApplyPushAliasOutcome.err(String message) {
     final t = message.trim();
-    return ApplyPushAliasOutcome._(
-      errorMessage: t.isEmpty ? '未知错误' : t,
-    );
+    return ApplyPushAliasOutcome._(errorMessage: t.isEmpty ? '未知错误' : t);
   }
 }
 
@@ -131,6 +130,13 @@ class DynamicFormController extends GetxController {
 
   /// 是否显示保存按钮（有 formModel 且有 key 时）
   bool get hasFormModel => formModel.value.isNotEmpty;
+
+  List<String> get unsupportedRawPageComponents =>
+      VuetifyComponentSubset.collectUnsupportedRawComponents(
+        effectivePageNodes,
+      );
+
+  bool get canUseRawPageRenderer => unsupportedRawPageComponents.isEmpty;
 
   Future<void> load() async {
     isLoading.value = true;

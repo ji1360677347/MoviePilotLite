@@ -203,8 +203,11 @@ class DynamicFormPage extends GetView<DynamicFormController> {
           );
         }
 
-        // page 模式且有原始节点：使用通用 VuetifyRenderer
-        if (pNodes.isNotEmpty && !controller.formMode.value) {
+        // page 模式且原始节点仍落在通用子集内时，使用原始 VuetifyRenderer；
+        // 否则回退到 FormBlock 渲染，避免 web 端新节点直接导致页面空白。
+        if (pNodes.isNotEmpty &&
+            !controller.formMode.value &&
+            controller.canUseRawPageRenderer) {
           return VuetifyPageRenderer(nodes: pNodes, controller: controller);
         }
 
