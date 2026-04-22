@@ -62,9 +62,7 @@ class PluginPage extends GetView<PluginController> {
           slivers: [
             const SliverToBoxAdapter(child: SizedBox(height: 8)),
             _buildSliverContent(context),
-            SliverToBoxAdapter(
-              child: SizedBox(height: _bottomInset(context)),
-            ),
+            SliverToBoxAdapter(child: SizedBox(height: _bottomInset(context))),
           ],
         ),
       ),
@@ -151,7 +149,9 @@ class PluginPage extends GetView<PluginController> {
   }
 
   Future<void> _openKeywordSheet(BuildContext context) async {
-    final textController = TextEditingController(text: controller.keyword.value);
+    final textController = TextEditingController(
+      text: controller.keyword.value,
+    );
     final submitted = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
@@ -167,7 +167,9 @@ class PluginPage extends GetView<PluginController> {
                 CupertinoColors.systemBackground,
                 ctx,
               ),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(18),
+              ),
             ),
             child: CupertinoSearchTextField(
               controller: textController,

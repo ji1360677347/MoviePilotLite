@@ -12,6 +12,8 @@ import 'package:moviepilot_mobile/modules/dynamic_form/utils/vuetify_layout_supp
 import 'package:moviepilot_mobile/modules/dynamic_form/utils/vuetify_text_support.dart';
 import 'package:moviepilot_mobile/modules/dynamic_form/widgets/vuetify_display_widgets.dart';
 import 'package:moviepilot_mobile/modules/dynamic_form/widgets/vuetify_form_fields.dart';
+import 'package:moviepilot_mobile/modules/dynamic_form/widgets/vuetify_layout_widgets.dart';
+import 'package:moviepilot_mobile/modules/dynamic_form/widgets/vuetify_text_widgets.dart';
 import 'package:moviepilot_mobile/modules/dynamic_form/widgets/chart_widget.dart';
 import 'package:moviepilot_mobile/modules/dynamic_form/widgets/vuetify_primitives.dart';
 
@@ -157,15 +159,9 @@ class _VuetifyNode extends StatelessWidget {
       }
     }
     final spec = VuetifyLayoutSupport.resolveCardSpec(context, node, ctx);
-
-    return Padding(
-      padding: spec.margin,
-      child: Container(
-        width: double.infinity,
-        decoration: spec.decoration,
-        padding: spec.padding,
-        child: _buildChildColumn(context, spec.childContext),
-      ),
+    return VuetifyCardView(
+      spec: spec,
+      child: _buildChildColumn(context, spec.childContext),
     );
   }
 
@@ -209,28 +205,22 @@ class _VuetifyNode extends StatelessWidget {
 
   Widget _buildVRow(BuildContext context) {
     final spec = VuetifyLayoutSupport.resolveRowSpec(node);
-
-    return Padding(
-      padding: spec.margin,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final availableWidth = constraints.maxWidth;
-          return Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            alignment: WrapAlignment.center,
-            children: node.content.map((child) {
-              return _VuetifyNode(
-                node: child,
-                controller: controller,
-                parentWidth: availableWidth,
-                siblingCount: spec.colCount > 1 ? spec.colCount : null,
-                ctx: ctx,
-              );
-            }).toList(),
-          );
-        },
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.maxWidth;
+        return VuetifyWrapRowView(
+          spec: spec,
+          children: node.content.map((child) {
+            return _VuetifyNode(
+              node: child,
+              controller: controller,
+              parentWidth: availableWidth,
+              siblingCount: spec.colCount > 1 ? spec.colCount : null,
+              ctx: ctx,
+            );
+          }).toList(),
+        );
+      },
     );
   }
 
@@ -261,12 +251,7 @@ class _VuetifyNode extends StatelessWidget {
       );
     }
 
-    if (spec.center) child = Center(child: child);
-
-    if (spec.width != null) {
-      return SizedBox(width: spec.width, child: child);
-    }
-    return Expanded(child: child);
+    return VuetifyColView(spec: spec, child: child);
   }
 
   // ---------------------------------------------------------------------------
@@ -280,28 +265,7 @@ class _VuetifyNode extends StatelessWidget {
       inheritedColor: ctx.parentColor,
       insideTonalCard: ctx.insideTonalCard,
     );
-    if (spec.iconData == null) return const SizedBox.shrink();
-
-    if (spec.useBadgeBackground) {
-      final bgSize = spec.size + 16;
-      return Padding(
-        padding: spec.margin,
-        child: Container(
-          width: bgSize,
-          height: bgSize,
-          decoration: BoxDecoration(
-            color: spec.color.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(bgSize * 0.28),
-          ),
-          child: Icon(spec.iconData, size: spec.size * 0.7, color: spec.color),
-        ),
-      );
-    }
-
-    return Padding(
-      padding: spec.margin,
-      child: Icon(spec.iconData, size: spec.size, color: spec.color),
-    );
+    return VuetifyIconView(spec: spec);
   }
 
   // ---------------------------------------------------------------------------
@@ -311,42 +275,11 @@ class _VuetifyNode extends StatelessWidget {
   Widget _buildVBtn(BuildContext context) {
     final spec = VuetifyDisplaySupport.resolveButtonSpec(context, node);
     final clickEvent = VuetifyActionExecutor.extractClickAction(node);
-
-    if (spec.variant == 'outlined') {
-      return VuetifyOutlinedButton(
-        text: spec.text,
-        color: spec.color,
-        iconData: spec.prependIconData,
-        onPressed: clickEvent != null
-            ? () => _executeClickAction(clickEvent)
-            : null,
-      );
-    }
-
-    return CupertinoButton(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      color: spec.color.withValues(alpha: 0.12),
-      borderRadius: BorderRadius.circular(10),
+    return VuetifyButtonView(
+      spec: spec,
       onPressed: clickEvent != null
           ? () => _executeClickAction(clickEvent)
           : null,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (spec.prependIconData != null) ...[
-            Icon(spec.prependIconData, size: 18, color: spec.color),
-            const SizedBox(width: 6),
-          ],
-          Text(
-            spec.text,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: spec.color,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -417,15 +350,7 @@ class _VuetifyNode extends StatelessWidget {
   Widget _buildVTabs(BuildContext context) {
     final spec = VuetifyDisplaySupport.resolveTabsSpec(node);
     if (spec == null || spec.items.isEmpty) return _buildChildren(context);
-    return VuetifyTabsView(
-      spec: spec,
-      onTapTab: (tab) {
-        final clickEvent = VuetifyActionExecutor.extractClickAction(tab);
-        if (clickEvent != null) {
-          _executeClickAction(clickEvent);
-        }
-      },
-    );
+    return VuetifyTabsView(spec: spec, onTapTab: _handleNodeTap);
   }
 
   Widget _buildVTab(BuildContext context) => VuetifyTabsView(
@@ -439,12 +364,7 @@ class _VuetifyNode extends StatelessWidget {
       ],
       grow: false,
     ),
-    onTapTab: (tab) {
-      final clickEvent = VuetifyActionExecutor.extractClickAction(tab);
-      if (clickEvent != null) {
-        _executeClickAction(clickEvent);
-      }
-    },
+    onTapTab: _handleNodeTap,
   );
 
   // ---------------------------------------------------------------------------
@@ -483,48 +403,57 @@ class _VuetifyNode extends StatelessWidget {
 
   Widget _buildDiv(BuildContext context) {
     final spec = VuetifyLayoutSupport.resolveDivSpec(context, node, ctx);
+    final cls = node.props?['class']?.toString();
+
+    if (VuetifyCss.isDashboardStats(cls)) {
+      return _buildDashboardStatsSection(context, spec);
+    }
+    if (VuetifyCss.isDashboardStatsItem(cls)) {
+      return _buildDashboardStatsItem(context, spec);
+    }
+    if (VuetifyCss.isDashboardStatsTitle(cls)) {
+      return _buildDashboardStatsTitle(context, spec);
+    }
+    if (VuetifyCss.isDashboardStatsValue(cls)) {
+      return _buildDashboardStatsValue(context, spec);
+    }
 
     // Leaf div with text only
     if (node.text != null && node.content.isEmpty) {
       final text = node.text.toString().trim();
       if (text.isEmpty) return const SizedBox.shrink();
-      return Padding(
+      return VuetifyTextView(
+        text: text,
+        style: spec.textStyle,
         padding: spec.margin + spec.padding,
-        child: Text(
-          text,
-          style: spec.textStyle,
-          textAlign: spec.isCenter ? TextAlign.center : null,
-        ),
+        textAlign: spec.isCenter ? TextAlign.center : null,
       );
     }
 
     // d-flex → Row layout with Flexible children to prevent overflow
     if (spec.isDFlex) {
-      return Padding(
+      return VuetifyFlexRowView(
         padding: spec.margin + spec.padding,
-        child: Row(
-          mainAxisAlignment: spec.mainAxis,
-          crossAxisAlignment: spec.crossAxis,
-          children: node.content.map((c) {
-            if (c.component == 'VSpacer') {
-              return const Expanded(child: SizedBox.shrink());
-            }
-            return Flexible(
-              child: _VuetifyNode(node: c, controller: controller, ctx: ctx),
-            );
-          }).toList(),
-        ),
+        mainAxisAlignment: spec.mainAxis,
+        crossAxisAlignment: spec.crossAxis,
+        children: node.content.map((c) {
+          if (c.component == 'VSpacer') {
+            return const Expanded(child: SizedBox.shrink());
+          }
+          return Flexible(
+            child: _VuetifyNode(node: c, controller: controller, ctx: ctx),
+          );
+        }).toList(),
       );
     }
 
     // Default → Column
     Widget child;
     if (node.content.isNotEmpty) {
-      child = Column(
+      child = VuetifyColumnView(
         crossAxisAlignment: spec.isCenter
             ? CrossAxisAlignment.center
             : CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
         children: node.content.map((c) {
           return _VuetifyNode(
             node: c,
@@ -536,8 +465,8 @@ class _VuetifyNode extends StatelessWidget {
     } else {
       final text = node.text?.toString().trim() ?? '';
       child = text.isNotEmpty
-          ? Text(
-              text,
+          ? VuetifyTextView(
+              text: text,
               style: spec.textStyle,
               textAlign: spec.isCenter ? TextAlign.center : null,
             )
@@ -550,19 +479,117 @@ class _VuetifyNode extends StatelessWidget {
     return Padding(padding: spec.margin + spec.padding, child: child);
   }
 
+  Widget _buildDashboardStatsSection(BuildContext _, VuetifyDivSpec spec) {
+    const spacing = 12.0;
+
+    return Padding(
+      padding: spec.margin + spec.padding,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final maxWidth = constraints.maxWidth;
+          final columns = switch (maxWidth) {
+            > 900 => 4,
+            > 640 => 3,
+            > 360 => 2,
+            _ => 1,
+          };
+          final itemWidth = (maxWidth - spacing * (columns - 1)) / columns;
+
+          return Wrap(
+            spacing: spacing,
+            runSpacing: spacing,
+            children: node.content.map((child) {
+              return SizedBox(
+                width: itemWidth,
+                child: _VuetifyNode(
+                  node: child,
+                  controller: controller,
+                  ctx: spec.childContext.copyWith(centerContent: true),
+                ),
+              );
+            }).toList(),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildDashboardStatsItem(BuildContext context, VuetifyDivSpec spec) {
+    return Container(
+      padding: spec.padding == EdgeInsets.zero
+          ? const EdgeInsets.symmetric(horizontal: 12, vertical: 16)
+          : spec.padding,
+      decoration: BoxDecoration(
+        color: CupertinoDynamicColor.resolve(
+          CupertinoColors.tertiarySystemGroupedBackground,
+          context,
+        ),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: _buildChildColumn(
+        context,
+        spec.childContext.copyWith(centerContent: true),
+        crossAlignment: CrossAxisAlignment.center,
+      ),
+    );
+  }
+
+  Widget _buildDashboardStatsTitle(BuildContext context, VuetifyDivSpec spec) {
+    final text = _collectNodeText(node);
+    if (text.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: spec.margin + const EdgeInsets.only(bottom: 8),
+      child: VuetifyTextView(
+        text: text,
+        style: spec.textStyle.copyWith(
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          color:
+              VuetifyCss.resolveTextColorFromClasses(
+                node.props?['class']?.toString(),
+              ) ??
+              CupertinoDynamicColor.resolve(
+                CupertinoColors.secondaryLabel,
+                context,
+              ),
+        ),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+
+  Widget _buildDashboardStatsValue(BuildContext context, VuetifyDivSpec spec) {
+    final text = _collectNodeText(node);
+    if (text.isEmpty) return const SizedBox.shrink();
+
+    return VuetifyTextView(
+      text: text,
+      style: spec.textStyle.copyWith(
+        fontSize: 26,
+        height: 1.1,
+        fontWeight: FontWeight.w700,
+        color:
+            VuetifyCss.resolveTextColorFromClasses(
+              node.props?['class']?.toString(),
+            ) ??
+            CupertinoDynamicColor.resolve(CupertinoColors.label, context),
+      ),
+      textAlign: TextAlign.center,
+    );
+  }
+
   Widget _buildSpan(BuildContext context) {
     final text = node.text?.toString().trim() ?? _collectNodeText(node);
     if (text.isEmpty) return const SizedBox.shrink();
     final spec = VuetifyLayoutSupport.resolveSpanSpec(context, node, text);
 
-    return Padding(
+    return VuetifyTextView(
+      text: spec.text,
+      style: spec.style,
       padding: spec.margin,
-      child: Text(
-        spec.text,
-        style: spec.style,
-        overflow: TextOverflow.ellipsis,
-        maxLines: 2,
-      ),
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
     );
   }
 
@@ -570,17 +597,7 @@ class _VuetifyNode extends StatelessWidget {
     final text = _collectNodeText(node);
     final spec = VuetifyLayoutSupport.resolveHeadingSpec(node, text);
     if (spec == null) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Text(
-        spec.text,
-        style: TextStyle(
-          fontSize: spec.fontSize,
-          fontWeight: FontWeight.bold,
-          color: CupertinoDynamicColor.resolve(CupertinoColors.label, context),
-        ),
-      ),
-    );
+    return VuetifyHeadingView(spec: spec);
   }
 
   // ---------------------------------------------------------------------------
@@ -639,8 +656,8 @@ class _VuetifyNode extends StatelessWidget {
     if (node.content.isEmpty) {
       final text = node.text?.toString().trim() ?? '';
       if (text.isEmpty) return const SizedBox.shrink();
-      return Text(
-        text,
+      return VuetifyTextView(
+        text: text,
         style: TextStyle(
           fontSize: 14,
           color: CupertinoDynamicColor.resolve(CupertinoColors.label, context),
@@ -660,25 +677,22 @@ class _VuetifyNode extends StatelessWidget {
   }) {
     final center =
         crossAlignment == CrossAxisAlignment.center || childCtx.centerContent;
-    Widget col = Column(
+    return VuetifyColumnView(
+      expandWidth: center,
       crossAxisAlignment: center
           ? CrossAxisAlignment.center
           : (crossAlignment ?? CrossAxisAlignment.start),
-      mainAxisSize: MainAxisSize.min,
       children: node.content.map((child) {
         return _VuetifyNode(node: child, controller: controller, ctx: childCtx);
       }).toList(),
     );
-    // Ensure Column expands to full parent width so centering is effective
-    if (center) col = SizedBox(width: double.infinity, child: col);
-    return col;
   }
 
   Widget _buildTextNode(BuildContext context, {TextStyle? defaultStyle}) {
     final text = _collectNodeText(node);
     if (text.isNotEmpty) {
-      return Text(
-        text,
+      return VuetifyTextView(
+        text: text,
         style:
             defaultStyle ??
             TextStyle(
@@ -708,5 +722,12 @@ class _VuetifyNode extends StatelessWidget {
       action,
       onSuccessReload: controller?.load,
     );
+  }
+
+  void _handleNodeTap(FormNode tappedNode) {
+    final clickEvent = VuetifyActionExecutor.extractClickAction(tappedNode);
+    if (clickEvent != null) {
+      _executeClickAction(clickEvent);
+    }
   }
 }

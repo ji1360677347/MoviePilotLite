@@ -2,6 +2,82 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:moviepilot_mobile/modules/dynamic_form/models/dynamic_form_models.dart';
 import 'package:moviepilot_mobile/modules/dynamic_form/utils/vuetify_display_support.dart';
+import 'package:moviepilot_mobile/modules/dynamic_form/widgets/vuetify_primitives.dart';
+
+class VuetifyIconView extends StatelessWidget {
+  const VuetifyIconView({super.key, required this.spec});
+
+  final VuetifyIconSpec spec;
+
+  @override
+  Widget build(BuildContext context) {
+    if (spec.iconData == null) return const SizedBox.shrink();
+
+    if (spec.useBadgeBackground) {
+      final bgSize = spec.size + 16;
+      return Padding(
+        padding: spec.margin,
+        child: Container(
+          width: bgSize,
+          height: bgSize,
+          decoration: BoxDecoration(
+            color: spec.color.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(bgSize * 0.28),
+          ),
+          child: Icon(spec.iconData, size: spec.size * 0.7, color: spec.color),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: spec.margin,
+      child: Icon(spec.iconData, size: spec.size, color: spec.color),
+    );
+  }
+}
+
+class VuetifyButtonView extends StatelessWidget {
+  const VuetifyButtonView({super.key, required this.spec, this.onPressed});
+
+  final VuetifyButtonSpec spec;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    if (spec.variant == 'outlined') {
+      return VuetifyOutlinedButton(
+        text: spec.text,
+        color: spec.color,
+        iconData: spec.prependIconData,
+        onPressed: onPressed,
+      );
+    }
+
+    return CupertinoButton(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      color: spec.color.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(10),
+      onPressed: onPressed,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (spec.prependIconData != null) ...[
+            Icon(spec.prependIconData, size: 18, color: spec.color),
+            const SizedBox(width: 6),
+          ],
+          Text(
+            spec.text,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: spec.color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class VuetifyAlertView extends StatelessWidget {
   const VuetifyAlertView({
