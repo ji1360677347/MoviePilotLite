@@ -27,6 +27,7 @@ class Index extends StatefulWidget {
 
 class _IndexState extends State<Index> {
   final _widgetNavigationService = Get.find<IosWidgetNavigationService>();
+  late final List<ScrollController> _tabScrollControllers;
   int _selectedIndex = 0;
   bool _initialIndexApplied = false;
   bool _restoreSuppressed = false;
@@ -40,6 +41,10 @@ class _IndexState extends State<Index> {
   @override
   void initState() {
     super.initState();
+    _tabScrollControllers = List.generate(
+      kIndexMaxTab + 1,
+      (_) => ScrollController(),
+    );
     _applyInitialIndex();
     if (!_initialIndexApplied) {
       _restoreSelectedIndex();
@@ -55,6 +60,9 @@ class _IndexState extends State<Index> {
 
   @override
   void dispose() {
+    for (final controller in _tabScrollControllers) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -256,18 +264,41 @@ class _IndexState extends State<Index> {
       respectSafeArea: true,
       child: _buildBottomBarChild(),
       body: (context, controller) {
-        _activeScrollController = controller;
+        _activeScrollController = _tabScrollControllers[_selectedIndex];
         final i = _selectedIndex;
         return Scaffold(
           extendBody: true,
           body: IndexedStack(
             index: i,
             children: [
-              DashboardPage(),
-              RecommendPage(scrollController: i == 1 ? controller : null),
-              DiscoverPage(scrollController: i == 2 ? controller : null),
-              MultifunctionPage(scrollController: i == 3 ? controller : null),
-              const SearchIndexPage(),
+              KeepAlive(
+                keepAlive: true,
+                child: DashboardPage(
+                  scrollController: _tabScrollControllers[0],
+                ),
+              ),
+              KeepAlive(
+                keepAlive: true,
+                child: RecommendPage(
+                  scrollController: _tabScrollControllers[1],
+                ),
+              ),
+              KeepAlive(
+                keepAlive: true,
+                child: DiscoverPage(scrollController: _tabScrollControllers[2]),
+              ),
+              KeepAlive(
+                keepAlive: true,
+                child: MultifunctionPage(
+                  scrollController: _tabScrollControllers[3],
+                ),
+              ),
+              KeepAlive(
+                keepAlive: true,
+                child: SearchIndexPage(
+                  scrollController: _tabScrollControllers[4],
+                ),
+              ),
             ],
           ),
         );

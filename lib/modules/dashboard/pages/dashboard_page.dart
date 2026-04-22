@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -23,7 +22,9 @@ import '../controllers/dashboard_controller.dart';
 import '../widgets/dashboard_widgets.dart';
 
 class DashboardPage extends GetView<DashboardController> {
-  const DashboardPage({super.key});
+  const DashboardPage({super.key, this.scrollController});
+
+  final ScrollController? scrollController;
 
   @override
   Widget build(BuildContext context) {
@@ -50,6 +51,7 @@ class DashboardPage extends GetView<DashboardController> {
             Padding(
               padding: EdgeInsets.only(top: topInset),
               child: CustomScrollView(
+                controller: scrollController,
                 slivers: [
                   CupertinoSliverRefreshControl(
                     onRefresh: () async {
@@ -216,8 +218,7 @@ class DashboardPage extends GetView<DashboardController> {
         CupertinoButton(
           padding: EdgeInsets.symmetric(horizontal: 12),
           onPressed: () => _showProfile(context),
-          child:
-              avatarStr != null && avatarStr.isNotEmpty
+          child: avatarStr != null && avatarStr.isNotEmpty
               ? () {
                   final avatarBytes = _decodeAvatar(avatarStr);
                   if (avatarBytes.isNotEmpty) {
