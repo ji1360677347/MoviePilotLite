@@ -177,6 +177,7 @@ class RecommendItemBaseCard extends GetView<SubscribeService> {
     final season = item?.season;
     final result = await Get.bottomSheet<({String area, List<int> sites})>(
       SiteSelectSheet(hasSegment: true),
+      isScrollControlled: true,
     );
     if (result == null) return;
     final (area, sites) = (result.area, result.sites);
