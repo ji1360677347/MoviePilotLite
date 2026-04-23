@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:moviepilot_mobile/applog/app_log.dart';
 import 'package:moviepilot_mobile/modules/login/models/login_profile.dart';
+import 'package:moviepilot_mobile/modules/login/controllers/login_controller.dart';
 import 'package:moviepilot_mobile/modules/login/repositories/auth_repository.dart';
 import 'package:moviepilot_mobile/modules/profile/models/user_info.dart';
 import 'package:moviepilot_mobile/modules/site/controllers/site_controller.dart';
@@ -107,6 +108,9 @@ class ProfileController extends GetxController {
     await _iosSharedSessionService.clearSession();
     if (Get.isRegistered<SiteController>()) {
       Get.delete<SiteController>(force: true);
+    }
+    if (Get.isRegistered<LoginController>()) {
+      Get.find<LoginController>().resetForLogout();
     }
 
     currentProfile.value = null;

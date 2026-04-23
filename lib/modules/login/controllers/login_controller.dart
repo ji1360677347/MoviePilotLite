@@ -6,7 +6,6 @@ import 'package:get/get.dart';
 import 'package:altman_totp/services/totp_service.dart';
 import 'package:moviepilot_mobile/utils/image_util.dart';
 import '../../../utils/toast_util.dart';
-import '../../system_message/controllers/system_message_controller.dart';
 import '../models/login_profile.dart';
 import '../repositories/auth_repository.dart';
 import 'package:moviepilot_mobile/applog/app_log.dart';
@@ -59,7 +58,7 @@ class LoginController extends GetxController {
   void onInit() {
     _totpService.load();
     _loadSavedWallpapers();
-    unawaited(_loadProfilesThenAutoLogin());
+    unawaited(_bootstrapSavedSession());
     serverController.addListener(_autofillTotpIfMatched);
     usernameController.addListener(_autofillTotpIfMatched);
     super.onInit();
@@ -167,59 +166,40 @@ class LoginController extends GetxController {
     _wallpaperTimer = null;
   }
 
-  /// 自动登录
-  Future<void> _autoLogin() async {
-    // 如果没有保存的登录配置文件，则不进行自动登录
+  void resetForLogout() {
+    isAutoLogin.value = false;
+    isLoading.value = false;
+    step.value = 1;
+  }
+
+  Future<void> _bootstrapSavedSession() async {
+    await _loadProfiles();
+    await _restoreLocalSessionIfAvailable();
+  }
+
+  Future<void> _restoreLocalSessionIfAvailable() async {
     if (profiles.isEmpty) return;
 
-    // 获取最新的登录配置文件
     final latestProfile = profiles.first;
     if (latestProfile.accessToken.isEmpty) return;
 
-    // 尝试使用保存的accessToken获取用户信息
-    isLoading.value = true;
-
     isAutoLogin.value = true;
     try {
-      final success = await _repository.autoLogin(profile: latestProfile);
+      _repository.restoreLocalSession(profile: latestProfile);
+      _talker.info('已恢复本地登录态');
 
-      if (success == true) {
-        // 获取用户信息成功，直接跳转到dashboard页面
-        _talker.info('自动登录成功');
-        ToastUtil.success('自动登录成功', snackPosition: SnackPosition.TOP);
-
-        // 自动登录成功后启动消息轮询
-        if (!Get.isRegistered<SystemMessageController>()) {
-          Get.put(SystemMessageController(), permanent: true);
-        }
-
-        final lastIndex = await _loadLastTabIndex();
-        if (lastIndex != null) {
-          Get.offAllNamed('/main', arguments: {'initialIndex': lastIndex});
-        } else {
-          Get.offAllNamed('/main');
-        }
-        imageUtil.loadGlobalCachedConfig();
-        Future.delayed(const Duration(seconds: 1), () {
-          isAutoLogin.value = false;
-        });
+      final lastIndex = await _loadLastTabIndex();
+      if (lastIndex != null) {
+        Get.offAllNamed('/main', arguments: {'initialIndex': lastIndex});
       } else {
-        // 获取用户信息失败，需要用户手动登录
-        _talker.warning('自动登录失败，需要用户手动登录');
-        isAutoLogin.value = false;
+        Get.offAllNamed('/main');
       }
-    } catch (e) {
-      // 获取用户信息失败，需要用户手动登录
-      _talker.warning('自动登录失败，需要用户手动登录: $e');
+      imageUtil.loadGlobalCachedConfig();
       isAutoLogin.value = false;
-    } finally {
-      isLoading.value = false;
+    } catch (e) {
+      _talker.warning('恢复本地登录态失败: $e');
+      isAutoLogin.value = false;
     }
-  }
-
-  Future<void> _loadProfilesThenAutoLogin() async {
-    await _loadProfiles();
-    await _autoLogin();
   }
 
   Future<void> _loadProfiles() async {

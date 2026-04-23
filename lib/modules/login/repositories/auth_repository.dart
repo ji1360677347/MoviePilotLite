@@ -176,6 +176,13 @@ class AuthRepository extends GetxService {
     }
   }
 
+  void restoreLocalSession({required LoginProfile profile}) {
+    final normalizedServer = _normalizeServer(profile.server);
+    _appService.restoreSessionFromProfile(profile);
+    _api.setBaseUrl(normalizedServer);
+    _api.setToken(profile.accessToken);
+  }
+
   Future<void> _warmSiteWidgetData() async {
     try {
       final controller = Get.isRegistered<SiteController>()
