@@ -11,6 +11,7 @@ import 'package:moviepilot_mobile/modules/plugin/pages/plugin_info_sheet.dart';
 import 'package:moviepilot_mobile/modules/plugin/widgets/plugin_item_card.dart';
 import 'package:moviepilot_mobile/modules/plugin/widgets/plugin_list_filter_sheet.dart';
 import 'package:moviepilot_mobile/modules/search_result/widgets/sort_pull_down_widget.dart';
+import 'package:moviepilot_mobile/services/app_service.dart';
 import 'package:moviepilot_mobile/utils/image_util.dart';
 
 class PluginListPage extends GetView<PluginListController> {
@@ -34,6 +35,17 @@ class PluginListPage extends GetView<PluginListController> {
 
   @override
   Widget build(BuildContext context) {
+    if (!Get.find<AppService>().canManage) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('插件列表'), centerTitle: false),
+        body: const Center(
+          child: Text(
+            '当前帐号无管理权限',
+            style: TextStyle(fontSize: 14, color: CupertinoColors.systemGrey),
+          ),
+        ),
+      );
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Text('插件列表'),
@@ -67,9 +79,7 @@ class PluginListPage extends GetView<PluginListController> {
           slivers: [
             const SliverToBoxAdapter(child: SizedBox(height: 8)),
             _buildSliverContent(context),
-            SliverToBoxAdapter(
-              child: SizedBox(height: _bottomInset(context)),
-            ),
+            SliverToBoxAdapter(child: SizedBox(height: _bottomInset(context))),
           ],
         ),
       ),
@@ -213,7 +223,9 @@ class PluginListPage extends GetView<PluginListController> {
   }
 
   Future<void> _openKeywordSheet(BuildContext context) async {
-    final textController = TextEditingController(text: controller.keyword.value);
+    final textController = TextEditingController(
+      text: controller.keyword.value,
+    );
     final submitted = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
@@ -229,7 +241,9 @@ class PluginListPage extends GetView<PluginListController> {
                 CupertinoColors.systemBackground,
                 ctx,
               ),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(18),
+              ),
             ),
             child: CupertinoSearchTextField(
               controller: textController,

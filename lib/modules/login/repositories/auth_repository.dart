@@ -125,17 +125,26 @@ class AuthRepository extends GetxService {
   }
 
   /// 获取用户全局配置（/api/v1/system/global/user）
-  Future<bool?> autoLogin({
-    required String server,
-    required String accessToken,
-  }) async {
+  Future<bool?> autoLogin({required LoginProfile profile}) async {
     try {
-      final normalizedServer = _normalizeServer(server);
+      final normalizedServer = _normalizeServer(profile.server);
+      final normalizedUserName = profile.userName.trim();
+      final normalizedLoginName = profile.username.trim();
+      final userLookupKey = normalizedUserName.isNotEmpty
+          ? normalizedUserName
+          : normalizedLoginName;
+      _appService.restoreSessionFromProfile(profile);
       _api.setBaseUrl(normalizedServer);
-      _api.setToken(accessToken);
+      _api.setToken(profile.accessToken);
+      final currentUser = await getUserInfoByRole(role: userLookupKey);
+      if (currentUser == null) {
+        _talker.warning('自动登录失败: 当前用户信息为空');
+        _appService.clearLoginState();
+        return false;
+      }
       await _iosSharedSessionService.syncSession(
         server: normalizedServer,
-        accessToken: accessToken,
+        accessToken: profile.accessToken,
       );
       await _iosSharedSessionService.reloadWidgets();
       unawaited(_warmSiteWidgetData());
@@ -255,7 +264,10 @@ class AuthRepository extends GetxService {
   }
 
   Future<UserInfo?> getUserInfoByRole({required String role}) async {
-    final response = await _api.get<Map<String, dynamic>>('/api/v1/user/$role');
+    final encodedRole = Uri.encodeComponent(role);
+    final response = await _api.get<Map<String, dynamic>>(
+      '/api/v1/user/$encodedRole',
+    );
     final data = response.data;
     if (data == null) {
       _talker.warning('获取用户信息失败: 返回数据为空');

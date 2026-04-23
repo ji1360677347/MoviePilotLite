@@ -10,6 +10,7 @@ import 'package:moviepilot_mobile/modules/subscribe/models/subscribe_models.dart
 import 'package:moviepilot_mobile/modules/subscribe/widgets/subscribe_filter_sheet.dart';
 import 'package:moviepilot_mobile/modules/subscribe/widgets/subscribe_item_card.dart';
 import 'package:moviepilot_mobile/modules/subscribe/widgets/subscribe_popular_item_card.dart';
+import 'package:moviepilot_mobile/services/app_service.dart';
 import 'package:moviepilot_mobile/utils/http_path_builder_util.dart';
 import 'package:moviepilot_mobile/utils/toast_util.dart';
 
@@ -26,6 +27,17 @@ class SubscribePage extends GetView<SubscribeController> {
 
   @override
   Widget build(BuildContext context) {
+    if (!Get.find<AppService>().canSubscribe) {
+      return Scaffold(
+        appBar: _buildAppBar(context),
+        body: const Center(
+          child: Text(
+            '当前帐号无订阅权限',
+            style: TextStyle(fontSize: 14, color: CupertinoColors.systemGrey),
+          ),
+        ),
+      );
+    }
     return Scaffold(
       appBar: _buildAppBar(context),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
@@ -271,12 +283,31 @@ class SubscribePage extends GetView<SubscribeController> {
           ),
         );
       }
-      if (items.isEmpty) {
+      final shouldShowRecommendationArea =
+          controller.shouldShowRecommendationSection ||
+          controller.shouldShowRecommendationLoading;
+      if (items.isEmpty && hasFilters) {
         return SliverFillRemaining(
           hasScrollBody: false,
           child: Center(
             child: Text(
-              hasFilters ? '没有符合条件的订阅' : '暂无订阅',
+              '没有符合条件的订阅',
+              style: TextStyle(
+                color: CupertinoDynamicColor.resolve(
+                  CupertinoColors.secondaryLabel,
+                  context,
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+      if (items.isEmpty && !shouldShowRecommendationArea) {
+        return SliverFillRemaining(
+          hasScrollBody: false,
+          child: Center(
+            child: Text(
+              '暂无订阅',
               style: TextStyle(
                 color: CupertinoDynamicColor.resolve(
                   CupertinoColors.secondaryLabel,
@@ -440,6 +471,26 @@ class SubscribePage extends GetView<SubscribeController> {
   }
 
   Widget _buildTabEmptyState(BuildContext context) {
+    if (controller.userItems.isEmpty) {
+      final theme = Theme.of(context);
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          color: theme.colorScheme.surfaceContainer.withValues(alpha: 0.36),
+          border: Border.all(
+            color: theme.colorScheme.outline.withValues(alpha: 0.08),
+          ),
+        ),
+        child: Text(
+          '还没有订阅内容，先看看下面的推荐订阅吧',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.78),
+          ),
+        ),
+      );
+    }
     final hasAlternateTabItems = controller.isFollowingTab
         ? controller.washingItems.isNotEmpty
         : controller.followingItems.isNotEmpty;

@@ -4,9 +4,13 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:moviepilot_mobile/modules/login/models/login_profile.dart';
+import 'package:moviepilot_mobile/modules/plugin/models/installed_plugin_model_cache.dart';
+import 'package:moviepilot_mobile/modules/plugin/models/plugin_model_cache.dart';
 import 'package:moviepilot_mobile/utils/prefs_keys.dart';
 import 'package:moviepilot_mobile/modules/login/models/login_response.dart';
 import 'package:moviepilot_mobile/modules/profile/models/user_info.dart';
+import 'package:moviepilot_mobile/services/realm_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// 应用全局服务
@@ -263,6 +267,340 @@ class AppService extends GetxService {
 
   UserInfo? get userInfo => _userInfo;
 
+  bool? _parsePermissionValue(dynamic value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      if (normalized.isEmpty) return null;
+      if (normalized == 'true' || normalized == '1') return true;
+      if (normalized == 'false' || normalized == '0') return false;
+    }
+    return null;
+  }
+
+  dynamic _permissionValueFromMap(Map<String, dynamic> source, String key) {
+    if (source.containsKey(key)) return source[key];
+    final normalizedKey = key.toLowerCase();
+    for (final entry in source.entries) {
+      if (entry.key.toLowerCase() == normalizedKey) {
+        return entry.value;
+      }
+    }
+    return null;
+  }
+
+  Map<String, dynamic> _permissionsFromJson(String? raw) {
+    if (raw == null || raw.trim().isEmpty) {
+      return const <String, dynamic>{};
+    }
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map<String, dynamic>) {
+        return decoded;
+      }
+      if (decoded is Map) {
+        return Map<String, dynamic>.from(decoded);
+      }
+    } catch (_) {}
+    return const <String, dynamic>{};
+  }
+
+  LoginProfile? _findStoredProfile({
+    String? server,
+    String? username,
+    int? userId,
+    String? accessToken,
+  }) {
+    if (!Get.isRegistered<RealmService>()) return null;
+    try {
+      final profiles =
+          Get.find<RealmService>().realm.all<LoginProfile>().toList()
+            ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+      if (profiles.isEmpty) return null;
+
+      final normalizedServer = server?.trim();
+      final normalizedUsername = username?.trim().toLowerCase();
+      for (final profile in profiles) {
+        if (normalizedServer != null &&
+            normalizedServer.isNotEmpty &&
+            profile.server.trim() != normalizedServer) {
+          continue;
+        }
+        if (userId != null && profile.userId == userId) {
+          return profile;
+        }
+        if (accessToken != null &&
+            accessToken.isNotEmpty &&
+            profile.accessToken == accessToken) {
+          return profile;
+        }
+        if (normalizedUsername != null &&
+            normalizedUsername.isNotEmpty &&
+            profile.username.trim().toLowerCase() == normalizedUsername) {
+          return profile;
+        }
+      }
+    } catch (_) {
+      return null;
+    }
+    return null;
+  }
+
+  void restoreSessionFromProfile(LoginProfile profile) {
+    setBaseUrl(profile.server);
+    _loginResponse = LoginResponse(
+      accessToken: profile.accessToken,
+      tokenType: profile.tokenType,
+      superUser: profile.superUser,
+      userId: profile.userId,
+      userName: profile.userName,
+      avatar: profile.avatar,
+      level: profile.level,
+      permissions: _permissionsFromJson(profile.permissionsJson),
+      wizard: profile.wizard,
+    );
+
+    final currentUserId = _userInfo?.id;
+    final normalizedProfileName = profile.userName.trim().toLowerCase();
+    final normalizedUserInfoName = _userInfo?.name.trim().toLowerCase();
+    final isSameUser =
+        currentUserId == profile.userId ||
+        (normalizedUserInfoName != null &&
+            normalizedUserInfoName.isNotEmpty &&
+            normalizedUserInfoName == normalizedProfileName);
+    if (!isSameUser) {
+      _userInfo = null;
+    }
+    _clearRestrictedPluginCachesIfNeeded();
+  }
+
+  LoginProfile? get currentStoredProfile {
+    final login = _loginResponse;
+    final user = _userInfo;
+    return _findStoredProfile(
+      server: _baseUrl,
+      username: user?.name ?? login?.userName,
+      userId: user?.id ?? login?.userId,
+      accessToken: login?.accessToken,
+    );
+  }
+
+  String get pluginCacheScopeKey {
+    final profile = currentStoredProfile;
+    final server = (_baseUrl ?? profile?.server ?? '').trim().toLowerCase();
+    final userId =
+        _userInfo?.id.toString() ??
+        _loginResponse?.userId.toString() ??
+        profile?.userId.toString();
+    final username =
+        _userInfo?.name ??
+        _loginResponse?.userName ??
+        profile?.username ??
+        profile?.userName;
+    final normalizedUsername = username?.trim().toLowerCase() ?? '';
+    if (server.isEmpty) return '';
+    if (userId != null && userId.isNotEmpty) {
+      return '$server|$userId';
+    }
+    if (normalizedUsername.isNotEmpty) {
+      return '$server|$normalizedUsername';
+    }
+    return '';
+  }
+
+  void _clearPluginCaches() {
+    if (kIsWeb || !Get.isRegistered<RealmService>()) return;
+    try {
+      final scopeKey = pluginCacheScopeKey;
+      if (scopeKey.isEmpty) return;
+      final realm = Get.find<RealmService>().realm;
+      final installed = realm
+          .all<InstalledPluginModelCache>()
+          .where((item) => matchesInstalledPluginScope(item.id, scopeKey))
+          .toList();
+      final market = realm
+          .all<PluginModelCache>()
+          .where((item) => matchesPluginMarketScope(item.id, scopeKey))
+          .toList();
+      realm.write(() {
+        realm.deleteMany(installed);
+        realm.deleteMany(market);
+      });
+    } catch (_) {}
+  }
+
+  void _clearRestrictedPluginCachesIfNeeded() {
+    if (!canManage) {
+      _clearPluginCaches();
+    }
+  }
+
+  bool get isSuperuser {
+    final userSuperuser = _userInfo?.isSuperuser;
+    if (userSuperuser != null) return userSuperuser;
+
+    final loginSuperuser = _loginResponse?.superUser;
+    if (loginSuperuser != null) return loginSuperuser;
+
+    final profileSuperuser = currentStoredProfile?.superUser;
+    if (profileSuperuser != null) return profileSuperuser;
+
+    return false;
+  }
+
+  bool hasPermission(String key, {bool defaultValue = false}) {
+    if (isSuperuser) {
+      return true;
+    }
+
+    final permissionSources = <Map<String, dynamic>>[];
+    final userPermissions = _userInfo?.permissions;
+    if (userPermissions != null && userPermissions.isNotEmpty) {
+      permissionSources.add(userPermissions);
+    }
+    final loginPermissions = _loginResponse?.permissions;
+    if (loginPermissions != null && loginPermissions.isNotEmpty) {
+      permissionSources.add(loginPermissions);
+    }
+    final profilePermissions = currentStoredProfile?.permissionsJson;
+    final parsedProfilePermissions = _permissionsFromJson(profilePermissions);
+    if (parsedProfilePermissions.isNotEmpty) {
+      permissionSources.add(parsedProfilePermissions);
+    }
+
+    for (final source in permissionSources) {
+      final parsed = _parsePermissionValue(
+        _permissionValueFromMap(source, key),
+      );
+      if (parsed != null) return parsed;
+    }
+
+    if (permissionSources.isEmpty) {
+      return defaultValue;
+    }
+    return false;
+  }
+
+  bool get canDiscovery => hasPermission('discovery');
+
+  bool get canSearch => hasPermission('search');
+
+  bool get canSubscribe => hasPermission('subscribe');
+
+  bool get canManage => hasPermission('manage');
+
+  bool get canAccessAppSettings => true;
+
+  bool canAccessRoute(String? route, {bool defaultValue = true}) {
+    final normalized = route?.trim();
+    if (normalized == null || normalized.isEmpty) return true;
+
+    if (normalized == '/settings') {
+      return isSuperuser || canAccessAppSettings;
+    }
+
+    if (normalized.startsWith('/settings/app')) {
+      return canAccessAppSettings;
+    }
+
+    if (normalized == '/search-result') {
+      return canSearch;
+    }
+
+    if (normalized.startsWith('/subscribe') || normalized == '/workflow') {
+      return canSubscribe;
+    }
+
+    if (normalized.startsWith('/settings') ||
+        normalized == '/app/log' ||
+        normalized == '/background-task-list' ||
+        normalized == '/user-management') {
+      return isSuperuser;
+    }
+
+    if (normalized == '/media-search-list' ||
+        normalized == '/search-media-result' ||
+        normalized == '/person-search-list' ||
+        normalized == '/person-search-result') {
+      return canSearch;
+    }
+
+    if (normalized == '/storage-list' ||
+        normalized == '/directory-list' ||
+        normalized == '/organize-scrape' ||
+        normalized == '/site-sync' ||
+        normalized == '/site-options' ||
+        normalized == '/custom-rule' ||
+        normalized == '/priority-rule' ||
+        normalized == '/download-rule' ||
+        normalized == '/downloader-config' ||
+        normalized == '/mediaserver-config' ||
+        normalized == '/media-organize' ||
+        normalized.startsWith('/file-manager') ||
+        normalized.startsWith('/plugin') ||
+        normalized == '/site' ||
+        normalized.startsWith('/site-')) {
+      return canManage;
+    }
+
+    if (normalized.startsWith('/recommend') ||
+        normalized.startsWith('/discover')) {
+      return canDiscovery;
+    }
+
+    return defaultValue;
+  }
+
+  String accessDeniedMessage(String? route) {
+    final normalized = route?.trim() ?? '';
+    if (normalized == '/settings') {
+      return '当前帐号无设置访问权限';
+    }
+    if (normalized.startsWith('/settings/app')) {
+      return '当前帐号无应用设置权限';
+    }
+    if (normalized == '/search-result' ||
+        normalized == '/media-search-list' ||
+        normalized == '/search-media-result' ||
+        normalized == '/person-search-list' ||
+        normalized == '/person-search-result') {
+      return '当前帐号无搜索权限';
+    }
+    if (normalized.startsWith('/subscribe') || normalized == '/workflow') {
+      return '当前帐号无订阅权限';
+    }
+    if (normalized.startsWith('/settings') || normalized == '/app/log') {
+      return '当前帐号无系统设置权限';
+    }
+    if (normalized == '/user-management') {
+      return '当前帐号无账户管理权限';
+    }
+    if (normalized.startsWith('/recommend') ||
+        normalized.startsWith('/discover')) {
+      return '当前帐号无发现内容权限';
+    }
+    if (normalized == '/background-task-list' ||
+        normalized == '/storage-list' ||
+        normalized == '/directory-list' ||
+        normalized == '/organize-scrape' ||
+        normalized == '/site-sync' ||
+        normalized == '/site-options' ||
+        normalized == '/custom-rule' ||
+        normalized == '/priority-rule' ||
+        normalized == '/download-rule' ||
+        normalized == '/downloader-config' ||
+        normalized == '/mediaserver-config' ||
+        normalized == '/media-organize' ||
+        normalized.startsWith('/file-manager') ||
+        normalized.startsWith('/plugin') ||
+        normalized == '/site' ||
+        normalized.startsWith('/site-')) {
+      return '当前帐号无管理权限';
+    }
+    return '当前帐号无权限访问该功能';
+  }
+
   /// 设置缓存的cookie
   void setCookie(String cookie) {
     _cookie = cookie.isEmpty ? null : cookie;
@@ -300,12 +638,25 @@ class AppService extends GetxService {
   }
 
   saveProfile(String server, LoginResponse login) {
+    final currentUserId = _userInfo?.id;
+    final currentUserName = _userInfo?.name.trim().toLowerCase();
+    final nextUserName = login.userName.trim().toLowerCase();
     _loginResponse = login;
     setBaseUrl(server);
+    final isSameUser =
+        currentUserId == login.userId ||
+        (currentUserName != null &&
+            currentUserName.isNotEmpty &&
+            currentUserName == nextUserName);
+    if (!isSameUser) {
+      _userInfo = null;
+    }
+    _clearRestrictedPluginCachesIfNeeded();
   }
 
   void saveUserInfo(UserInfo userInfo) {
     _userInfo = userInfo;
+    _clearRestrictedPluginCachesIfNeeded();
   }
 
   /// 检查是否有缓存的cookie

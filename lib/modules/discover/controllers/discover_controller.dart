@@ -49,13 +49,17 @@ class DiscoverController extends GetxController {
   void onInit() {
     super.onInit();
     _bootstrapFilters();
-    loadCurrent();
+    if (_appService.canDiscovery) {
+      loadCurrent();
+    }
     ever(selectedSource, (_) {
       if (_suspendAutoLoad) return;
+      if (!_appService.canDiscovery) return;
       loadCurrent(forceRefresh: true);
     });
     ever(filters, (_) {
       if (_suspendAutoLoad) return;
+      if (!_appService.canDiscovery) return;
       loadCurrent(forceRefresh: true);
     });
   }
@@ -136,6 +140,9 @@ class DiscoverController extends GetxController {
   }
 
   void loadCurrent({bool forceRefresh = false}) {
+    if (!_appService.canDiscovery) {
+      return;
+    }
     final source = selectedSource.value;
     final filter = filters.value;
     final key = _cacheKey(source, filter);

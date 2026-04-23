@@ -41,6 +41,21 @@ class PluginListController extends GetxController {
   final selectedLabels = <String>[].obs;
   final selectedRepos = <String>[].obs;
 
+  bool get _canAccessPlugins => _appService.canManage;
+
+  void _clearLocalCache() {
+    if (kIsWeb) return;
+    final scopeKey = _appService.pluginCacheScopeKey;
+    if (scopeKey.isEmpty) return;
+    final stale = _realm
+        .all<PluginModelCache>()
+        .where((item) => matchesPluginMarketScope(item.id, scopeKey))
+        .toList();
+    _realm.write(() {
+      _realm.deleteMany(stale);
+    });
+  }
+
   void _invalidateComputedCache() {
     _cacheDirty = true;
   }
@@ -74,6 +89,9 @@ class PluginListController extends GetxController {
   }
 
   Future<Map<String, dynamic>> loadInstallCount() async {
+    if (!_canAccessPlugins) {
+      return {};
+    }
     final response = await _apiClient.get<dynamic>('/api/v1/plugin/statistic');
     final status = response.statusCode ?? 0;
     if (status >= 400) {
@@ -83,6 +101,9 @@ class PluginListController extends GetxController {
   }
 
   Future<void> _refreshUserCookie() async {
+    if (!_canAccessPlugins) {
+      return;
+    }
     final server = _appService.baseUrl ?? _apiClient.baseUrl;
     final token =
         _appService.loginResponse?.accessToken ??
@@ -102,6 +123,15 @@ class PluginListController extends GetxController {
   }
 
   Future<void> load({bool force = false}) async {
+    if (!_canAccessPlugins) {
+      _clearLocalCache();
+      errorText.value = '当前帐号无管理权限';
+      items.clear();
+      _displayedLimit = _pageSize;
+      _invalidateComputedCache();
+      isLoading.value = false;
+      return;
+    }
     isLoading.value = true;
     errorText.value = null;
     await _refreshUserCookie();
@@ -152,13 +182,28 @@ class PluginListController extends GetxController {
   }
 
   Future<void> loadFromCache() async {
+    if (!_canAccessPlugins) {
+      _clearLocalCache();
+      items.clear();
+      _displayedLimit = _pageSize;
+      _invalidateComputedCache();
+      return;
+    }
     if (kIsWeb) return;
+    final scopeKey = _appService.pluginCacheScopeKey;
+    if (scopeKey.isEmpty) {
+      items.clear();
+      _displayedLimit = _pageSize;
+      _invalidateComputedCache();
+      return;
+    }
     final cache = _realm.all<PluginModelCache>();
     if (cache.isEmpty) return;
     final locals = cache
+        .where((e) => matchesPluginMarketScope(e.id, scopeKey))
         .map(
           (e) => PluginItem(
-            id: e.id,
+            id: extractPluginMarketPluginId(e.id),
             pluginName: e.pluginName,
             pluginDesc: e.pluginDesc,
             pluginIcon: e.pluginIcon,
@@ -187,10 +232,12 @@ class PluginListController extends GetxController {
 
   void _saveToCache() {
     if (kIsWeb) return;
+    final scopeKey = _appService.pluginCacheScopeKey;
+    if (scopeKey.isEmpty) return;
     late final List<PluginModelCache> list = [];
     for (final item in items) {
       final cache = PluginModelCache(
-        item.id,
+        buildPluginMarketCacheId(scopeKey, item.id),
         item.pluginName,
         item.pluginDesc ?? '',
         item.pluginIcon ?? '',
@@ -213,8 +260,12 @@ class PluginListController extends GetxController {
       );
       list.add(cache);
     }
+    final stale = _realm
+        .all<PluginModelCache>()
+        .where((item) => matchesPluginMarketScope(item.id, scopeKey))
+        .toList();
     _realm.write(() {
-      _realm.deleteAll<PluginModelCache>();
+      _realm.deleteMany(stale);
       _realm.addAll(list, update: true);
     });
   }

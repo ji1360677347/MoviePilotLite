@@ -26,6 +26,9 @@ class MultifunctionPage extends GetView<MultifunctionController> {
         final siteModule = modulesByRoute['/site'];
         final downloaderModule = modulesByRoute['/downloader'];
         final calendarModule = modulesByRoute['/subscribe-calendar'];
+        final canShowSubscribeSection = controller.canAccessSubscribe;
+        final canShowManageCards =
+            siteModule != null || downloaderModule != null;
 
         final hiddenRoutes = <String>{
           '/search-result',
@@ -59,32 +62,52 @@ class MultifunctionPage extends GetView<MultifunctionController> {
                 ),
                 const SizedBox(height: 12),
               ],
-              _buildSubscriptionHero(
-                context,
-                movieModule: movieModule,
-                tvModule: tvModule,
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: SizedBox(
-                      height: 190,
-                      child: _buildSiteCard(context, siteModule),
-                    ),
+              if (canShowSubscribeSection) ...[
+                _buildSubscriptionHero(
+                  context,
+                  movieModule: movieModule,
+                  tvModule: tvModule,
+                ),
+                const SizedBox(height: 12),
+              ],
+              if (canShowManageCards) ...[
+                if (siteModule != null && downloaderModule != null)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: 190,
+                          child: _buildSiteCard(context, siteModule),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: SizedBox(
+                          height: 190,
+                          child: _buildDownloaderCard(
+                            context,
+                            downloaderModule,
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                else if (siteModule != null)
+                  SizedBox(
+                    height: 190,
+                    child: _buildSiteCard(context, siteModule),
+                  )
+                else if (downloaderModule != null)
+                  SizedBox(
+                    height: 190,
+                    child: _buildDownloaderCard(context, downloaderModule),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: SizedBox(
-                      height: 190,
-                      child: _buildDownloaderCard(context, downloaderModule),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              _buildCalendarCard(context, calendarModule),
-              const SizedBox(height: 12),
+                const SizedBox(height: 12),
+              ],
+              if (canShowSubscribeSection) ...[
+                _buildCalendarCard(context, calendarModule),
+                const SizedBox(height: 12),
+              ],
               _sectionTitle('功能入口'),
               const SizedBox(height: 8),
               ...restModules.map((module) {
@@ -122,11 +145,12 @@ class MultifunctionPage extends GetView<MultifunctionController> {
         child: const Icon(Icons.grid_view_rounded, color: Colors.white),
       ),
       actions: [
-        CupertinoButton(
-          padding: EdgeInsets.zero,
-          onPressed: () => Get.toNamed('/settings'),
-          child: const Icon(Icons.settings_outlined),
-        ),
+        if (controller.canAccessSystemSettings)
+          CupertinoButton(
+            padding: EdgeInsets.zero,
+            onPressed: () => controller.handleRouteTap('/settings', title: '设置'),
+            child: const Icon(Icons.settings_outlined),
+          ),
       ],
     );
   }

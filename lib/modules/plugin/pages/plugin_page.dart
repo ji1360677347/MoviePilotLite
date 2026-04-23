@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:moviepilot_mobile/modules/plugin/controllers/plugin_controller.dart';
 import 'package:moviepilot_mobile/modules/plugin/models/plugin_models.dart';
+import 'package:moviepilot_mobile/services/app_service.dart';
 import 'package:moviepilot_mobile/modules/plugin/widgets/plugin_item_card.dart';
 import 'package:moviepilot_mobile/utils/image_util.dart';
 import 'package:moviepilot_mobile/utils/open_url.dart';
@@ -25,6 +26,17 @@ class PluginPage extends GetView<PluginController> {
 
   @override
   Widget build(BuildContext context) {
+    if (!Get.find<AppService>().canManage) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('插件'), centerTitle: false),
+        body: const Center(
+          child: Text(
+            '当前帐号无管理权限',
+            style: TextStyle(fontSize: 14, color: CupertinoColors.systemGrey),
+          ),
+        ),
+      );
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Text('插件'),

@@ -8,7 +8,7 @@ import 'package:moviepilot_mobile/modules/setting/models/setting_models.dart';
 import 'package:moviepilot_mobile/utils/toast_util.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// 下载器配置列表：使用 DownloadController 的下载器列表与状态，支持新增、编辑
+/// 下载器配置列表：使用 Downloaders 列表，并复用运行指标展示。
 class DownloaderConfigListPage extends StatefulWidget {
   const DownloaderConfigListPage({super.key});
 
@@ -27,6 +27,9 @@ class _DownloaderConfigListPageState extends State<DownloaderConfigListPage> {
   void initState() {
     super.initState();
     _loadPrivacyMode();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await controller.refreshDownloaders();
+    });
   }
 
   Future<void> _loadPrivacyMode() async {
@@ -87,7 +90,7 @@ class _DownloaderConfigListPageState extends State<DownloaderConfigListPage> {
                   downloader: downloader,
                   stats: controller.statsFor(downloader.name),
                   obscureHost: _privacyModeEnabled,
-                  onTap: () => _navigateToForm(downloader),
+                  onTap: () => _navigateToDetail(downloader),
                 ),
               );
             },
@@ -129,26 +132,28 @@ class _DownloaderConfigListPageState extends State<DownloaderConfigListPage> {
     );
   }
 
-  void _navigateToForm(DownloadClient? client) {
+  void _navigateToDetail(DownloadClient? client) {
     if (client == null) {
       ToastUtil.warning('前往 web 添加下载器');
-    } else {
-      final type = _getDownloaderType(client.type);
-      if (type == null) {
-        ToastUtil.warning('下载器类型不支持');
-        return;
-      }
-      final config = {
-        'id': client.name,
-        'url': client.config?.host ?? '',
-        'username': client.config?.username ?? '',
-        'password': client.config?.password ?? '',
-        'type': type,
-        'name': client.name,
-      };
-
-      Get.toNamed('/downloader-detail', arguments: {'config': config});
+      return;
     }
+
+    final type = _getDownloaderType(client.type);
+    if (type == null) {
+      ToastUtil.warning('下载器类型不支持');
+      return;
+    }
+
+    final config = {
+      'id': client.name,
+      'url': client.config?.host ?? '',
+      'username': client.config?.username ?? '',
+      'password': client.config?.password ?? '',
+      'type': type,
+      'name': client.name,
+    };
+
+    Get.toNamed('/downloader-detail', arguments: {'config': config});
   }
 
   DownloaderType? _getDownloaderType(String type) {

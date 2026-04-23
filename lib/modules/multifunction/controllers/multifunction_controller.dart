@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:moviepilot_mobile/modules/login/models/login_profile.dart';
 import 'package:moviepilot_mobile/modules/multifunction/models/multifunction_config.dart';
 import 'package:moviepilot_mobile/modules/multifunction/models/multifunction_models.dart';
 import 'package:moviepilot_mobile/services/api_client.dart';
 import 'package:moviepilot_mobile/services/app_service.dart';
+import 'package:moviepilot_mobile/services/realm_service.dart';
 import 'package:moviepilot_mobile/utils/toast_util.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -148,6 +150,13 @@ class MultifunctionController extends GetxController {
   Timer? _downloaderPollingTimer;
   var _isRefreshingDownloader = false;
 
+  bool get canAccessDiscovery => _appService.canDiscovery;
+  bool get canAccessSearch => _appService.canSearch;
+  bool get canAccessSubscribe => _appService.canSubscribe;
+  bool get canAccessManage => _appService.canManage;
+  bool get canAccessSystemSettings => _appService.canAccessRoute('/settings');
+  bool get canAccessUserManagement => _appService.isSuperuser;
+
   @override
   void onInit() {
     super.onInit();
@@ -179,35 +188,49 @@ class MultifunctionController extends GetxController {
       siteDataReady.value = false;
 
       List<Map<String, dynamic>> subscribes = const [];
-      try {
-        subscribes = await _fetchSubscribeItems();
-        subscribeDataReady.value = true;
-      } catch (_) {
-        subscribes = const [];
-        subscribeDataReady.value = false;
-      }
-      _buildSubscribeInfo(subscribes);
-      try {
-        await _buildCalendarInfo(subscribes);
-        calendarDataReady.value = true;
-      } catch (_) {
+      if (canAccessSubscribe) {
+        try {
+          subscribes = await _fetchSubscribeItems();
+          subscribeDataReady.value = true;
+        } catch (_) {
+          subscribes = const [];
+          subscribeDataReady.value = false;
+        }
+        _buildSubscribeInfo(subscribes);
+        try {
+          await _buildCalendarInfo(subscribes);
+          calendarDataReady.value = true;
+        } catch (_) {
+          calendarInfo.value = const CalendarDashboardInfo();
+          calendarDataReady.value = false;
+        }
+      } else {
+        subscribeInfo.value = const SubscribeDashboardInfo();
         calendarInfo.value = const CalendarDashboardInfo();
-        calendarDataReady.value = false;
       }
-      await Future.wait([
+      final dashboardTasks = <Future<void>>[
         _loadDownloaderInfo()
             .then((ok) => downloaderDataReady.value = ok)
             .catchError((_) => downloaderDataReady.value = false),
-        _loadPluginCount()
-            .then((ok) => pluginDataReady.value = ok)
-            .catchError((_) => pluginDataReady.value = false),
-        _loadUserCount()
-            .then((ok) => userDataReady.value = ok)
-            .catchError((_) => userDataReady.value = false),
-        _loadSiteInfo()
-            .then((ok) => siteDataReady.value = ok)
-            .catchError((_) => siteDataReady.value = false),
-      ]);
+      ];
+      if (canAccessManage) {
+        dashboardTasks.addAll([
+          _loadPluginCount()
+              .then((ok) => pluginDataReady.value = ok)
+              .catchError((_) => pluginDataReady.value = false),
+          _loadUserCount()
+              .then((ok) => userDataReady.value = ok)
+              .catchError((_) => userDataReady.value = false),
+          _loadSiteInfo()
+              .then((ok) => siteDataReady.value = ok)
+              .catchError((_) => siteDataReady.value = false),
+        ]);
+      } else {
+        pluginInstalledCount.value = 0;
+        userCount.value = 0;
+        siteInfo.value = const SiteDashboardInfo();
+      }
+      await Future.wait(dashboardTasks);
     } finally {
       isLoadingDashboard.value = false;
       _startDownloaderPollingIfNeeded();
@@ -220,6 +243,10 @@ class MultifunctionController extends GetxController {
 
   void handleRouteTap(String? route, {String? title}) {
     var targetRoute = route;
+    if (!_appService.canAccessRoute(targetRoute)) {
+      ToastUtil.info(_appService.accessDeniedMessage(targetRoute));
+      return;
+    }
     if (targetRoute == '/downloader' &&
         _appService.enableDownloaderManager.value) {
       targetRoute = '/downloader-config';
@@ -247,6 +274,11 @@ class MultifunctionController extends GetxController {
 
   /// 仅刷新多功能页的订阅区数据（电影/剧集计数与海报），避免全量刷新。
   Future<void> refreshSubscribeSection() async {
+    if (!canAccessSubscribe) {
+      subscribeDataReady.value = false;
+      _buildSubscribeInfo(const []);
+      return;
+    }
     try {
       final subscribes = await _fetchSubscribeItems();
       subscribeDataReady.value = true;
@@ -277,18 +309,78 @@ class MultifunctionController extends GetxController {
     }
   }
 
+  String? _normalizeUsername(String? value) {
+    final normalized = value?.trim();
+    if (normalized == null || normalized.isEmpty) return null;
+    return normalized.toLowerCase();
+  }
+
+  String? _latestProfileUsername() {
+    if (kIsWeb || !Get.isRegistered<RealmService>()) return null;
+    try {
+      final profiles =
+          Get.find<RealmService>().realm.all<LoginProfile>().toList()
+            ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+      if (profiles.isEmpty) return null;
+      return _normalizeUsername(profiles.first.username);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Set<String> _currentUsernames() {
+    final usernames = <String>{};
+
+    final profileUsername = _latestProfileUsername();
+    if (profileUsername != null) {
+      usernames.add(profileUsername);
+    }
+
+    final loginUsername = _normalizeUsername(
+      _appService.loginResponse?.userName,
+    );
+    if (loginUsername != null) {
+      usernames.add(loginUsername);
+    }
+
+    final userInfoName = _normalizeUsername(_appService.userInfo?.name);
+    if (userInfoName != null) {
+      usernames.add(userInfoName);
+    }
+
+    return usernames;
+  }
+
+  bool _matchesCurrentUser(
+    Map<String, dynamic> item,
+    Set<String> currentUsernames,
+  ) {
+    if (_appService.isSuperuser) return true;
+    if (currentUsernames.isEmpty) return true;
+    final itemUsername = _normalizeUsername(item['username']?.toString());
+    if (itemUsername == null) return false;
+    return currentUsernames.contains(itemUsername);
+  }
+
   Future<List<Map<String, dynamic>>> _fetchSubscribeItems() async {
     final response = await _apiClient.get<dynamic>('/api/v1/subscribe/');
     final status = response.statusCode ?? 0;
     if (status >= 400) {
       throw Exception('subscribe request failed');
     }
+    final currentUsernames = _currentUsernames();
     final raw = response.data;
     if (raw is List) {
-      return raw.whereType<Map<String, dynamic>>().toList();
+      return raw
+          .whereType<Map<String, dynamic>>()
+          .where((item) => _matchesCurrentUser(item, currentUsernames))
+          .toList();
     }
     if (raw is Map<String, dynamic> && raw['data'] is List) {
-      return (raw['data'] as List).whereType<Map<String, dynamic>>().toList();
+      return (raw['data'] as List)
+          .whereType<Map<String, dynamic>>()
+          .where((item) => _matchesCurrentUser(item, currentUsernames))
+          .toList();
     }
     return const [];
   }
@@ -443,6 +535,10 @@ class MultifunctionController extends GetxController {
   }
 
   Future<bool> _loadPluginCount() async {
+    if (!canAccessManage) {
+      pluginInstalledCount.value = 0;
+      return false;
+    }
     final response = await _apiClient.get<dynamic>(
       '/api/v1/plugin/',
       queryParameters: {'state': 'installed'},
@@ -461,6 +557,10 @@ class MultifunctionController extends GetxController {
   }
 
   Future<bool> _loadUserCount() async {
+    if (!canAccessManage) {
+      userCount.value = 0;
+      return false;
+    }
     final response = await _apiClient.get<dynamic>('/api/v1/user/');
     if ((response.statusCode ?? 0) >= 400) {
       userCount.value = 0;
@@ -476,6 +576,10 @@ class MultifunctionController extends GetxController {
   }
 
   Future<bool> _loadSiteInfo() async {
+    if (!canAccessManage) {
+      siteInfo.value = const SiteDashboardInfo();
+      return false;
+    }
     final siteResp = await _apiClient.get<dynamic>('/api/v1/site/');
     var count = 0;
     var siteOk = false;
@@ -568,6 +672,7 @@ class MultifunctionController extends GetxController {
         .toList();
     final allItems = multifunctionSections
         .expand((section) => section.items)
+        .where((item) => _appService.canAccessRoute(item.route))
         .toList();
     final modules = allItems.map((item) {
       final route = item.route ?? '';

@@ -341,6 +341,8 @@ class SubscribeItemCard extends StatelessWidget {
   }) {
     final textColor = Colors.white.withValues(alpha: 0.88);
     final secondaryColor = Colors.white.withValues(alpha: 0.58);
+    final userTextColor = const Color(0xFFFFD166);
+    final userIconColor = const Color(0xFFFFB84D);
     final fontSize = compact ? 10.5 : 11.5;
     final spacing = compact ? 8.0 : 10.0;
 
@@ -351,8 +353,8 @@ class SubscribeItemCard extends StatelessWidget {
           icon: CupertinoIcons.person_fill,
           label: item.username ?? 'admin',
           fontSize: fontSize,
-          textColor: textColor,
-          iconColor: secondaryColor,
+          textColor: userTextColor,
+          iconColor: userIconColor,
         ),
       ),
       if (isTv && _hasEpisodeInfo) ...[

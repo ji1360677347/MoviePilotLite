@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:moviepilot_mobile/modules/plugin/controllers/plugin_list_controller.dart';
 import 'package:moviepilot_mobile/modules/plugin/models/plugin_models.dart';
+import 'package:moviepilot_mobile/services/app_service.dart';
 import 'package:moviepilot_mobile/theme/section.dart';
 import 'package:moviepilot_mobile/utils/image_util.dart';
 import 'package:moviepilot_mobile/utils/toast_util.dart';
@@ -22,8 +23,13 @@ enum PluginInfoSheetState { normal, installing, installed }
 
 class _PluginInfoSheetState extends State<PluginInfoSheet> {
   final controller = Get.find<PluginController>();
-  final pluginListController = Get.put(PluginListController());
   final isInstalling = PluginInfoSheetState.normal.obs;
+
+  PluginListController? get pluginListController =>
+      Get.isRegistered<PluginListController>()
+      ? Get.find<PluginListController>()
+      : null;
+
   @override
   Widget build(BuildContext context) {
     final iconUrl =
@@ -95,6 +101,10 @@ class _PluginInfoSheetState extends State<PluginInfoSheet> {
                   () => Expanded(
                     child: ElevatedButton.icon(
                       onPressed: () async {
+                        if (!Get.find<AppService>().canManage) {
+                          ToastUtil.info('当前帐号无管理权限');
+                          return;
+                        }
                         if (isInstalling.value ==
                                 PluginInfoSheetState.installing ||
                             isInstalling.value ==
@@ -110,7 +120,7 @@ class _PluginInfoSheetState extends State<PluginInfoSheet> {
                           ToastUtil.success('安装成功');
                           isInstalling.value = PluginInfoSheetState.installed;
                           controller.load(force: true);
-                          pluginListController.load(force: true);
+                          pluginListController?.load(force: true);
                         } else {
                           ToastUtil.error('安装失败');
                         }
@@ -126,7 +136,7 @@ class _PluginInfoSheetState extends State<PluginInfoSheet> {
                                 PluginInfoSheetState.installing
                             ? Theme.of(
                                 context,
-                              ).colorScheme.primary.withOpacity(0.5)
+                              ).colorScheme.primary.withValues(alpha: 0.5)
                             : Theme.of(context).colorScheme.primary,
                         foregroundColor: Colors.white,
                         elevation: 0,

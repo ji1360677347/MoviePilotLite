@@ -132,11 +132,14 @@ class RecommendController extends GetxController {
   Future<void> _initLocalConfig() async {
     await _loadLocalConfig();
     _syncSubCategory();
+    if (!_appService.canDiscovery) {
+      return;
+    }
     prefetchAllVisibleCategories();
-    ever(
-      selectedCategory,
-      (_) => prefetchAllVisibleCategories(forceRefresh: true),
-    );
+    ever(selectedCategory, (_) {
+      if (!_appService.canDiscovery) return;
+      prefetchAllVisibleCategories(forceRefresh: true);
+    });
   }
 
   Future<void> ensureUserCookieRefreshed() async {
@@ -221,6 +224,7 @@ class RecommendController extends GetxController {
   }
 
   void prefetchCurrentCategory({bool forceRefresh = false}) {
+    if (!_appService.canDiscovery) return;
     _refreshUserCookie();
     for (final subCategory in currentSubCategories) {
       ensureSubCategoryLoaded(subCategory, forceRefresh: forceRefresh);
@@ -228,6 +232,7 @@ class RecommendController extends GetxController {
   }
 
   void prefetchAllVisibleCategories({bool forceRefresh = false}) {
+    if (!_appService.canDiscovery) return;
     _refreshUserCookie();
     for (final subCategory in allVisibleSubCategories) {
       ensureSubCategoryLoaded(subCategory, forceRefresh: forceRefresh);
