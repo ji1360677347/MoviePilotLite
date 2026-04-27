@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import 'package:moviepilot_mobile/modules/plugin/services/plugin_palette_cache.dart';
 import 'package:moviepilot_mobile/modules/recommend/models/recommend_api_item.dart';
 import 'package:moviepilot_mobile/modules/recommend/widgets/recommend_item_card.dart';
+import 'package:moviepilot_mobile/modules/search_result/controllers/search_result_controller.dart';
 import 'package:moviepilot_mobile/theme/app_theme.dart';
 import 'package:moviepilot_mobile/utils/grid_layout.dart';
 import 'package:moviepilot_mobile/utils/image_util.dart';
@@ -21,8 +22,11 @@ class MediaSearchListPage extends GetView<MediaSearchListController> {
   static const double _gridSpacing = 8;
   static const double _gridPadding = 16;
   static const double _cardAspectRatio = 1 / 1.3;
+  static const double _listCardHeight = 250;
   static const double _immersiveHeaderHeight = 250;
+  static const double _narrowScreenBreakpoint = 600;
   static const int _skeletonGridCount = 8;
+  static const int _skeletonListCount = 6;
   @override
   Widget build(BuildContext context) {
     return Obx(() {
@@ -58,12 +62,17 @@ class MediaSearchListPage extends GetView<MediaSearchListController> {
       final isLoading = controller.isLoading.value;
       final error = controller.error.value;
       final hasMore = controller.hasMore.value;
+      final isNarrowScreen =
+          MediaQuery.sizeOf(context).width < _narrowScreenBreakpoint;
+      final viewMode = controller.resolvedViewMode(
+        isNarrowScreen: isNarrowScreen,
+      );
       final layout = gridLayout(
         context,
         gridSpacing: _gridSpacing,
         gridPadding: _gridPadding,
       );
-      final showSkeletonGrid = isLoading && items.isEmpty;
+      final showSkeletonItems = isLoading && items.isEmpty;
       return RefreshIndicator(
         onRefresh: () => controller.search(),
         child: CustomScrollView(
@@ -75,11 +84,13 @@ class MediaSearchListPage extends GetView<MediaSearchListController> {
               bodyColor: bodyColor,
               isLoading: isLoading,
               hasItems: items.isNotEmpty,
+              viewMode: viewMode,
+              isNarrowScreen: isNarrowScreen,
             ),
             SliverToBoxAdapter(
               child: _buildSummary(context, immersive: immersive),
             ),
-            if (!showSkeletonGrid && items.isEmpty)
+            if (!showSkeletonItems && items.isEmpty)
               SliverFillRemaining(
                 hasScrollBody: false,
                 child: _buildPlaceholderState(
@@ -96,45 +107,16 @@ class MediaSearchListPage extends GetView<MediaSearchListController> {
                   _gridPadding,
                   _gridPadding,
                 ),
-                sliver: Skeletonizer.sliver(
-                  enabled: showSkeletonGrid,
-                  child: SliverGrid(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        if (showSkeletonGrid) {
-                          return RecommendItemCard(
-                            item: RecommendApiItem(),
-                            onTap: null,
-                          );
-                        }
-                        final item = items[index];
-                        return Obx(() {
-                          final appService = Get.find<AppService>();
-                          final existsOn =
-                              appService.enableFetchMediaserverLibraryStatus.value;
-                          final existsKey = controller.mediaserverExistsKey(item);
-                          final inLib = existsOn &&
-                              (controller.mediaserverInLibrary[existsKey] ??
-                                  false);
-                          return RecommendItemCard(
-                            item: item,
-                            inLibrary: inLib,
-                            onTap: () => _openDetail(item),
-                          );
-                        });
-                      },
-                      childCount: showSkeletonGrid
-                          ? _skeletonGridCount
-                          : items.length,
-                    ),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: layout.crossAxisCount,
-                      mainAxisSpacing: _gridSpacing,
-                      crossAxisSpacing: _gridSpacing,
-                      childAspectRatio: _cardAspectRatio,
-                    ),
-                  ),
-                ),
+                sliver: viewMode == SearchResultViewMode.list
+                    ? _buildListSliver(
+                        items,
+                        showSkeletonItems: showSkeletonItems,
+                      )
+                    : _buildGridSliver(
+                        items,
+                        layout.crossAxisCount,
+                        showSkeletonItems: showSkeletonItems,
+                      ),
               ),
             SliverToBoxAdapter(
               child: _buildBottomStatus(
@@ -149,6 +131,94 @@ class MediaSearchListPage extends GetView<MediaSearchListController> {
             const SliverPadding(padding: EdgeInsets.only(bottom: 80)),
           ],
         ),
+      );
+    });
+  }
+
+  Widget _buildGridSliver(
+    List<RecommendApiItem> items,
+    int crossAxisCount, {
+    required bool showSkeletonItems,
+  }) {
+    return Skeletonizer.sliver(
+      enabled: showSkeletonItems,
+      child: SliverGrid(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) => _buildMediaItem(
+            items,
+            index,
+            showSkeletonItems: showSkeletonItems,
+            listMode: false,
+          ),
+          childCount: showSkeletonItems ? _skeletonGridCount : items.length,
+        ),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: crossAxisCount,
+          mainAxisSpacing: _gridSpacing,
+          crossAxisSpacing: _gridSpacing,
+          childAspectRatio: _cardAspectRatio,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildListSliver(
+    List<RecommendApiItem> items, {
+    required bool showSkeletonItems,
+  }) {
+    return Skeletonizer.sliver(
+      enabled: showSkeletonItems,
+      child: SliverList(
+        delegate: SliverChildBuilderDelegate((context, index) {
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom:
+                  index ==
+                      (showSkeletonItems ? _skeletonListCount : items.length) -
+                          1
+                  ? 0
+                  : _gridSpacing,
+            ),
+            child: SizedBox(
+              height: _listCardHeight,
+              child: _buildMediaItem(
+                items,
+                index,
+                showSkeletonItems: showSkeletonItems,
+                listMode: true,
+              ),
+            ),
+          );
+        }, childCount: showSkeletonItems ? _skeletonListCount : items.length),
+      ),
+    );
+  }
+
+  Widget _buildMediaItem(
+    List<RecommendApiItem> items,
+    int index, {
+    required bool showSkeletonItems,
+    required bool listMode,
+  }) {
+    if (showSkeletonItems) {
+      return RecommendItemCard(
+        item: RecommendApiItem(),
+        onTap: null,
+        cardHeight: listMode ? _listCardHeight : null,
+      );
+    }
+    final item = items[index];
+    return Obx(() {
+      final appService = Get.find<AppService>();
+      final existsOn = appService.enableFetchMediaserverLibraryStatus.value;
+      final existsKey = controller.mediaserverExistsKey(item);
+      final inLib =
+          existsOn && (controller.mediaserverInLibrary[existsKey] ?? false);
+      return RecommendItemCard(
+        item: item,
+        cardHeight: listMode ? _listCardHeight : null,
+        inLibrary: inLib,
+        onTap: () => _openDetail(item),
       );
     });
   }
@@ -304,6 +374,8 @@ class MediaSearchListPage extends GetView<MediaSearchListController> {
     required Color bodyColor,
     required bool isLoading,
     required bool hasItems,
+    required SearchResultViewMode viewMode,
+    required bool isNarrowScreen,
   }) {
     final baseA = Colors.black;
     final baseB = Colors.black.withValues(alpha: 0.5);
@@ -324,6 +396,19 @@ class MediaSearchListPage extends GetView<MediaSearchListController> {
       expandedHeight: _immersiveHeaderHeight,
       backgroundColor: Colors.transparent,
       title: hasItems ? title : null,
+      actions: [
+        IconButton(
+          tooltip: viewMode == SearchResultViewMode.list ? '切换为网格' : '切换为列表',
+          onPressed: () =>
+              controller.toggleViewMode(isNarrowScreen: isNarrowScreen),
+          icon: Icon(
+            viewMode == SearchResultViewMode.list
+                ? CupertinoIcons.square_grid_2x2
+                : CupertinoIcons.list_bullet,
+            color: Colors.white,
+          ),
+        ),
+      ],
       leading: IconButton(
         icon: const Icon(Icons.arrow_back, color: Colors.white),
         onPressed: Get.back,
