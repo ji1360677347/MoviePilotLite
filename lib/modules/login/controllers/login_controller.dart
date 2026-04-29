@@ -195,7 +195,9 @@ class LoginController extends GetxController {
         Get.offAllNamed('/main');
       }
       imageUtil.loadGlobalCachedConfig();
-      isAutoLogin.value = false;
+      Future.delayed(const Duration(seconds: 1), () {
+        isAutoLogin.value = false;
+      });
     } catch (e) {
       _talker.warning('恢复本地登录态失败: $e');
       isAutoLogin.value = false;
