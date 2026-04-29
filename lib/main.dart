@@ -451,7 +451,7 @@ class MyApp extends StatelessWidget {
             page: () => const DownloaderConfigListPage(),
             binding: BindingsBuilder(() {
               if (!Get.isRegistered<DownloadController>()) {
-                Get.put(DownloadController(), permanent: true);
+                Get.put(DownloadController(), permanent: false);
               }
             }),
             middlewares: permissionGuards('/downloader-config'),

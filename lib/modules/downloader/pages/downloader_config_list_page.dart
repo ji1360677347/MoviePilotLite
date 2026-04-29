@@ -1,5 +1,6 @@
 import 'package:altman_downloader_control/controller/downloader_config.dart'
     show DownloaderType;
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:moviepilot_mobile/modules/download/controllers/download_controller.dart';
@@ -47,7 +48,17 @@ class _DownloaderConfigListPageState extends State<DownloaderConfigListPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('下载器'), centerTitle: false),
+      appBar: AppBar(
+        title: const Text('下载器'),
+        centerTitle: false,
+        actions: [
+          CupertinoButton(
+            padding: EdgeInsets.zero,
+            onPressed: () => controller.refreshDownloaders(),
+            child: const Icon(Icons.refresh_rounded),
+          ),
+        ],
+      ),
       body: Obx(() {
         if (controller.isLoadingDownloaders && controller.downloaders.isEmpty) {
           return const Center(child: CircularProgressIndicator());

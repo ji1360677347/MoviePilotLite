@@ -185,6 +185,9 @@ class _IndexState extends State<Index> {
             }
             setState(() => _selectedIndex = index);
             _persistSelectedIndex(index);
+            if (index == 3 && Get.isRegistered<MultifunctionController>()) {
+              Get.find<MultifunctionController>().refreshDashboard();
+            }
           },
           borderRadius: BorderRadius.circular(999),
           splashColor: primary.withValues(alpha: 0.12),
@@ -322,21 +325,11 @@ class _IndexState extends State<Index> {
           body: IndexedStack(
             index: i,
             children: [
-              DashboardPage(
-                scrollController: _tabScrollControllers[0],
-              ),
-              RecommendPage(
-                scrollController: _tabScrollControllers[1],
-              ),
-              DiscoverPage(
-                scrollController: _tabScrollControllers[2],
-              ),
-              MultifunctionPage(
-                scrollController: _tabScrollControllers[3],
-              ),
-              SearchIndexPage(
-                scrollController: _tabScrollControllers[4],
-              ),
+              DashboardPage(scrollController: _tabScrollControllers[0]),
+              RecommendPage(scrollController: _tabScrollControllers[1]),
+              DiscoverPage(scrollController: _tabScrollControllers[2]),
+              MultifunctionPage(scrollController: _tabScrollControllers[3]),
+              SearchIndexPage(scrollController: _tabScrollControllers[4]),
             ],
           ),
         );

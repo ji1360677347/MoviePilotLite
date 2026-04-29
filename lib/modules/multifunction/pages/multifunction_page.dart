@@ -126,17 +126,21 @@ class MultifunctionPage extends GetView<MultifunctionController> {
 
   PreferredSizeWidget _buildNavigationBar() {
     return AppBar(
-      backgroundColor: _background,
-      foregroundColor: _textPrimary,
-      surfaceTintColor: Colors.transparent,
+      backgroundColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
-      automaticallyImplyLeading: false,
-      titleSpacing: 20,
-      leading: CupertinoButton(
-        padding: EdgeInsets.zero,
-        onPressed: () {},
-        child: const Icon(Icons.grid_view_rounded),
+      surfaceTintColor: Colors.transparent,
+      titleSpacing: 0,
+      leading: Builder(
+        builder: (buttonContext) => CupertinoButton(
+          padding: EdgeInsets.zero,
+          onPressed: () {},
+          child: Icon(
+            CupertinoIcons.square_grid_2x2_fill,
+            size: 18,
+            color: _textPrimary,
+          ),
+        ),
       ),
       title: const Text(
         'More',
@@ -355,7 +359,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
         const SizedBox(height: 16),
         SizedBox(
           key: ValueKey('release-$segment'),
-          height: 206,
+          height: items.isEmpty ? 88 : 206,
           child: items.isEmpty
               ? _emptyReleasesCard(module)
               : ListView.separated(
@@ -982,12 +986,12 @@ class MultifunctionPage extends GetView<MultifunctionController> {
   }
 
   String _utilityTitle(String title) {
-    if (title == '媒体整理') return '媒体\n整理';
-    if (title == '文件管理') return '文件\n管理';
-    if (title == '工作流') return '自动化\n工作流';
-    if (title == '插件') return '插件\n中心';
-    if (title == '用户管理') return '用户\n管理';
-    return title.replaceFirst('管理', '\n管理');
+    if (title == '媒体整理') return '媒体整理';
+    if (title == '文件管理') return '文件管理';
+    if (title == '工作流') return '工作流';
+    if (title == '插件') return '插件';
+    if (title == '用户管理') return '用户管理';
+    return title;
   }
 
   static String _shortDate(String date) {

@@ -238,11 +238,11 @@ class MultifunctionController extends GetxController {
     }
   }
 
-  void handleTap(MultifunctionItem item) {
-    handleRouteTap(item.route, title: item.title);
+  Future<void> handleTap(MultifunctionItem item) async {
+    await handleRouteTap(item.route, title: item.title);
   }
 
-  void handleRouteTap(String? route, {String? title}) {
+  Future<void> handleRouteTap(String? route, {String? title}) async {
     var targetRoute = route;
     if (!_appService.canAccessRoute(targetRoute)) {
       ToastUtil.info(_appService.accessDeniedMessage(targetRoute));
@@ -253,7 +253,10 @@ class MultifunctionController extends GetxController {
       targetRoute = '/downloader-config';
     }
     if (targetRoute != null && targetRoute.isNotEmpty) {
-      Get.toNamed(targetRoute);
+      await Get.toNamed(targetRoute);
+      if (!isClosed) {
+        await refreshDashboard();
+      }
       return;
     }
     ToastUtil.info('${title ?? '该功能'} 暂未开放');
@@ -363,8 +366,16 @@ class MultifunctionController extends GetxController {
     return currentUsernames.contains(itemUsername);
   }
 
+  String? _getToken() =>
+      _appService.loginResponse?.accessToken ??
+      _appService.latestLoginProfileAccessToken ??
+      _apiClient.token;
+
   Future<List<Map<String, dynamic>>> _fetchSubscribeItems() async {
-    final response = await _apiClient.get<dynamic>('/api/v1/subscribe/');
+    final response = await _apiClient.get<dynamic>(
+      '/api/v1/subscribe/',
+      token: _getToken(),
+    );
     final status = response.statusCode ?? 0;
     if (status >= 400) {
       throw Exception('subscribe request failed');
@@ -438,6 +449,7 @@ class MultifunctionController extends GetxController {
       final poster = normalizePoster((item['poster']?.toString() ?? '').trim());
       final response = await _apiClient.get<dynamic>(
         '/api/v1/tmdb/$tmdbId/$season',
+        token: _getToken(),
       );
       final status = response.statusCode ?? 0;
       if (status >= 400) continue;

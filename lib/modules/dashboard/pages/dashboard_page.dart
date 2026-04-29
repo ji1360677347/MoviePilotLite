@@ -227,9 +227,10 @@ class DashboardPage extends GetView<DashboardController> {
   AppBar _buildNavigationBar(BuildContext context) {
     final avatarStr = _dashboardBarAvatar();
     final palette = DashboardPalette.of(context);
+    final isSuperuser = Get.find<AppService>().isSuperuser;
 
     return AppBar(
-      backgroundColor: palette.appBarBackground,
+      backgroundColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
       surfaceTintColor: Colors.transparent,
@@ -249,61 +250,59 @@ class DashboardPage extends GetView<DashboardController> {
         'Dashboard',
         style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
       ),
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(1),
-        child: Container(height: 1, color: palette.divider),
-      ),
+      centerTitle: false,
       actions: [
-        Builder(
-          builder: (context) {
-            if (!Get.isRegistered<SystemMessageController>()) {
-              return CupertinoButton(
-                padding: EdgeInsets.zero,
-                onPressed: () => Get.toNamed('/system-message'),
-                child: _buildActionBadge(
-                  child: Icon(
-                    CupertinoIcons.dot_radiowaves_left_right,
-                    size: 18,
-                    color: palette.mutedText,
-                  ),
-                ),
-              );
-            }
-            return Obx(() {
-              final hasUnread =
-                  Get.find<SystemMessageController>().hasUnreadMessages.value;
-              return CupertinoButton(
-                padding: EdgeInsets.zero,
-                onPressed: () => Get.toNamed('/system-message'),
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    _buildActionBadge(
-                      child: Icon(
-                        CupertinoIcons.dot_radiowaves_left_right,
-                        size: 18,
-                        color: palette.mutedText,
-                      ),
+        if (isSuperuser)
+          Builder(
+            builder: (context) {
+              if (!Get.isRegistered<SystemMessageController>()) {
+                return CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  onPressed: () => Get.toNamed('/system-message'),
+                  child: _buildActionBadge(
+                    child: Icon(
+                      CupertinoIcons.dot_radiowaves_left_right,
+                      size: 18,
+                      color: palette.mutedText,
                     ),
-                    if (hasUnread)
-                      Positioned(
-                        right: -1,
-                        top: -1,
-                        child: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: palette.primary,
-                            shape: BoxShape.circle,
-                          ),
+                  ),
+                );
+              }
+              return Obx(() {
+                final hasUnread =
+                    Get.find<SystemMessageController>().hasUnreadMessages.value;
+                return CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  onPressed: () => Get.toNamed('/system-message'),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      _buildActionBadge(
+                        child: Icon(
+                          CupertinoIcons.dot_radiowaves_left_right,
+                          size: 18,
+                          color: palette.mutedText,
                         ),
                       ),
-                  ],
-                ),
-              );
-            });
-          },
-        ),
+                      if (hasUnread)
+                        Positioned(
+                          right: -1,
+                          top: -1,
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: palette.primary,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              });
+            },
+          ),
         CupertinoButton(
           padding: const EdgeInsets.only(left: 6, right: 12),
           onPressed: () => _showProfile(context),
@@ -704,6 +703,7 @@ class DashboardPage extends GetView<DashboardController> {
 
   /// 显示捷径
   void _showShortcuts(BuildContext context) {
+    final isSuperuser = Get.find<AppService>().isSuperuser;
     final overlay = Overlay.of(context);
 
     // 计算按钮在屏幕中的位置，用于锚定菜单
@@ -753,12 +753,13 @@ class DashboardPage extends GetView<DashboardController> {
         subtitle: '健康检查',
         onTap: () => _showSystemHealthModal(context),
       ),
-      ShortcutItem(
-        icon: CupertinoIcons.chat_bubble_2_fill,
-        title: '消息',
-        subtitle: '消息中心',
-        onTap: () => Get.toNamed('/system-message'),
-      ),
+      if (isSuperuser)
+        ShortcutItem(
+          icon: CupertinoIcons.chat_bubble_2_fill,
+          title: '消息',
+          subtitle: '消息中心',
+          onTap: () => Get.toNamed('/system-message'),
+        ),
     ];
 
     late OverlayEntry entry;
