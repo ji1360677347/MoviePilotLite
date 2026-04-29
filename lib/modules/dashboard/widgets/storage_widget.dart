@@ -107,6 +107,6 @@ class StorageWidget extends StatelessWidget {
 
   /// 格式化存储大小
   String _formatStorageSize(double bytes) {
-    return SizeFormatter.formatSize(bytes, 2);
+    return SizeFormatter.formatSize(bytes, 0);
   }
 }

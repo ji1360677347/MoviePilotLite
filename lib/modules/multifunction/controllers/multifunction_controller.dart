@@ -9,6 +9,7 @@ import 'package:moviepilot_mobile/modules/multifunction/models/multifunction_mod
 import 'package:moviepilot_mobile/services/api_client.dart';
 import 'package:moviepilot_mobile/services/app_service.dart';
 import 'package:moviepilot_mobile/services/realm_service.dart';
+import 'package:moviepilot_mobile/utils/image_util.dart';
 import 'package:moviepilot_mobile/utils/toast_util.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -463,7 +464,9 @@ class MultifunctionController extends GetxController {
           todayEntries.add(entry);
         }
         if (date.compareTo(weekEndStr) <= 0) {
-          weekCount++;
+          if (date != todayStr) {
+            weekCount++;
+          }
           weekEntries.add(entry);
         }
       }
@@ -474,11 +477,14 @@ class MultifunctionController extends GetxController {
       if (cmp != 0) return cmp;
       return a.episodeCode.compareTo(b.episodeCode);
     });
+    final upcomingWeekEntries = weekEntries
+        .where((entry) => entry.airDate != todayStr)
+        .toList();
     calendarInfo.value = CalendarDashboardInfo(
       todayCount: todayCount,
       weekCount: weekCount,
       todayItems: todayEntries.take(3).toList(),
-      weekItems: weekEntries.take(4).toList(),
+      weekItems: upcomingWeekEntries.take(4).toList(),
     );
   }
 
@@ -631,13 +637,16 @@ class MultifunctionController extends GetxController {
   String normalizePoster(String raw) {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) return '';
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-      return trimmed;
-    }
-    if (trimmed.startsWith('/')) {
-      return 'https://image.tmdb.org/t/p/w300$trimmed';
-    }
-    return trimmed;
+    final url = ImageUtil.convertCacheImageUrl(raw);
+    return url.isNotEmpty ? url : trimmed;
+
+    // if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    //   return trimmed;
+    // }
+    // if (trimmed.startsWith('/')) {
+    //   return 'https://image.tmdb.org/t/p/w300$trimmed';
+    // }
+    // return trimmed;
   }
 
   int _asInt(dynamic value) {
