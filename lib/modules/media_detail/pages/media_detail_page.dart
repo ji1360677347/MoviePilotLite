@@ -1409,6 +1409,7 @@ class MediaDetailPage extends GetWidget<MediaDetailController> {
         seasons: detail == null ? null : _availableSeasons(detail),
         mediaSearchKey: searchKey,
       ),
+      isScrollControlled: true,
     );
     if (result == null) return;
     final (area, sites) = (result.area, result.sites);

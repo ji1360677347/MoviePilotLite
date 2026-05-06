@@ -4,11 +4,15 @@ import 'package:moviepilot_mobile/applog/app_log.dart';
 import 'package:moviepilot_mobile/modules/login/repositories/auth_repository.dart';
 import 'package:moviepilot_mobile/modules/recommend/controllers/recommend_api_item_ext.dart';
 import 'package:moviepilot_mobile/modules/recommend/models/recommend_api_item.dart';
+import 'package:moviepilot_mobile/modules/search_result/controllers/search_result_controller.dart';
 import 'package:moviepilot_mobile/modules/subscribe/controllers/subscribe_service.dart';
 import 'package:moviepilot_mobile/services/api_client.dart';
 import 'package:moviepilot_mobile/services/app_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MediaSearchListController extends GetxController {
+  static const _viewModePrefKey = 'media_search_list_view_mode';
+
   final _subscribeService = Get.put(SubscribeService());
   MediaSearchListController({String? initialKeyword, String? initialType}) {
     final seed = initialKeyword?.trim();
@@ -34,6 +38,8 @@ class MediaSearchListController extends GetxController {
   final RxnInt totalItems = RxnInt();
   final RxnInt totalPages = RxnInt();
   final RxnInt pageSize = RxnInt();
+  final Rxn<SearchResultViewMode> preferredViewMode =
+      Rxn<SearchResultViewMode>();
 
   static const _basePath = '/api/v1/media/search';
   static const _mediaserverExistsPath = '/api/v1/mediaserver/exists';
@@ -55,6 +61,27 @@ class MediaSearchListController extends GetxController {
       }
       search(keyword: keyword.value);
     }
+  }
+
+  @override
+  void onInit() {
+    super.onInit();
+    unawaited(_restoreViewModePref());
+  }
+
+  SearchResultViewMode resolvedViewMode({required bool isNarrowScreen}) {
+    return preferredViewMode.value ??
+        (isNarrowScreen
+            ? SearchResultViewMode.list
+            : SearchResultViewMode.grid);
+  }
+
+  void toggleViewMode({required bool isNarrowScreen}) {
+    final current = resolvedViewMode(isNarrowScreen: isNarrowScreen);
+    preferredViewMode.value = current == SearchResultViewMode.list
+        ? SearchResultViewMode.grid
+        : SearchResultViewMode.list;
+    unawaited(_persistViewModePref());
   }
 
   Future<void> search({String? keyword}) async {
@@ -322,6 +349,26 @@ class MediaSearchListController extends GetxController {
       );
     } catch (e, st) {
       _log.handle(e, stackTrace: st, message: '刷新媒体搜索图片 Cookie 失败');
+    }
+  }
+
+  Future<void> _persistViewModePref() async {
+    final prefs = await SharedPreferences.getInstance();
+    final mode = preferredViewMode.value;
+    if (mode == null) {
+      await prefs.remove(_viewModePrefKey);
+      return;
+    }
+    await prefs.setString(_viewModePrefKey, mode.name);
+  }
+
+  Future<void> _restoreViewModePref() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_viewModePrefKey);
+    if (raw == null || raw.isEmpty) return;
+    final matched = SearchResultViewMode.values.where((e) => e.name == raw);
+    if (matched.isNotEmpty) {
+      preferredViewMode.value = matched.first;
     }
   }
 }

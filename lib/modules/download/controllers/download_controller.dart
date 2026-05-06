@@ -9,13 +9,16 @@ import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart' hide Response;
 import 'package:moviepilot_mobile/applog/app_log.dart';
+import 'package:moviepilot_mobile/modules/directory/controllers/directory_list_controller.dart';
 import 'package:moviepilot_mobile/modules/downloader/models/downloader_stats.dart';
 import 'package:moviepilot_mobile/modules/search_result/models/search_result_models.dart';
 import 'package:moviepilot_mobile/modules/setting/controllers/setting_controller.dart';
 import 'package:moviepilot_mobile/modules/setting/models/setting_models.dart';
 import 'package:moviepilot_mobile/services/api_client.dart';
 import 'package:moviepilot_mobile/utils/toast_util.dart';
+import 'package:moviepilot_mobile/utils/prefs_keys.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class DownloadController extends GetxController {
   final _apiClient = Get.find<ApiClient>();
@@ -32,6 +35,8 @@ class DownloadController extends GetxController {
 
   // 下载目录列表和建议
   final selectedDirectory = ''.obs;
+  String? _preferredDownloaderName;
+  String _preferredDirectory = '';
 
   // TMDB ID
   final tmdbId = ''.obs;
@@ -50,9 +55,17 @@ class DownloadController extends GetxController {
     return Get.find<SettingController>();
   }
 
+  DirectoryListController get _directoryListController {
+    if (!Get.isRegistered<DirectoryListController>()) {
+      Get.put(DirectoryListController(), permanent: true);
+    }
+    return Get.find<DirectoryListController>();
+  }
+
   @override
   void onInit() {
     super.onInit();
+    _restoreSheetSelections();
     _loadDownloaders();
     _loadDirectories();
     ever(downloaders, (_) => loadDownloaderStats());
@@ -80,31 +93,34 @@ class DownloadController extends GetxController {
     // 监听 SettingController 的下载客户端列表
     ever(_settingController.downloadClients, (clients) {
       downloaders.value = clients;
-
-      // 设置默认下载器（选择第一个）
-      if (downloaders.isNotEmpty && selectedDownloader.value == null) {
-        selectedDownloader.value = downloaders.first;
-      }
+      _applyPreferredDownloader();
     });
 
     // 立即同步一次
     if (_settingController.downloadClients.isNotEmpty) {
       downloaders.value = _settingController.downloadClients.toList();
-      if (selectedDownloader.value == null && downloaders.isNotEmpty) {
-        selectedDownloader.value = downloaders.first;
-      }
+      _applyPreferredDownloader();
     }
   }
 
   /// 加载下载目录列表（从 SettingController）
   void _loadDirectories() {
-    // 目录建议从 SettingController 获取
-    // 通过 directorySuggestions getter 访问
+    ever(_directoryListController.directories, (_) {
+      _applyPreferredDirectory();
+    });
+    _applyPreferredDirectory();
   }
 
   /// 获取目录建议列表
   List<String> get directorySuggestions {
-    return _settingController.directorySuggestions;
+    final seen = <String>{};
+    for (final value in _settingController.directorySuggestions) {
+      final normalized = value.trim();
+      if (normalized.isNotEmpty) {
+        seen.add(normalized);
+      }
+    }
+    return seen.toList();
   }
 
   /// 获取目录列表（从目录设置中提取）
@@ -113,6 +129,62 @@ class DownloadController extends GetxController {
         .map((dir) => dir.downloadPath)
         .where((path) => path.isNotEmpty)
         .toList();
+  }
+
+  Future<void> _restoreSheetSelections() async {
+    final prefs = await SharedPreferences.getInstance();
+    _preferredDownloaderName = prefs.getString(kDownloadSheetLastDownloaderKey);
+    _preferredDirectory = prefs.getString(kDownloadSheetLastDirectoryKey) ?? '';
+    _applyPreferredDownloader();
+    _applyPreferredDirectory();
+  }
+
+  void _applyPreferredDownloader() {
+    if (downloaders.isEmpty) {
+      selectedDownloader.value = null;
+      return;
+    }
+
+    final preferredName = _preferredDownloaderName;
+    if (preferredName != null && preferredName.isNotEmpty) {
+      final matched = downloaders.firstWhereOrNull(
+        (item) => item.name == preferredName,
+      );
+      if (matched != null) {
+        selectedDownloader.value = matched;
+        return;
+      }
+    }
+
+    selectedDownloader.value ??= downloaders.first;
+  }
+
+  void _applyPreferredDirectory() {
+    final preferred = _preferredDirectory.trim();
+    if (preferred.isEmpty) {
+      if (selectedDirectory.value.isEmpty) return;
+      selectedDirectory.value = '';
+      return;
+    }
+
+    final available = directorySuggestions;
+    if (available.contains(preferred)) {
+      selectedDirectory.value = preferred;
+      return;
+    }
+
+    if (selectedDirectory.value.isEmpty) return;
+    selectedDirectory.value = '';
+  }
+
+  Future<void> _persistSheetSelections() async {
+    final prefs = await SharedPreferences.getInstance();
+    final downloaderName = selectedDownloader.value?.name ?? '';
+    await prefs.setString(kDownloadSheetLastDownloaderKey, downloaderName);
+    await prefs.setString(
+      kDownloadSheetLastDirectoryKey,
+      selectedDirectory.value,
+    );
   }
 
   /// 获取下载器加载状态
@@ -826,10 +898,14 @@ class DownloadController extends GetxController {
 
   void setDownloader(DownloadClient? downloader) {
     selectedDownloader.value = downloader;
+    _preferredDownloaderName = downloader?.name;
+    unawaited(_persistSheetSelections());
   }
 
   void setDirectory(String directory) {
     selectedDirectory.value = directory;
+    _preferredDirectory = directory;
+    unawaited(_persistSheetSelections());
   }
 
   void setTmdbId(String id) {

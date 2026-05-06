@@ -105,7 +105,10 @@ class ApiClient extends g.GetxController {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onResponse: (response, handler) {
-          _maybeHandleUnauthorized(response.requestOptions, response.statusCode);
+          _maybeHandleUnauthorized(
+            response.requestOptions,
+            response.statusCode,
+          );
           handler.next(response);
         },
         onError: (error, handler) {
@@ -478,8 +481,8 @@ class ApiClient extends g.GetxController {
         'content-type': 'application/json',
         ...?headers,
       },
-      sendTimeout: Duration(seconds: timeout ?? 30),
-      receiveTimeout: Duration(seconds: timeout ?? 30),
+      sendTimeout: Duration(seconds: timeout ?? 120),
+      receiveTimeout: Duration(seconds: timeout ?? 120),
       validateStatus: (status) => true,
     );
     final response = await _dio.post<T>(path, data: data, options: options);
@@ -498,8 +501,8 @@ class ApiClient extends g.GetxController {
     final authToken = token ?? this.token;
     _log.info('API请求: $path, token: ${authToken != null ? '***' : 'null'}');
     final options = Options(
-      sendTimeout: Duration(seconds: timeout ?? 30),
-      receiveTimeout: Duration(seconds: timeout ?? 30),
+      sendTimeout: Duration(seconds: timeout ?? 120),
+      receiveTimeout: Duration(seconds: timeout ?? 120),
       headers: {
         if (authToken != null) 'authorization': 'Bearer $authToken',
         ...?headers,

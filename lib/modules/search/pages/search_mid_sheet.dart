@@ -147,224 +147,309 @@ class _SiteSelectSheetState extends State<SiteSelectSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Material(
-      color: theme.colorScheme.surface,
-      child: Column(
-        children: [
-          // 顶部操作栏
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-            child: Row(
+    final mediaQuery = MediaQuery.of(context);
+    final maxHeight = mediaQuery.size.height * 0.8;
+    return SizedBox(
+      height: maxHeight,
+      child: DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.82,
+        minChildSize: 0.7,
+        maxChildSize: 1,
+        builder: (context, scrollController) {
+          return Material(
+            color: theme.colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
               children: [
-                IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close, size: 20),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(
-                    minWidth: 36,
-                    minHeight: 36,
-                  ),
-                  style: IconButton.styleFrom(
-                    foregroundColor: theme.colorScheme.onSurfaceVariant,
+                Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(top: 8),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.onSurfaceVariant.withValues(
+                      alpha: 0.25,
+                    ),
+                    borderRadius: BorderRadius.circular(999),
                   ),
                 ),
-                const SizedBox(width: 8),
-                if (widget.hasSegment)
-                  Expanded(
-                    child: Obx(
-                      () => Container(
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainerHighest
-                              .withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(10),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.close, size: 20),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                          minWidth: 36,
+                          minHeight: 36,
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Expanded(
-                              child: _buildSegmentTab(
-                                theme,
-                                'title',
-                                '标题',
-                                area.value == 'title',
+                        style: IconButton.styleFrom(
+                          foregroundColor: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      if (widget.hasSegment)
+                        Expanded(
+                          child: Obx(
+                            () => Container(
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.surfaceContainerHighest
+                                    .withValues(alpha: 0.5),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Expanded(
+                                    child: _buildSegmentTab(
+                                      theme,
+                                      'title',
+                                      '标题',
+                                      area.value == 'title',
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: _buildSegmentTab(
+                                      theme,
+                                      'imdb',
+                                      'IMDB',
+                                      area.value == 'imdb',
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            Expanded(
-                              child: _buildSegmentTab(
-                                theme,
-                                'imdb',
-                                'IMDB',
-                                area.value == 'imdb',
+                          ),
+                        )
+                      else
+                        Spacer(),
+                      const SizedBox(width: 8),
+                      Obx(() {
+                        final selLen = selectedSite.length;
+                        final canSubmit = !widget.hasSegment || selLen > 0;
+                        return FilledButton(
+                          onPressed: canSubmit ? _done : null,
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            minimumSize: const Size(0, 36),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            backgroundColor: canSubmit
+                                ? theme.colorScheme.primary
+                                : null,
+                          ),
+                          child: Text(
+                            widget.hasSegment ? '搜索' : '确定',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: CustomScrollView(
+                    controller: scrollController,
+                    slivers: [
+                      SliverToBoxAdapter(
+                        child: Column(
+                          children: [
+                            if ((widget.seasons ?? const <int>[]).length > 1)
+                              _buildSeasonPicker(theme),
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: theme
+                                      .colorScheme
+                                      .surfaceContainerHighest
+                                      .withValues(alpha: 0.4),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.check_circle_outline,
+                                      size: 16,
+                                      color: theme.colorScheme.primary,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Obx(
+                                        () => Text(
+                                          () {
+                                            final disabled =
+                                                (widget.disabledIds ??
+                                                        const <int>[])
+                                                    .toSet();
+                                            final enabledCount = siteController
+                                                .items
+                                                .where(
+                                                  (e) => !disabled.contains(
+                                                    e.site.id,
+                                                  ),
+                                                )
+                                                .length;
+                                            return '已选择 ${selectedSite.length}/$enabledCount 个站点';
+                                          }(),
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w500,
+                                                color: theme
+                                                    .colorScheme
+                                                    .onSurfaceVariant,
+                                              ),
+                                        ),
+                                      ),
+                                    ),
+                                    Obx(
+                                      () => InkWell(
+                                        onTap: () {
+                                          final disabled =
+                                              (widget.disabledIds ??
+                                                      const <int>[])
+                                                  .toSet();
+                                          final enabledIds = siteController
+                                              .items
+                                              .map((e) => e.site.id)
+                                              .where(
+                                                (id) => !disabled.contains(id),
+                                              )
+                                              .toList();
+                                          if (enabledIds.isNotEmpty &&
+                                              selectedSite.length ==
+                                                  enabledIds.length) {
+                                            selectedSite.clear();
+                                          } else {
+                                            selectedSite.assignAll(enabledIds);
+                                          }
+                                        },
+                                        borderRadius: BorderRadius.circular(6),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                () {
+                                                  final disabled =
+                                                      (widget.disabledIds ??
+                                                              const <int>[])
+                                                          .toSet();
+                                                  final enabledCount =
+                                                      siteController.items
+                                                          .where(
+                                                            (e) => !disabled
+                                                                .contains(
+                                                                  e.site.id,
+                                                                ),
+                                                          )
+                                                          .length;
+                                                  return selectedSite.length ==
+                                                          enabledCount
+                                                      ? Icons.check_box
+                                                      : Icons
+                                                            .check_box_outline_blank;
+                                                }(),
+                                                size: 16,
+                                                color:
+                                                    theme.colorScheme.primary,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                () {
+                                                  final disabled =
+                                                      (widget.disabledIds ??
+                                                              const <int>[])
+                                                          .toSet();
+                                                  final enabledCount =
+                                                      siteController.items
+                                                          .where(
+                                                            (e) => !disabled
+                                                                .contains(
+                                                                  e.site.id,
+                                                                ),
+                                                          )
+                                                          .length;
+                                                  return selectedSite.length ==
+                                                          enabledCount
+                                                      ? '清空'
+                                                      : '全选';
+                                                }(),
+                                                style: theme
+                                                    .textTheme
+                                                    .bodyMedium
+                                                    ?.copyWith(
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: theme
+                                                          .colorScheme
+                                                          .primary,
+                                                    ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ],
                         ),
                       ),
-                    ),
-                  )
-                else
-                  Spacer(),
-                const SizedBox(width: 8),
-                Obx(() {
-                  final selLen = selectedSite.length;
-                  final canSubmit = !widget.hasSegment || selLen > 0;
-                  return FilledButton(
-                    onPressed: canSubmit ? _done : null,
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
+                      SliverPadding(
+                        padding: EdgeInsets.fromLTRB(
+                          16,
+                          0,
+                          16,
+                          mediaQuery.padding.bottom + 16,
+                        ),
+                        sliver: Obx(
+                          () => SliverGrid(
+                            delegate: SliverChildBuilderDelegate((
+                              context,
+                              index,
+                            ) {
+                              final item = siteController.items[index];
+                              return _buildSiteItem(context, item);
+                            }, childCount: siteController.items.length),
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 3,
+                                  mainAxisSpacing: 8,
+                                  crossAxisSpacing: 8,
+                                  mainAxisExtent: 44,
+                                ),
+                          ),
+                        ),
                       ),
-                      minimumSize: const Size(0, 36),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      backgroundColor: canSubmit
-                          ? theme.colorScheme.primary
-                          : null,
-                    ),
-                    child: Text(
-                      widget.hasSegment ? '搜索' : '确定',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  );
-                }),
+                    ],
+                  ),
+                ),
               ],
             ),
-          ),
-
-          if ((widget.seasons ?? const <int>[]).length > 1)
-            _buildSeasonPicker(theme),
-
-          // 轻量化的选择信息栏
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest.withValues(
-                  alpha: 0.4,
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.check_circle_outline,
-                    size: 16,
-                    color: theme.colorScheme.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Obx(
-                      () => Text(
-                        () {
-                          final disabled = (widget.disabledIds ?? const <int>[])
-                              .toSet();
-                          final enabledCount = siteController.items
-                              .where((e) => !disabled.contains(e.site.id))
-                              .length;
-                          return '已选择 ${selectedSite.length}/$enabledCount 个站点';
-                        }(),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w500,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  ),
-                  Obx(
-                    () => InkWell(
-                      onTap: () {
-                        final disabled = (widget.disabledIds ?? const <int>[])
-                            .toSet();
-                        final enabledIds = siteController.items
-                            .map((e) => e.site.id)
-                            .where((id) => !disabled.contains(id))
-                            .toList();
-                        if (enabledIds.isNotEmpty &&
-                            selectedSite.length == enabledIds.length) {
-                          selectedSite.clear();
-                        } else {
-                          selectedSite.assignAll(enabledIds);
-                        }
-                      },
-                      borderRadius: BorderRadius.circular(6),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              () {
-                                final disabled =
-                                    (widget.disabledIds ?? const <int>[])
-                                        .toSet();
-                                final enabledCount = siteController.items
-                                    .where((e) => !disabled.contains(e.site.id))
-                                    .length;
-                                return selectedSite.length == enabledCount
-                                    ? Icons.check_box
-                                    : Icons.check_box_outline_blank;
-                              }(),
-                              size: 16,
-                              color: theme.colorScheme.primary,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              () {
-                                final disabled =
-                                    (widget.disabledIds ?? const <int>[])
-                                        .toSet();
-                                final enabledCount = siteController.items
-                                    .where((e) => !disabled.contains(e.site.id))
-                                    .length;
-                                return selectedSite.length == enabledCount
-                                    ? '清空'
-                                    : '全选';
-                              }(),
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: theme.colorScheme.primary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Obx(
-                () => GridView.builder(
-                  itemCount: siteController.items.length,
-                  itemBuilder: (context, index) {
-                    final item = siteController.items[index];
-                    return _buildSiteItem(context, item);
-                  },
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    mainAxisSpacing: 8,
-                    crossAxisSpacing: 8,
-                    mainAxisExtent: 44,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -395,33 +480,67 @@ class _SiteSelectSheetState extends State<SiteSelectSheet> {
             ),
             const SizedBox(height: 8),
             if (!usePagedGrid)
-              Obx(
-                () => SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _buildSeasonChip(
-                        theme,
-                        0,
-                        '全部季',
-                        active: season.value == 0,
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final allValues = <int>[0, ...seasons];
+                  final useExpandedRow = allValues.length <= 4;
+                  return Obx(() {
+                    if (useExpandedRow) {
+                      return Row(
+                        children: [
+                          for (
+                            var index = 0;
+                            index < allValues.length;
+                            index++
+                          ) ...[
+                            if (index > 0) const SizedBox(width: 8),
+                            Expanded(
+                              child: _buildSeasonChip(
+                                theme,
+                                allValues[index],
+                                allValues[index] == 0
+                                    ? '全部季'
+                                    : 'S${allValues[index].toString().padLeft(2, '0')}',
+                                active: season.value == allValues[index],
+                              ),
+                            ),
+                          ],
+                        ],
+                      );
+                    }
+                    return SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minWidth: constraints.maxWidth,
+                        ),
+                        child: Row(
+                          children: [
+                            _buildSeasonChip(
+                              theme,
+                              0,
+                              '全部季',
+                              active: season.value == 0,
+                            ),
+                            const SizedBox(width: 8),
+                            ...seasons.map((s) {
+                              final label = 'S${s.toString().padLeft(2, '0')}';
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: _buildSeasonChip(
+                                  theme,
+                                  s,
+                                  label,
+                                  active: season.value == s,
+                                ),
+                              );
+                            }),
+                          ],
+                        ),
                       ),
-                      const SizedBox(width: 8),
-                      ...seasons.map((s) {
-                        final label = 'S${s.toString().padLeft(2, '0')}';
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: _buildSeasonChip(
-                            theme,
-                            s,
-                            label,
-                            active: season.value == s,
-                          ),
-                        );
-                      }),
-                    ],
-                  ),
-                ),
+                    );
+                  });
+                },
               )
             else
               SizedBox(
@@ -493,6 +612,7 @@ class _SiteSelectSheetState extends State<SiteSelectSheet> {
       borderRadius: BorderRadius.circular(999),
       onTap: () => season.value = value,
       child: Container(
+        alignment: Alignment.center,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(999),
@@ -507,6 +627,7 @@ class _SiteSelectSheetState extends State<SiteSelectSheet> {
         ),
         child: Text(
           label,
+          textAlign: TextAlign.center,
           style: theme.textTheme.bodySmall?.copyWith(
             fontWeight: FontWeight.w700,
             color: active

@@ -2,168 +2,141 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:moviepilot_mobile/modules/download/controllers/download_controller.dart';
+import 'package:moviepilot_mobile/modules/downloader/models/downloader_stats.dart';
 import 'package:moviepilot_mobile/modules/search_result/models/search_result_models.dart';
 import 'package:moviepilot_mobile/services/app_service.dart';
-import 'package:moviepilot_mobile/theme/section.dart';
 import 'package:moviepilot_mobile/utils/size_formatter.dart';
 import 'package:moviepilot_mobile/widgets/bottom_sheet.dart';
-import 'package:moviepilot_mobile/widgets/section_header.dart';
 
 class DownloadSheet extends GetView<DownloadController> {
   const DownloadSheet({super.key, required this.item});
 
   final SearchResultItem item;
+
   AppService get _appService => Get.find<AppService>();
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final primaryColor = theme.colorScheme.primary;
     return BottomSheetWidget(
-      header: _buildHeader(context, primaryColor),
+      header: _buildHeader(context),
       scrollController: controller.scrollController,
-      builder: (context, scrollController) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: ListView(
-          controller: scrollController,
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      snap: false,
+      snapSizes: const [],
+      initialChildSize: 0.7,
+      minChildSize: 0.28,
+      maxChildSize: 0.8,
+      builder: (context, scrollController) => ListView(
+        controller: scrollController,
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        children: [
+          _buildCompactSummary(context),
+          const SizedBox(height: 10),
+          _buildDownloadSettingsSection(context),
+          const SizedBox(height: 10),
+          _buildTmdbInput(context),
+          const SizedBox(height: 12),
+          _buildBottomActions(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context) {
+    final theme = Theme.of(context);
+    return SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+        child: Column(
           children: [
-            _buildMediaInfo(context),
-            const SizedBox(height: 24),
-            // 下载器选择（横向 chips）_buildDownloaderSelector(context, primaryColor),
-            _buildDownloaderSelector(context, primaryColor),
-            const SizedBox(height: 20),
-            // 保存目录选择（横向 chips）
-            _buildDirectorySelector(context, primaryColor),
-            const SizedBox(height: 20),
-            // 高级选项（可展开）
-            _buildAdvancedOptions(context, primaryColor),
-            const SizedBox(height: 24),
-            _buildBottomActions(context, primaryColor),
-            const SizedBox(height: 50),
+            Container(
+              width: 34,
+              height: 4,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.outlineVariant,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              '下载资源',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context, Color accentColor) {
-    return SectionHeader(title: '下载');
-  }
+  Widget _buildCompactSummary(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final torrent = item.torrent_info;
+    final title = torrent?.title?.trim() ?? '';
+    final siteName = torrent?.site_name?.trim().isNotEmpty == true
+        ? torrent!.site_name!.trim()
+        : '未知站点';
+    final size = torrent?.size ?? 0.0;
+    final volumeFactor = _displayVolumeFactor(torrent);
+    final downloadFactor = torrent?.downloadvolumefactor;
+    final uploadFactor = torrent?.uploadvolumefactor;
+    final sizeLabel = SizeFormatter.formatSize(size, 2);
+    final trafficSummary = _buildTrafficSummary(
+      volumeFactor: volumeFactor,
+      downloadFactor: downloadFactor,
+      uploadFactor: uploadFactor,
+    );
 
-  Widget _buildMediaInfo(BuildContext context) {
-    final title = item.torrent_info?.title ?? '';
-    final description = item.torrent_info?.description ?? '';
-    final size = item.torrent_info?.size ?? 0.0;
-    final siteName = item.torrent_info?.site_name ?? '未知站点';
-    final seeders = item.torrent_info?.seeders ?? 0;
-    final peers = item.torrent_info?.peers ?? 0;
-    final grabs = item.torrent_info?.grabs ?? 0;
-    final pubdate = item.torrent_info?.pubdate ?? '';
-    final volumeFactor = item.torrent_info?.volume_factor ?? '';
-    final downloadFactor = item.torrent_info?.downloadvolumefactor ?? 1.0;
-    final uploadFactor = item.torrent_info?.uploadvolumefactor ?? 1.0;
-    return Section(
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: _panelDecoration(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 标题
+          if (title.isNotEmpty)
+            Text(
+              title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                height: 1.25,
+              ),
+            ),
           if (title.isNotEmpty) ...[
-            Row(
-              children: [
-                Icon(
-                  CupertinoIcons.globe,
-                  size: 16,
-                  color: CupertinoColors.secondaryLabel.resolveFrom(context),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: CupertinoColors.label.resolveFrom(context),
-                    ),
-                  ),
-                ),
-              ],
+            const SizedBox(height: 10),
+            Divider(
+              height: 1,
+              thickness: 0.6,
+              color: scheme.outlineVariant.withValues(alpha: 0.7),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
           ],
-          // 描述
-          if (description.isNotEmpty) ...[
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  CupertinoIcons.doc_text,
-                  size: 16,
-                  color: CupertinoColors.secondaryLabel.resolveFrom(context),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    description,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: CupertinoColors.secondaryLabel.resolveFrom(
-                        context,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-          ],
-          // 详细信息行
           Wrap(
-            spacing: 16,
-            runSpacing: 12,
+            spacing: 14,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              _buildInfoChip(
+              _buildSummaryMetaItem(
                 context,
-                icon: Icons.storage,
-                label: SizeFormatter.formatSize(size, 2),
+                icon: CupertinoIcons.globe,
+                text: siteName,
               ),
-              _buildInfoChip(
+              _buildSummaryMetaItem(
                 context,
-                icon: CupertinoIcons.cube_box,
-                label: siteName,
+                icon: CupertinoIcons.tray_arrow_down,
+                text: sizeLabel,
+                emphasize: true,
               ),
-              if (seeders > 0)
-                _buildInfoChip(
+              if (trafficSummary.isNotEmpty)
+                _buildSummaryMetaItem(
                   context,
-                  icon: CupertinoIcons.arrow_up,
-                  label: '$seeders',
-                  color: CupertinoColors.systemGreen,
-                ),
-              if (peers > 0)
-                _buildInfoChip(
-                  context,
-                  icon: CupertinoIcons.arrow_down,
-                  label: '$peers',
-                  color: CupertinoColors.systemRed,
-                ),
-              if (grabs > 0)
-                _buildInfoChip(
-                  context,
-                  icon: CupertinoIcons.arrow_down,
-                  label: '$grabs',
-                ),
-              if (pubdate.isNotEmpty)
-                _buildInfoChip(
-                  context,
-                  icon: CupertinoIcons.calendar,
-                  label: _formatDate(pubdate),
-                ),
-              if (volumeFactor.isNotEmpty)
-                _buildInfoChip(
-                  context,
-                  icon: CupertinoIcons.tag,
-                  label: volumeFactor,
-                  color: CupertinoColors.systemOrange,
+                  icon: CupertinoIcons.arrow_up_arrow_down_circle,
+                  text: trafficSummary,
+                  tintColor: theme.colorScheme.primary,
                 ),
             ],
           ),
@@ -172,414 +145,550 @@ class DownloadSheet extends GetView<DownloadController> {
     );
   }
 
-  Widget _buildInfoChip(
+  Widget _buildSummaryMetaItem(
     BuildContext context, {
     required IconData icon,
-    required String label,
-    Color? color,
+    required String text,
+    bool emphasize = false,
+    Color? tintColor,
   }) {
-    final chipColor =
-        color ?? CupertinoColors.secondaryLabel.resolveFrom(context);
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final color =
+        tintColor ?? (emphasize ? scheme.onSurface : scheme.onSurfaceVariant);
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: chipColor),
-        const SizedBox(width: 4),
+        Icon(icon, size: 13, color: color),
+        const SizedBox(width: 6),
         Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: chipColor,
-            fontWeight: FontWeight.w500,
+          text,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: color,
+            fontWeight: emphasize ? FontWeight.w700 : FontWeight.w600,
+            height: 1.25,
           ),
         ),
       ],
     );
   }
 
-  String _formatDate(String dateStr) {
-    if (dateStr.isEmpty) return '';
-    try {
-      final date = DateTime.parse(dateStr);
-      final now = DateTime.now();
-      final diff = now.difference(date);
-      if (diff.inDays > 0) {
-        return '${diff.inDays}天前';
-      } else if (diff.inHours > 0) {
-        return '${diff.inHours}小时前';
-      } else if (diff.inMinutes > 0) {
-        return '${diff.inMinutes}分钟前';
-      }
-      return '刚刚';
-    } catch (_) {
-      return dateStr;
-    }
-  }
-
-  Widget _buildDownloaderSelector(BuildContext context, Color accentColor) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(CupertinoIcons.cloud_download, size: 16, color: accentColor),
-            const SizedBox(width: 6),
-            Text(
+  Widget _buildDownloadSettingsSection(BuildContext context) {
+    return _buildSection(
+      context,
+      title: '下载设置',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Obx(
+            () => _buildSubsectionLabel(
+              context,
               '下载器',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: CupertinoColors.label.resolveFrom(context),
-              ),
+              controller.selectedDownloader.value?.name ?? '未选择',
             ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Obx(() {
-          if (controller.isLoadingDownloaders) {
-            return Container(
-              height: 40,
-              alignment: Alignment.center,
-              child: const CupertinoActivityIndicator(),
-            );
-          }
-
-          final downloaders = controller.downloaders;
-          final selected = controller.selectedDownloader.value;
-
-          if (downloaders.isEmpty) {
-            return Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: CupertinoColors.systemGrey6.resolveFrom(context),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                '暂无可用下载器',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: CupertinoColors.secondaryLabel.resolveFrom(context),
-                ),
-              ),
-            );
-          }
-
-          return SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: downloaders.map((downloader) {
-                final isSelected = selected?.name == downloader.name;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: _buildSelectableChip(
-                    context,
-                    label: downloader.type.isNotEmpty
-                        ? '${downloader.name} (${downloader.type})'
-                        : downloader.name,
-                    isSelected: isSelected,
-                    accentColor: accentColor,
-                    onTap: () => controller.setDownloader(downloader),
-                  ),
-                );
-              }).toList(),
+          ),
+          _buildDownloaderSelector(context),
+          const SizedBox(height: 10),
+          Obx(
+            () => _buildSubsectionLabel(
+              context,
+              '保存目录',
+              controller.selectedDirectory.value.isEmpty
+                  ? '自动匹配'
+                  : controller.selectedDirectory.value,
             ),
-          );
-        }),
-      ],
+          ),
+          _buildDirectorySelector(context),
+        ],
+      ),
     );
   }
 
-  Widget _buildDirectorySelector(BuildContext context, Color accentColor) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(CupertinoIcons.folder, size: 16, color: accentColor),
-            const SizedBox(width: 6),
-            Text(
-              '保存目录',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: CupertinoColors.label.resolveFrom(context),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(left: 6),
-              child: Text(
-                '(自动)',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: CupertinoColors.secondaryLabel.resolveFrom(context),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Obx(() {
-          final selected = controller.selectedDirectory.value;
-          final suggestions = controller.directorySuggestions;
+  Widget _buildDownloaderSelector(BuildContext context) {
+    return Obx(() {
+      if (controller.isLoadingDownloaders) {
+        return _buildPlaceholderState(context, label: '正在加载');
+      }
 
-          return SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                // 留空自动匹配选项
-                _buildSelectableChip(
+      final downloaders = controller.downloaders;
+      final selected = controller.selectedDownloader.value;
+
+      if (downloaders.isEmpty) {
+        return _buildPlaceholderState(context, label: '暂无可用下载器');
+      }
+
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: downloaders.map((downloader) {
+            final stats = controller.statsFor(downloader.name);
+            final isSelected = selected?.name == downloader.name;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: SizedBox(
+                width: 188,
+                height: 70,
+                child: _buildChoiceTile(
                   context,
-                  label: '留空自动匹配',
-                  isSelected: selected.isEmpty,
-                  accentColor: accentColor,
-                  onTap: () => controller.setDirectory(''),
+                  title: downloader.name,
+                  subtitle: _downloaderSubtitle(downloader, stats),
+                  isSelected: isSelected,
+                  accentColor: Theme.of(context).colorScheme.primary,
+                  onTap: () => controller.setDownloader(downloader),
                 ),
-                const SizedBox(width: 8),
-                // 目录建议选项
-                ...suggestions.map((dir) {
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: _buildSelectableChip(
-                      context,
-                      label: dir,
-                      isSelected: selected == dir,
-                      accentColor: accentColor,
-                      onTap: () => controller.setDirectory(dir),
+              ),
+            );
+          }).toList(),
+        ),
+      );
+    });
+  }
+
+  Widget _buildDirectorySelector(BuildContext context) {
+    return Obx(() {
+      final selected = controller.selectedDirectory.value;
+      final suggestions = controller.directorySuggestions;
+      final entries = <String>['', ...suggestions];
+
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: entries.map((dir) {
+            final isAuto = dir.isEmpty;
+            final label = isAuto ? '自动匹配' : dir;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: SizedBox(
+                width: isAuto ? 132 : 220,
+                height: 50,
+                child: _buildChoiceTile(
+                  context,
+                  title: label,
+                  subtitle: null,
+                  isSelected: selected == dir,
+                  accentColor: Theme.of(context).colorScheme.secondary,
+                  onTap: () => controller.setDirectory(dir),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      );
+    });
+  }
+
+  Widget _buildTmdbInput(BuildContext context) {
+    return Obx(() {
+      final expanded = controller.showAdvanced.value;
+      final theme = Theme.of(context);
+      if (!expanded) {
+        return Align(
+          alignment: Alignment.centerRight,
+          child: CupertinoButton(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            minimumSize: Size.zero,
+            onPressed: () => controller.showAdvanced.value = true,
+            child: Text(
+              '手动填写 TMDB ID',
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        );
+      }
+
+      return Container(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+        decoration: _panelDecoration(context),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'TMDB ID',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
                     ),
-                  );
-                }),
+                  ),
+                ),
+                CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  onPressed: () => controller.showAdvanced.value = false,
+                  child: Text(
+                    '收起',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
               ],
             ),
-          );
-        }),
-      ],
+            const SizedBox(height: 8),
+            CupertinoTextField(
+              controller: TextEditingController.fromValue(
+                TextEditingValue(
+                  text: controller.tmdbId.value,
+                  selection: TextSelection.collapsed(
+                    offset: controller.tmdbId.value.length,
+                  ),
+                ),
+              ),
+              onChanged: controller.setTmdbId,
+              keyboardType: TextInputType.number,
+              placeholder: '输入 TMDB ID',
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+              clearButtonMode: OverlayVisibilityMode.editing,
+              decoration: BoxDecoration(
+                color: CupertinoDynamicColor.resolve(
+                  CupertinoColors.tertiarySystemGroupedBackground,
+                  context,
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  Widget _buildBottomActions(BuildContext context) {
+    return Obx(() {
+      final showSpecial = _appService.enableSpecialDownload.value;
+      final enabled = controller.selectedDownloader.value != null;
+      final tmdbId = controller.tmdbId.value.isEmpty
+          ? null
+          : controller.tmdbId.value;
+
+      if (!showSpecial) {
+        return _buildPrimaryButton(
+          context,
+          label: '开始下载',
+          busy: controller.isDownloading.value,
+          enabled: enabled,
+          onTap: () =>
+              controller.startDownload(item: item, customTmdbId: tmdbId),
+        );
+      }
+
+      return Row(
+        children: [
+          Expanded(
+            child: _buildSecondaryButton(
+              context,
+              label: '直连下载',
+              busy: controller.isSpecialDownloading.value,
+              enabled: enabled,
+              onTap: () =>
+                  controller.startSpecialDownload(context: context, item: item),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _buildPrimaryButton(
+              context,
+              label: '开始下载',
+              busy: controller.isDownloading.value,
+              enabled: enabled,
+              onTap: () =>
+                  controller.startDownload(item: item, customTmdbId: tmdbId),
+            ),
+          ),
+        ],
+      );
+    });
+  }
+
+  Widget _buildPrimaryButton(
+    BuildContext context, {
+    required String label,
+    required bool busy,
+    required bool enabled,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    return SizedBox(
+      height: 46,
+      child: CupertinoButton(
+        padding: EdgeInsets.zero,
+        borderRadius: BorderRadius.circular(14),
+        color: enabled
+            ? theme.colorScheme.primary
+            : theme.colorScheme.surfaceContainerHighest,
+        onPressed: enabled && !busy ? onTap : null,
+        child: busy
+            ? const CupertinoActivityIndicator(color: Colors.white)
+            : Text(
+                label,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: enabled
+                      ? Colors.white
+                      : theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+      ),
     );
   }
 
-  Widget _buildSelectableChip(
+  Widget _buildSecondaryButton(
     BuildContext context, {
     required String label,
+    required bool busy,
+    required bool enabled,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    return SizedBox(
+      height: 46,
+      child: CupertinoButton(
+        padding: EdgeInsets.zero,
+        borderRadius: BorderRadius.circular(14),
+        color: theme.colorScheme.secondary.withValues(
+          alpha: enabled ? 0.14 : 0.08,
+        ),
+        onPressed: enabled && !busy ? onTap : null,
+        child: busy
+            ? CupertinoActivityIndicator(color: theme.colorScheme.secondary)
+            : Text(
+                label,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: enabled
+                      ? theme.colorScheme.secondary
+                      : theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+      ),
+    );
+  }
+
+  Widget _buildSection(
+    BuildContext context, {
+    required String title,
+    required Widget child,
+  }) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+      decoration: _panelDecoration(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 10),
+          child,
+          const SizedBox(height: 10),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSubsectionLabel(
+    BuildContext context,
+    String title,
+    String selectedValue,
+  ) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Text(
+            title,
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              selectedValue,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.right,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChoiceTile(
+    BuildContext context, {
+    required String title,
+    String? subtitle,
+    String? trailingText,
     required bool isSelected,
     required Color accentColor,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? accentColor
-              : CupertinoColors.systemGrey6.resolveFrom(context),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? accentColor : accentColor.withOpacity(0.3),
-            width: isSelected ? 0 : 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (isSelected)
-              Icon(
-                CupertinoIcons.checkmark_circle_fill,
-                size: 16,
-                color: Colors.white,
-              )
-            else
-              Icon(
-                CupertinoIcons.circle,
-                size: 16,
-                color: accentColor.withOpacity(0.5),
-              ),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                color: isSelected
-                    ? Colors.white
-                    : CupertinoColors.label.resolveFrom(context),
-              ),
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? accentColor.withValues(alpha: 0.12)
+                : CupertinoDynamicColor.resolve(
+                    CupertinoColors.tertiarySystemGroupedBackground,
+                    context,
+                  ),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isSelected
+                  ? accentColor.withValues(alpha: 0.22)
+                  : scheme.outlineVariant.withValues(alpha: 0.55),
             ),
-          ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 18,
+                height: 18,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isSelected ? accentColor : Colors.transparent,
+                  border: Border.all(
+                    color: isSelected ? accentColor : scheme.outline,
+                    width: 1.5,
+                  ),
+                ),
+                child: isSelected
+                    ? const Icon(
+                        CupertinoIcons.check_mark,
+                        size: 11,
+                        color: Colors.white,
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: isSelected ? accentColor : scheme.onSurface,
+                      ),
+                    ),
+                    if (subtitle != null && subtitle.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (trailingText != null && trailingText.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                Text(
+                  trailingText,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildAdvancedOptions(BuildContext context, Color accentColor) {
-    return Obx(() {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CupertinoButton(
-            padding: EdgeInsets.zero,
-            minSize: 0,
-            onPressed: () {
-              controller.showAdvanced.value = !controller.showAdvanced.value;
-            },
-            child: Row(
-              children: [
-                Icon(
-                  CupertinoIcons.slider_horizontal_3,
-                  size: 16,
-                  color: accentColor,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  '高级选项',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: accentColor,
-                  ),
-                ),
-                const Spacer(),
-                Icon(
-                  controller.showAdvanced.value
-                      ? CupertinoIcons.chevron_up
-                      : CupertinoIcons.chevron_down,
-                  size: 16,
-                  color: accentColor,
-                ),
-              ],
-            ),
-          ),
-          if (controller.showAdvanced.value) ...[
-            const SizedBox(height: 12),
-            _buildTmdbIdInput(context, accentColor),
-          ],
-        ],
-      );
-    });
-  }
-
-  Widget _buildTmdbIdInput(BuildContext context, Color accentColor) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '按名称查询媒体编号,留空自动识别',
-          style: TextStyle(
-            fontSize: 12,
-            color: CupertinoColors.secondaryLabel.resolveFrom(context),
-          ),
+  Widget _buildPlaceholderState(BuildContext context, {required String label}) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      decoration: BoxDecoration(
+        color: CupertinoDynamicColor.resolve(
+          CupertinoColors.tertiarySystemGroupedBackground,
+          context,
         ),
-        const SizedBox(height: 8),
-        Obx(() {
-          return CupertinoTextField(
-            placeholder: 'TMDB ID',
-            controller: TextEditingController(text: controller.tmdbId.value),
-            onChanged: controller.setTmdbId,
-            keyboardType: TextInputType.number,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            decoration: BoxDecoration(
-              border: Border.all(color: accentColor.withOpacity(0.3), width: 1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-          );
-        }),
-      ],
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Text(
+        label,
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
     );
   }
 
-  Widget _buildDownloadButton(BuildContext context, Color accentColor) {
-    return Obx(() {
-      final isDownloading = controller.isDownloading.value;
-      final hasDownloader = controller.selectedDownloader.value != null;
-
-      return SizedBox(
-        height: 50,
-        child: CupertinoButton.filled(
-          onPressed: (isDownloading || !hasDownloader)
-              ? null
-              : () => controller.startDownload(
-                  item: item,
-                  customTmdbId: controller.tmdbId.value.isEmpty
-                      ? null
-                      : controller.tmdbId.value,
-                ),
-
-          child: isDownloading
-              ? const CupertinoActivityIndicator(
-                  color: Color.fromARGB(255, 77, 58, 58),
-                )
-              : Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(CupertinoIcons.cloud_download, size: 20),
-                    const SizedBox(width: 8),
-                    const Text(
-                      '开始下载',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-        ),
-      );
-    });
+  String _downloaderSubtitle(dynamic downloader, DownloaderStats? stats) {
+    if (stats != null && stats.freeSpace > 0) {
+      return '剩余 ${SizeFormatter.formatSize(stats.freeSpace, 1)}';
+    }
+    return downloader.type.isNotEmpty ? downloader.type.toUpperCase() : '';
   }
 
-  Widget _buildBottomActions(BuildContext context, Color accentColor) {
-    return Obx(() {
-      final showSpecial = _appService.enableSpecialDownload.value;
-      if (!showSpecial) {
-        return SizedBox(
-          width: double.infinity,
-          child: _buildDownloadButton(context, accentColor),
-        );
-      }
-      final secondaryColor = Theme.of(context).colorScheme.secondary;
-      return Row(
-        children: [
-          Expanded(child: _buildSpecialDownloadButton(context, secondaryColor)),
-          const SizedBox(width: 12),
-          Expanded(child: _buildDownloadButton(context, accentColor)),
-        ],
-      );
-    });
+  BoxDecoration _panelDecoration(BuildContext context) {
+    return BoxDecoration(
+      color: CupertinoDynamicColor.resolve(
+        CupertinoColors.secondarySystemGroupedBackground,
+        context,
+      ),
+      borderRadius: BorderRadius.circular(18),
+    );
   }
 
-  Widget _buildSpecialDownloadButton(BuildContext context, Color accentColor) {
-    return Obx(() {
-      final isDownloading = controller.isSpecialDownloading.value;
-      final hasDownloader = controller.selectedDownloader.value != null;
-      return SizedBox(
-        height: 50,
-        child: CupertinoButton.filled(
-          color: accentColor,
-          onPressed: (isDownloading || !hasDownloader)
-              ? null
-              : () => controller.startSpecialDownload(
-                  context: context,
-                  item: item,
-                ),
-          child: isDownloading
-              ? const CupertinoActivityIndicator(
-                  color: Color.fromARGB(255, 77, 58, 58),
-                )
-              : Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(CupertinoIcons.arrow_down_doc, size: 20),
-                    const SizedBox(width: 6),
-                    const Text(
-                      '下载器直连下载',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-        ),
+  String _displayVolumeFactor(SearchTorrentInfo? torrent) {
+    if (torrent == null) return '';
+    final volumeFactor = torrent.volume_factor?.trim() ?? '';
+    final downloadFactor = torrent.downloadvolumefactor;
+    if (volumeFactor.isEmpty) return '';
+    if (downloadFactor != null && downloadFactor != 1) {
+      return '';
+    }
+    return volumeFactor;
+  }
+
+  String _buildTrafficSummary({
+    required String volumeFactor,
+    required double? downloadFactor,
+    required double? uploadFactor,
+  }) {
+    final parts = <String>[];
+    if (volumeFactor.isNotEmpty) {
+      parts.add(volumeFactor);
+    }
+    if (downloadFactor != null && downloadFactor != 1) {
+      parts.add(
+        downloadFactor == 0 ? '下载免费' : '下载 ${(downloadFactor * 100).round()}%',
       );
-    });
+    }
+    if (uploadFactor != null && uploadFactor != 1) {
+      parts.add('上传 ${(uploadFactor * 100).round()}%');
+    }
+    return parts.join('  /  ');
   }
 }

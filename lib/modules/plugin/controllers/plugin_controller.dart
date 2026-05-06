@@ -5,12 +5,14 @@ import 'package:moviepilot_mobile/modules/plugin/models/installed_plugin_model_c
 import 'package:moviepilot_mobile/modules/plugin/models/plugin_models.dart';
 import 'package:moviepilot_mobile/modules/plugin/services/plugin_palette_cache.dart';
 import 'package:moviepilot_mobile/services/api_client.dart';
+import 'package:moviepilot_mobile/services/app_service.dart';
 import 'package:moviepilot_mobile/services/realm_service.dart';
 import 'package:moviepilot_mobile/utils/image_util.dart';
 
 class PluginController extends GetxController {
   final _apiClient = Get.find<ApiClient>();
   final _log = Get.find<AppLog>();
+  final _appService = Get.find<AppService>();
   final _realm = Get.find<RealmService>();
   final items = <PluginItem>[].obs;
   final keyword = ''.obs;
@@ -19,6 +21,21 @@ class PluginController extends GetxController {
 
   bool _visibleCacheDirty = true;
   List<PluginItem> _cachedVisible = [];
+
+  bool get _canAccessPlugins => _appService.canManage;
+
+  void _clearLocalCache() {
+    if (kIsWeb) return;
+    final scopeKey = _appService.pluginCacheScopeKey;
+    if (scopeKey.isEmpty) return;
+    final stale = _realm.realm
+        .all<InstalledPluginModelCache>()
+        .where((item) => matchesInstalledPluginScope(item.id, scopeKey))
+        .toList();
+    _realm.realm.write(() {
+      _realm.realm.deleteMany(stale);
+    });
+  }
 
   @override
   void onInit() {
@@ -65,6 +82,9 @@ class PluginController extends GetxController {
   }
 
   Future<Map<String, dynamic>> loadInstallCount() async {
+    if (!_canAccessPlugins) {
+      return {};
+    }
     final response = await _apiClient.get<dynamic>('/api/v1/plugin/statistic');
     final status = response.statusCode ?? 0;
     if (status >= 400) {
@@ -74,13 +94,26 @@ class PluginController extends GetxController {
   }
 
   Future<void> loadFromCache() async {
+    if (!_canAccessPlugins) {
+      _clearLocalCache();
+      items.clear();
+      _visibleCacheDirty = true;
+      return;
+    }
     if (kIsWeb) return;
+    final scopeKey = _appService.pluginCacheScopeKey;
+    if (scopeKey.isEmpty) {
+      items.clear();
+      _visibleCacheDirty = true;
+      return;
+    }
     final cache = _realm.realm.all<InstalledPluginModelCache>();
     if (cache.isEmpty) return;
     final locals = cache
+        .where((e) => matchesInstalledPluginScope(e.id, scopeKey))
         .map(
           (e) => PluginItem(
-            id: e.id,
+            id: extractInstalledPluginId(e.id),
             pluginName: e.pluginName,
             pluginDesc: e.pluginDesc,
             pluginIcon: e.pluginIcon,
@@ -108,10 +141,12 @@ class PluginController extends GetxController {
 
   void _saveToCache() {
     if (kIsWeb) return;
+    final scopeKey = _appService.pluginCacheScopeKey;
+    if (scopeKey.isEmpty) return;
     late final List<InstalledPluginModelCache> list = [];
     for (final item in items) {
       final cache = InstalledPluginModelCache(
-        item.id,
+        buildInstalledPluginCacheId(scopeKey, item.id),
         item.pluginName,
         item.pluginDesc ?? '',
         item.pluginIcon ?? '',
@@ -134,13 +169,25 @@ class PluginController extends GetxController {
       );
       list.add(cache);
     }
+    final stale = _realm.realm
+        .all<InstalledPluginModelCache>()
+        .where((item) => matchesInstalledPluginScope(item.id, scopeKey))
+        .toList();
     _realm.realm.write(() {
-      _realm.realm.deleteAll<InstalledPluginModelCache>();
+      _realm.realm.deleteMany(stale);
       _realm.realm.addAll(list, update: true);
     });
   }
 
   Future<void> load({bool force = false}) async {
+    if (!_canAccessPlugins) {
+      errorText.value = '当前帐号无管理权限';
+      _clearLocalCache();
+      items.clear();
+      _visibleCacheDirty = true;
+      isLoading.value = false;
+      return;
+    }
     isLoading.value = true;
     errorText.value = null;
     if (!force) {
@@ -205,6 +252,7 @@ class PluginController extends GetxController {
   }
 
   Future<bool> installPlugin(PluginItem item) async {
+    if (!_canAccessPlugins) return false;
     final queryParameters = {'repo_url': item.repoUrl ?? '', 'force': false};
     final response = await _apiClient.get<dynamic>(
       '/api/v1/plugin/install/${item.id}',
@@ -214,11 +262,13 @@ class PluginController extends GetxController {
   }
 
   Future<bool> resetPlugin(String id) async {
+    if (!_canAccessPlugins) return false;
     final response = await _apiClient.get<dynamic>('/api/v1/plugin/reset/$id');
     return response.statusCode == 200 && response.data['success'] == true;
   }
 
   Future<bool> uninstallPlugin(String id) async {
+    if (!_canAccessPlugins) return false;
     final response = await _apiClient.delete<dynamic>('/api/v1/plugin/$id');
     return response.statusCode == 200 && response.data['success'] == true;
   }

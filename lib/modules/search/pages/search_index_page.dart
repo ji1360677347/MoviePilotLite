@@ -17,7 +17,9 @@ import '../controllers/search_index_controller.dart';
 import '../models/search_suggestion.dart';
 
 class SearchIndexPage extends GetView<SearchIndexController> {
-  const SearchIndexPage({super.key});
+  const SearchIndexPage({super.key, this.scrollController});
+
+  final ScrollController? scrollController;
 
   static const double _scrollBottomGap = 96;
   static const String _defaultPagerSubcategory = 'TMDB 热门电影';
@@ -46,6 +48,7 @@ class SearchIndexPage extends GetView<SearchIndexController> {
         body: Obx(() {
           final isQuery = controller.isEditing.value;
           return CustomScrollView(
+            controller: scrollController,
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             physics: const BouncingScrollPhysics(
               parent: AlwaysScrollableScrollPhysics(),
@@ -432,6 +435,7 @@ class SearchIndexPage extends GetView<SearchIndexController> {
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w800,
+                    color: Colors.white,
                   ),
                 ),
                 if (overview != null && overview.isNotEmpty) ...[

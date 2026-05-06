@@ -116,7 +116,9 @@ class MediaInfo with _$MediaInfo {
     @JsonKey(fromJson: _intFromJson) int? runtime,
     @JsonKey(fromJson: _nextEpisodeFromJson, toJson: _nextEpisodeToJson)
     NextEpisodeToAir? next_episode_to_air,
+    @JsonKey(fromJson: _episodeGroupsFromJson, toJson: _episodeGroupsToJson)
     List<EpisodeGroup>? episode_groups,
+    @JsonKey(fromJson: _episodeGroupFromJson, toJson: _episodeGroupToJson)
     EpisodeGroup? episode_group,
   }) = _MediaInfo;
 
@@ -286,6 +288,7 @@ class EpisodeGroup with _$EpisodeGroup {
     @JsonKey(fromJson: _intFromJson) int? episode_count,
     @JsonKey(fromJson: _intFromJson) int? group_count,
     String? type,
+    @JsonKey(fromJson: _networkFromJson, toJson: _networkToJson)
     Network? network,
   }) = _EpisodeGroup;
 
@@ -397,3 +400,49 @@ NextEpisodeToAir? _nextEpisodeFromJson(Object? value) {
 
 Map<String, dynamic>? _nextEpisodeToJson(NextEpisodeToAir? value) =>
     value?.toJson();
+
+List<EpisodeGroup> _episodeGroupsFromJson(Object? value) {
+  if (value is! List) return const [];
+  final groups = <EpisodeGroup>[];
+  for (final item in value) {
+    final group = _episodeGroupFromJson(item);
+    if (group != null) {
+      groups.add(group);
+    }
+  }
+  return groups;
+}
+
+List<Map<String, dynamic>>? _episodeGroupsToJson(List<EpisodeGroup>? value) =>
+    value?.map((item) => item.toJson()).toList();
+
+EpisodeGroup? _episodeGroupFromJson(Object? value) {
+  if (value is Map<String, dynamic>) {
+    if (value.isEmpty) return null;
+    return EpisodeGroup.fromJson(value);
+  }
+  if (value is Map) {
+    final map = Map<String, dynamic>.from(value);
+    if (map.isEmpty) return null;
+    return EpisodeGroup.fromJson(map);
+  }
+  return null;
+}
+
+Map<String, dynamic>? _episodeGroupToJson(EpisodeGroup? value) =>
+    value?.toJson();
+
+Network? _networkFromJson(Object? value) {
+  if (value is Map<String, dynamic>) {
+    if (value.isEmpty) return null;
+    return Network.fromJson(value);
+  }
+  if (value is Map) {
+    final map = Map<String, dynamic>.from(value);
+    if (map.isEmpty) return null;
+    return Network.fromJson(map);
+  }
+  return null;
+}
+
+Map<String, dynamic>? _networkToJson(Network? value) => value?.toJson();

@@ -11,10 +11,12 @@ import 'package:moviepilot_mobile/modules/recommend/controllers/recommend_contro
 import 'package:moviepilot_mobile/modules/recommend/pages/recommend_page.dart';
 import 'package:moviepilot_mobile/modules/search/controllers/search_index_controller.dart';
 import 'package:moviepilot_mobile/modules/search/pages/search_index_page.dart';
+import 'package:moviepilot_mobile/services/app_service.dart';
 import 'package:moviepilot_mobile/services/ios_widget_navigation_service.dart';
 import 'package:moviepilot_mobile/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:moviepilot_mobile/utils/prefs_keys.dart';
+import 'package:moviepilot_mobile/utils/toast_util.dart';
 
 class Index extends StatefulWidget {
   const Index({super.key, this.initialIndex});
@@ -26,7 +28,9 @@ class Index extends StatefulWidget {
 }
 
 class _IndexState extends State<Index> {
+  final _appService = Get.find<AppService>();
   final _widgetNavigationService = Get.find<IosWidgetNavigationService>();
+  late final List<ScrollController> _tabScrollControllers;
   int _selectedIndex = 0;
   bool _initialIndexApplied = false;
   bool _restoreSuppressed = false;
@@ -40,6 +44,10 @@ class _IndexState extends State<Index> {
   @override
   void initState() {
     super.initState();
+    _tabScrollControllers = List.generate(
+      kIndexMaxTab + 1,
+      (_) => ScrollController(),
+    );
     _applyInitialIndex();
     if (!_initialIndexApplied) {
       _restoreSelectedIndex();
@@ -55,6 +63,9 @@ class _IndexState extends State<Index> {
 
   @override
   void dispose() {
+    for (final controller in _tabScrollControllers) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -81,7 +92,7 @@ class _IndexState extends State<Index> {
       final stored = prefs.getInt(kIndexLastTabKey);
       if (stored == null) return;
       if (_restoreSuppressed) return;
-      final clamped = stored.clamp(0, kIndexMaxTab);
+      final clamped = _coerceAllowedTab(stored.clamp(0, kIndexMaxTab));
       if (clamped == _selectedIndex) return;
       if (!mounted) return;
       setState(() {
@@ -112,6 +123,40 @@ class _IndexState extends State<Index> {
     }
   }
 
+  bool _canOpenTab(int index) {
+    switch (index) {
+      case 1:
+      case 2:
+        return _appService.canDiscovery;
+      case 4:
+        return _appService.canSearch;
+      default:
+        return true;
+    }
+  }
+
+  int _coerceAllowedTab(int index) {
+    if (_canOpenTab(index)) return index;
+    for (final candidate in const [0, 3, 1, 2, 4]) {
+      if (_canOpenTab(candidate)) return candidate;
+    }
+    return 0;
+  }
+
+  void _showTabPermissionDenied(int index) {
+    switch (index) {
+      case 1:
+      case 2:
+        ToastUtil.info('当前帐号无发现内容权限');
+        return;
+      case 4:
+        ToastUtil.info('当前帐号无搜索权限');
+        return;
+      default:
+        return;
+    }
+  }
+
   Widget _buildTabItem({
     required int index,
     required IconData iconOutlined,
@@ -128,6 +173,10 @@ class _IndexState extends State<Index> {
           onTap: () {
             _restoreSuppressed = true;
             _stopCurrentScrollMomentum();
+            if (!_canOpenTab(index)) {
+              _showTabPermissionDenied(index);
+              return;
+            }
             if (index == kIndexMaxTab && _selectedIndex == kIndexMaxTab) {
               if (Get.isRegistered<SearchIndexController>()) {
                 Get.find<SearchIndexController>().requestSearchBarFocus();
@@ -136,6 +185,9 @@ class _IndexState extends State<Index> {
             }
             setState(() => _selectedIndex = index);
             _persistSelectedIndex(index);
+            if (index == 3 && Get.isRegistered<MultifunctionController>()) {
+              Get.find<MultifunctionController>().refreshDashboard();
+            }
           },
           borderRadius: BorderRadius.circular(999),
           splashColor: primary.withValues(alpha: 0.12),
@@ -221,6 +273,16 @@ class _IndexState extends State<Index> {
   // Dedicated page for each tab
   @override
   Widget build(BuildContext context) {
+    final coercedIndex = _coerceAllowedTab(_selectedIndex);
+    if (coercedIndex != _selectedIndex) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() {
+          _selectedIndex = coercedIndex;
+        });
+        _persistSelectedIndex(coercedIndex);
+      });
+    }
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final barFill = isDark ? scheme.surfaceContainerHigh : Colors.white;
@@ -256,18 +318,18 @@ class _IndexState extends State<Index> {
       respectSafeArea: true,
       child: _buildBottomBarChild(),
       body: (context, controller) {
-        _activeScrollController = controller;
-        final i = _selectedIndex;
+        _activeScrollController = _tabScrollControllers[coercedIndex];
+        final i = coercedIndex;
         return Scaffold(
           extendBody: true,
           body: IndexedStack(
             index: i,
             children: [
-              DashboardPage(),
-              RecommendPage(scrollController: i == 1 ? controller : null),
-              DiscoverPage(scrollController: i == 2 ? controller : null),
-              MultifunctionPage(scrollController: i == 3 ? controller : null),
-              const SearchIndexPage(),
+              DashboardPage(scrollController: _tabScrollControllers[0]),
+              RecommendPage(scrollController: _tabScrollControllers[1]),
+              DiscoverPage(scrollController: _tabScrollControllers[2]),
+              MultifunctionPage(scrollController: _tabScrollControllers[3]),
+              SearchIndexPage(scrollController: _tabScrollControllers[4]),
             ],
           ),
         );

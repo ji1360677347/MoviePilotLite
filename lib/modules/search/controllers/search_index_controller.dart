@@ -155,6 +155,7 @@ class SearchIndexController extends GetxController {
       case SearchSuggestionCategory.site:
         final result = await Get.bottomSheet<({String area, List<int> sites})>(
           SiteSelectSheet(hasSegment: false),
+          isScrollControlled: true,
         );
         if (result == null) return;
         final (area, sites) = (result.area, result.sites);
