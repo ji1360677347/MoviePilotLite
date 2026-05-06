@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:moviepilot_mobile/modules/plugin/controllers/plugin_controller.dart';
 import 'package:moviepilot_mobile/modules/plugin/models/plugin_models.dart';
+import 'package:moviepilot_mobile/modules/plugin/pages/plugin_info_sheet.dart';
 import 'package:moviepilot_mobile/services/app_service.dart';
 import 'package:moviepilot_mobile/modules/plugin/widgets/plugin_item_card.dart';
 import 'package:moviepilot_mobile/utils/image_util.dart';
@@ -42,6 +43,11 @@ class PluginPage extends GetView<PluginController> {
         title: const Text('插件'),
         centerTitle: false,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.add_box_outlined),
+            tooltip: '指定仓库安装',
+            onPressed: () => _openRepoInstallSheet(context),
+          ),
           IconButton(
             icon: const Icon(Icons.store_outlined),
             tooltip: '插件列表',
@@ -196,6 +202,15 @@ class PluginPage extends GetView<PluginController> {
     textController.dispose();
     if (submitted == null) return;
     controller.updateKeyword(submitted);
+  }
+
+  Future<void> _openRepoInstallSheet(BuildContext context) {
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const SpecifiedPluginInstallSheet(),
+    );
   }
 
   Widget _buildSliverContent(BuildContext context) {
