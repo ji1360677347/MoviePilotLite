@@ -221,8 +221,7 @@ class SearchIndexPage extends GetView<SearchIndexController> {
                   if (!enabled) return const SizedBox.shrink();
 
                   return InkWell(
-                    onTap: () =>
-                        controller.submit(controller.textController.text),
+                    onTap: () => controller.submit(),
                     child: SizedBox(
                       width: 48,
                       height: barH,

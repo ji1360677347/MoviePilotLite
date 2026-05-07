@@ -305,13 +305,22 @@ class MyApp extends StatelessWidget {
             binding: BindingsBuilder(() {
               final args = Get.arguments;
               final params = Get.parameters;
+              final paramKw = params['keyword']?.trim();
               String? keyword;
-              if (args is Map && args['keyword'] != null) {
+              if (paramKw != null && paramKw.isNotEmpty) {
+                keyword = paramKw;
+              } else if (args is Map && args['keyword'] != null) {
                 keyword = args['keyword']?.toString();
-              } else if (params.containsKey('keyword')) {
-                keyword = params['keyword'];
               }
-              String? type = params['type'] ?? args['type'];
+              var type = params['type'];
+              if ((type == null || type.isEmpty) &&
+                  args is Map &&
+                  args['type'] != null) {
+                type = args['type']?.toString();
+              }
+              if (Get.isRegistered<MediaSearchListController>()) {
+                Get.delete<MediaSearchListController>();
+              }
               Get.put(
                 MediaSearchListController(
                   initialKeyword: keyword,

@@ -129,8 +129,10 @@ class SearchIndexController extends GetxController {
   }) async {
     final term = keyword.trim();
     if (term.isEmpty) return;
-    saveHistory(term);
     focusNode.unfocus();
+    try {
+      saveHistory(term);
+    } catch (_) {}
     switch (suggestion?.category) {
       case SearchSuggestionCategory.mediaTitle:
         Get.toNamed(
@@ -141,13 +143,13 @@ class SearchIndexController extends GetxController {
       case SearchSuggestionCategory.mediaCollection:
         Get.toNamed(
           '/media-search-list',
-          arguments: {'keyword': term, 'type': 'collection'},
+          parameters: {'keyword': term, 'type': 'collection'},
         );
         break;
       case SearchSuggestionCategory.actor:
         Get.toNamed(
           '/media-search-list',
-          arguments: {'keyword': term, 'type': 'person'},
+          parameters: {'keyword': term, 'type': 'person'},
         );
         break;
       case SearchSuggestionCategory.share:

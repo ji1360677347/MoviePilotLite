@@ -55,7 +55,7 @@ class _IndexState extends State<Index> {
     Get.put(RecommendController());
     Get.put(DiscoverController());
     Get.put(MultifunctionController());
-    Get.put(SearchIndexController());
+    Get.put(SearchIndexController(), permanent: true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _widgetNavigationService.navigateToPendingRoute();
     });
