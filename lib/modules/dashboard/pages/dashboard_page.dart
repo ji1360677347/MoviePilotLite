@@ -151,7 +151,7 @@ class DashboardPage extends GetView<DashboardController> {
                   palette.pageBackgroundAlt,
                   palette.pageBackground,
                 ],
-                stops: const [0, 0.28, 1],
+                stops: const [0, 0.68, 1],
               ),
             ),
           ),
