@@ -123,20 +123,17 @@ class SearchIndexPage extends GetView<SearchIndexController> {
                 ),
               ),
             ),
-            SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-                child: Align(
-                  alignment: Alignment.bottomLeft,
-                  child: Text(
-                    '搜索',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                    ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+              child: Align(
+                alignment: Alignment.bottomLeft,
+                child: Text(
+                  '搜索',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
               ),
@@ -269,7 +266,7 @@ class SearchIndexPage extends GetView<SearchIndexController> {
                 itemBuilder: (context, index) {
                   final e = suggestions[index];
                   return InkWell(
-                    onTap: () => controller.fillKeyword(e.keyword, focus: true),
+                    onTap: () => controller.submit(e.keyword),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
