@@ -251,14 +251,48 @@ class PluginController extends GetxController {
     } catch (_) {}
   }
 
-  Future<bool> installPlugin(PluginItem item) async {
-    if (!_canAccessPlugins) return false;
-    final queryParameters = {'repo_url': item.repoUrl ?? '', 'force': false};
+  Future<PluginInstallResult> installPlugin(PluginItem item) async {
+    if (!_canAccessPlugins) {
+      return const PluginInstallResult(success: false, message: '当前帐号无管理权限');
+    }
+    final queryParameters = {
+      'repo_url': _normalizeInstallRepoUrl(item.repoUrl),
+      'force': false,
+    };
     final response = await _apiClient.get<dynamic>(
       '/api/v1/plugin/install/${item.id}',
       queryParameters: queryParameters,
     );
-    return response.statusCode == 200 && response.data['success'] == true;
+    final data = response.data;
+    final success =
+        response.statusCode == 200 &&
+        data is Map<String, dynamic> &&
+        data['success'] == true;
+    final message = data is Map ? data['message']?.toString().trim() : null;
+    return PluginInstallResult(
+      success: success,
+      message: message == null || message.isEmpty ? null : message,
+    );
+  }
+
+  String _normalizeInstallRepoUrl(String? repoUrl) {
+    final raw = repoUrl?.trim() ?? '';
+    if (raw.isEmpty) return '';
+
+    if (raw.startsWith('git@github.com:')) {
+      final path = raw
+          .substring('git@github.com:'.length)
+          .replaceFirst(RegExp(r'\.git$'), '');
+      return 'https://github.com/$path';
+    }
+
+    final uri = Uri.tryParse(raw);
+    if (uri == null) {
+      return raw.replaceFirst(RegExp(r'\.git$'), '');
+    }
+
+    final normalizedPath = uri.path.replaceFirst(RegExp(r'\.git$'), '');
+    return uri.replace(path: normalizedPath).toString();
   }
 
   Future<bool> resetPlugin(String id) async {
@@ -272,4 +306,11 @@ class PluginController extends GetxController {
     final response = await _apiClient.delete<dynamic>('/api/v1/plugin/$id');
     return response.statusCode == 200 && response.data['success'] == true;
   }
+}
+
+class PluginInstallResult {
+  const PluginInstallResult({required this.success, this.message});
+
+  final bool success;
+  final String? message;
 }

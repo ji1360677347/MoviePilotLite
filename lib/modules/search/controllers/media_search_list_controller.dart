@@ -32,6 +32,7 @@ class MediaSearchListController extends GetxController {
   final RxString keyword = ''.obs;
   final RxList<RecommendApiItem> items = <RecommendApiItem>[].obs;
   final RxBool isLoading = false.obs;
+  final RxBool hasCompletedInitialSearch = false.obs;
   final RxnString error = RxnString();
   final RxBool hasMore = false.obs;
   final RxInt currentPage = 1.obs;
@@ -90,6 +91,7 @@ class MediaSearchListController extends GetxController {
       error.value = '请输入搜索关键字';
       items.clear();
       hasMore.value = false;
+      hasCompletedInitialSearch.value = true;
       return;
     }
     if (type.toLowerCase() == 'person') {
@@ -123,6 +125,7 @@ class MediaSearchListController extends GetxController {
       if (token == null || token.isEmpty) {
         error.value = '请先登录后再尝试搜索';
         isLoading.value = false;
+        hasCompletedInitialSearch.value = true;
         return;
       }
       final params = {'title': term, 'type': type, 'page': page};
@@ -137,11 +140,13 @@ class MediaSearchListController extends GetxController {
       if (status == 401 || status == 403) {
         error.value = '登录已过期，请重新登录';
         isLoading.value = false;
+        hasCompletedInitialSearch.value = true;
         return;
       }
       if (status >= 400) {
         error.value = '请求失败 (HTTP $status)';
         isLoading.value = false;
+        hasCompletedInitialSearch.value = true;
         return;
       }
       final raw = response.data;
@@ -177,6 +182,7 @@ class MediaSearchListController extends GetxController {
       _log.handle(e, stackTrace: st, message: '媒体搜索失败');
       error.value = '搜索失败，请稍后重试';
     } finally {
+      hasCompletedInitialSearch.value = true;
       isLoading.value = false;
     }
   }

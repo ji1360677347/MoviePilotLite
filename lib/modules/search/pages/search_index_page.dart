@@ -123,20 +123,17 @@ class SearchIndexPage extends GetView<SearchIndexController> {
                 ),
               ),
             ),
-            SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-                child: Align(
-                  alignment: Alignment.bottomLeft,
-                  child: Text(
-                    '搜索',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                    ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+              child: Align(
+                alignment: Alignment.bottomLeft,
+                child: Text(
+                  '搜索',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
               ),
@@ -224,8 +221,7 @@ class SearchIndexPage extends GetView<SearchIndexController> {
                   if (!enabled) return const SizedBox.shrink();
 
                   return InkWell(
-                    onTap: () =>
-                        controller.submit(controller.textController.text),
+                    onTap: () => controller.submit(),
                     child: SizedBox(
                       width: 48,
                       height: barH,
@@ -269,7 +265,7 @@ class SearchIndexPage extends GetView<SearchIndexController> {
                 itemBuilder: (context, index) {
                   final e = suggestions[index];
                   return InkWell(
-                    onTap: () => controller.fillKeyword(e.keyword, focus: true),
+                    onTap: () => controller.submit(e.keyword),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
@@ -658,7 +654,11 @@ class SearchIndexPage extends GetView<SearchIndexController> {
         else
           ...List.generate(items.length * 2 - 1, (index) {
             if (index.isOdd) {
-              return const Divider(height: 1);
+              return Divider(
+                height: 0.5,
+                thickness: 0.5,
+                color: Colors.white.withValues(alpha: 0.08),
+              );
             }
             final item = items[index ~/ 2];
             return _SuggestionTile(
