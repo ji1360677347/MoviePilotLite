@@ -534,7 +534,7 @@ class DashboardPage extends GetView<DashboardController> {
                   const SizedBox(height: 14),
                   Text(
                     totalStorage > 0
-                        ? SizeFormatter.formatSize(totalStorage, 0)
+                        ? SizeFormatter.formatSize(totalStorage, 1)
                         : '0 B',
                     style: TextStyle(
                       fontSize: 40,

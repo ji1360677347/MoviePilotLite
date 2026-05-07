@@ -13,7 +13,6 @@ import 'package:moviepilot_mobile/utils/image_util.dart';
 import 'package:moviepilot_mobile/services/app_service.dart';
 import 'package:moviepilot_mobile/utils/toast_util.dart';
 import 'package:moviepilot_mobile/widgets/cached_image.dart';
-import 'package:skeletonizer/skeletonizer.dart';
 
 import '../controllers/media_search_list_controller.dart';
 
@@ -25,8 +24,6 @@ class MediaSearchListPage extends GetView<MediaSearchListController> {
   static const double _listCardHeight = 250;
   static const double _immersiveHeaderHeight = 250;
   static const double _narrowScreenBreakpoint = 600;
-  static const int _skeletonGridCount = 8;
-  static const int _skeletonListCount = 6;
   @override
   Widget build(BuildContext context) {
     return Obx(() {
@@ -60,6 +57,8 @@ class MediaSearchListPage extends GetView<MediaSearchListController> {
     return Obx(() {
       final items = controller.items.toList();
       final isLoading = controller.isLoading.value;
+      final hasCompletedInitialSearch =
+          controller.hasCompletedInitialSearch.value;
       final error = controller.error.value;
       final hasMore = controller.hasMore.value;
       final isNarrowScreen =
@@ -72,7 +71,11 @@ class MediaSearchListPage extends GetView<MediaSearchListController> {
         gridSpacing: _gridSpacing,
         gridPadding: _gridPadding,
       );
-      final showSkeletonItems = isLoading && items.isEmpty;
+      final showOnlyLoading =
+          items.isEmpty && (isLoading || !hasCompletedInitialSearch);
+      if (showOnlyLoading) {
+        return _buildLoadingScaffold(context, bodyColor: bodyColor);
+      }
       return RefreshIndicator(
         onRefresh: () => controller.search(),
         child: CustomScrollView(
@@ -90,14 +93,10 @@ class MediaSearchListPage extends GetView<MediaSearchListController> {
             SliverToBoxAdapter(
               child: _buildSummary(context, immersive: immersive),
             ),
-            if (!showSkeletonItems && items.isEmpty)
+            if (items.isEmpty)
               SliverFillRemaining(
                 hasScrollBody: false,
-                child: _buildPlaceholderState(
-                  isLoading,
-                  error,
-                  immersive: immersive,
-                ),
+                child: _buildEmptyState(context, error: error),
               )
             else
               SliverPadding(
@@ -108,15 +107,8 @@ class MediaSearchListPage extends GetView<MediaSearchListController> {
                   _gridPadding,
                 ),
                 sliver: viewMode == SearchResultViewMode.list
-                    ? _buildListSliver(
-                        items,
-                        showSkeletonItems: showSkeletonItems,
-                      )
-                    : _buildGridSliver(
-                        items,
-                        layout.crossAxisCount,
-                        showSkeletonItems: showSkeletonItems,
-                      ),
+                    ? _buildListSliver(items)
+                    : _buildGridSliver(items, layout.crossAxisCount),
               ),
             SliverToBoxAdapter(
               child: _buildBottomStatus(
@@ -135,78 +127,92 @@ class MediaSearchListPage extends GetView<MediaSearchListController> {
     });
   }
 
-  Widget _buildGridSliver(
-    List<RecommendApiItem> items,
-    int crossAxisCount, {
-    required bool showSkeletonItems,
+  Widget _buildLoadingScaffold(
+    BuildContext context, {
+    required Color bodyColor,
   }) {
-    return Skeletonizer.sliver(
-      enabled: showSkeletonItems,
-      child: SliverGrid(
-        delegate: SliverChildBuilderDelegate(
-          (context, index) => _buildMediaItem(
-            items,
-            index,
-            showSkeletonItems: showSkeletonItems,
-            listMode: false,
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  const Color(0xFF050816),
+                  bodyColor,
+                  const Color(0xFF020617),
+                ],
+              ),
+            ),
           ),
-          childCount: showSkeletonItems ? _skeletonGridCount : items.length,
         ),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: crossAxisCount,
-          mainAxisSpacing: _gridSpacing,
-          crossAxisSpacing: _gridSpacing,
-          childAspectRatio: _cardAspectRatio,
+        SafeArea(
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: Get.back,
+            ),
+          ),
         ),
+        Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const _WarpLoading(size: 220),
+              const SizedBox(height: 18),
+              Text(
+                '正在搜索…',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: Colors.white.withValues(alpha: 0.88),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGridSliver(List<RecommendApiItem> items, int crossAxisCount) {
+    return SliverGrid(
+      delegate: SliverChildBuilderDelegate(
+        (context, index) => _buildMediaItem(items, index, listMode: false),
+        childCount: items.length,
+      ),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        mainAxisSpacing: _gridSpacing,
+        crossAxisSpacing: _gridSpacing,
+        childAspectRatio: _cardAspectRatio,
       ),
     );
   }
 
-  Widget _buildListSliver(
-    List<RecommendApiItem> items, {
-    required bool showSkeletonItems,
-  }) {
-    return Skeletonizer.sliver(
-      enabled: showSkeletonItems,
-      child: SliverList(
-        delegate: SliverChildBuilderDelegate((context, index) {
-          return Padding(
-            padding: EdgeInsets.only(
-              bottom:
-                  index ==
-                      (showSkeletonItems ? _skeletonListCount : items.length) -
-                          1
-                  ? 0
-                  : _gridSpacing,
-            ),
-            child: SizedBox(
-              height: _listCardHeight,
-              child: _buildMediaItem(
-                items,
-                index,
-                showSkeletonItems: showSkeletonItems,
-                listMode: true,
-              ),
-            ),
-          );
-        }, childCount: showSkeletonItems ? _skeletonListCount : items.length),
-      ),
+  Widget _buildListSliver(List<RecommendApiItem> items) {
+    return SliverList(
+      delegate: SliverChildBuilderDelegate((context, index) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: index == items.length - 1 ? 0 : _gridSpacing,
+          ),
+          child: SizedBox(
+            height: _listCardHeight,
+            child: _buildMediaItem(items, index, listMode: true),
+          ),
+        );
+      }, childCount: items.length),
     );
   }
 
   Widget _buildMediaItem(
     List<RecommendApiItem> items,
     int index, {
-    required bool showSkeletonItems,
     required bool listMode,
   }) {
-    if (showSkeletonItems) {
-      return RecommendItemCard(
-        item: RecommendApiItem(),
-        onTap: null,
-        cardHeight: listMode ? _listCardHeight : null,
-      );
-    }
     final item = items[index];
     return Obx(() {
       final appService = Get.find<AppService>();
@@ -228,64 +234,67 @@ class MediaSearchListPage extends GetView<MediaSearchListController> {
       final count = controller.items.length;
       final total = controller.totalItems.value;
       final summary = total != null ? '共找到 $total 条结果' : '共找到 $count 条结果';
-      return Skeletonizer(
-        enabled: controller.isLoading.value && count == 0,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  summary,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleMedium?.copyWith(color: Colors.white),
-                ),
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                summary,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(color: Colors.white),
               ),
-              TextButton(
-                onPressed: () => controller.search(),
-                child: const Text('重新搜索'),
-              ),
-            ],
-          ),
+            ),
+            TextButton(
+              onPressed: () => controller.search(),
+              child: const Text('重新搜索'),
+            ),
+          ],
         ),
       );
     });
   }
 
-  Widget _buildPlaceholderState(
-    bool isLoading,
-    String? error, {
-    required bool immersive,
-  }) {
-    if (isLoading) {
-      return Skeletonizer(
-        enabled: true,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(16, immersive ? 0 : 24, 16, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              SizedBox(height: 12),
-              Text('正在搜索…', style: TextStyle(fontSize: 16)),
-              SizedBox(height: 12),
-              Expanded(child: SizedBox.shrink()),
-            ],
+  Widget _buildEmptyState(BuildContext context, {required String? error}) {
+    final keyword = controller.keyword.value.trim();
+    final isNoResult = error == null || error == '没有找到匹配的媒体';
+    final title = isNoResult ? '没有找到匹配的媒体' : '搜索遇到问题';
+    final subtitle = isNoResult
+        ? (keyword.isEmpty ? '换一个关键词再试试。' : '没有命中 “$keyword”，可以换个片名、别名或年份再试。')
+        : error;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _EmptySearchMark(isError: !isNoResult),
+          const SizedBox(height: 22),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+            ),
           ),
-        ),
-      );
-    }
-    final message = error ?? '暂无数据，请尝试其它关键字';
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(message, style: const TextStyle(fontSize: 16)),
-        const SizedBox(height: 16),
-        FilledButton(
-          onPressed: () => controller.search(),
-          child: const Text('重新加载'),
-        ),
-      ],
+          const SizedBox(height: 10),
+          Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Colors.white.withValues(alpha: 0.62),
+              height: 1.45,
+            ),
+          ),
+          const SizedBox(height: 24),
+          FilledButton.icon(
+            onPressed: () => controller.search(),
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('重新搜索'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -302,9 +311,22 @@ class MediaSearchListPage extends GetView<MediaSearchListController> {
     }
 
     if (isLoading) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 16),
-        child: Center(child: CircularProgressIndicator()),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            children: [
+              const _WarpLoading(size: 96),
+              Text(
+                '正在加载更多…',
+                style: TextStyle(
+                  color: immersive ? Colors.white70 : Colors.grey,
+                ),
+              ),
+            ],
+          ),
+        ),
       );
     }
 
@@ -439,11 +461,7 @@ class MediaSearchListPage extends GetView<MediaSearchListController> {
               height: 160,
               child: (!isLoading && theme != null)
                   ? _buildPosterRow(theme.topItems)
-                  : Center(
-                      child: CupertinoActivityIndicator(
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
+                  : const Center(child: _WarpLoading(size: 132)),
             ),
           ),
         ),
@@ -586,5 +604,261 @@ class MediaSearchListPage extends GetView<MediaSearchListController> {
       return 'bangumi:$bangumiId';
     }
     return null;
+  }
+}
+
+class _WarpLoading extends StatefulWidget {
+  const _WarpLoading({required this.size});
+
+  final double size;
+
+  @override
+  State<_WarpLoading> createState() => _WarpLoadingState();
+}
+
+class _WarpLoadingState extends State<_WarpLoading>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.square(
+      dimension: widget.size,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          return CustomPaint(
+            painter: _WarpLoadingPainter(progress: _controller.value),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _WarpLoadingPainter extends CustomPainter {
+  const _WarpLoadingPainter({required this.progress});
+
+  final double progress;
+
+  static const int _particleCount = 72;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final shortest = size.shortestSide;
+    final maxRadius = shortest * 0.45;
+    final basePaint = Paint()
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke
+      ..blendMode = BlendMode.plus;
+    final glowPaint = Paint()
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8)
+      ..blendMode = BlendMode.plus;
+
+    _paintBackdrop(canvas, center, shortest);
+    _paintCore(canvas, center, shortest);
+
+    for (var i = 0; i < _particleCount; i++) {
+      final seed = i * 12.9898;
+      final angle = _pseudo(seed) * math.pi * 2;
+      final lane = _pseudo(seed + 7.31);
+      final phase = (progress + _pseudo(seed + 19.7)) % 1.0;
+      final curve = Curves.easeOutCubic.transform(phase);
+      final radius = shortest * (0.05 + lane * 0.06) + maxRadius * curve;
+      final trail = shortest * (0.035 + curve * 0.14);
+      final opacity = math.sin((1 - phase) * math.pi).clamp(0.0, 1.0);
+      final direction = Offset(math.cos(angle), math.sin(angle));
+      final start = center + direction * radius;
+      final end = center + direction * (radius + trail);
+      final hueMix = _pseudo(seed + 3.17);
+      final color = Color.lerp(
+        const Color(0xFF7DD3FC),
+        const Color(0xFFE0F2FE),
+        hueMix,
+      )!.withValues(alpha: 0.08 + opacity * 0.42);
+      final width = shortest * (0.0038 + curve * 0.0065);
+
+      glowPaint
+        ..color = color.withValues(alpha: opacity * 0.18)
+        ..strokeWidth = width * 3.2;
+      canvas.drawLine(start, end, glowPaint);
+
+      basePaint
+        ..color = color
+        ..strokeWidth = width;
+      canvas.drawLine(start, end, basePaint);
+    }
+  }
+
+  void _paintBackdrop(Canvas canvas, Offset center, double shortest) {
+    final washPaint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          const Color(0xFF1D4ED8).withValues(alpha: 0.18),
+          const Color(0xFF0F172A).withValues(alpha: 0.06),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromCircle(center: center, radius: shortest * 0.62));
+    canvas.drawCircle(center, shortest * 0.62, washPaint);
+  }
+
+  void _paintCore(Canvas canvas, Offset center, double shortest) {
+    final pulse = math.sin(progress * math.pi * 2) * 0.5 + 0.5;
+    final coreRadius = shortest * (0.025 + pulse * 0.01);
+    final corePaint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          Colors.white.withValues(alpha: 0.7),
+          const Color(0xFF93C5FD).withValues(alpha: 0.26),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromCircle(center: center, radius: shortest * 0.16));
+    canvas.drawCircle(center, shortest * 0.16, corePaint);
+
+    final ringPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = shortest * 0.005
+      ..color = const Color(0xFF60A5FA).withValues(alpha: 0.12 + pulse * 0.1);
+    canvas.drawCircle(center, coreRadius * 4.8, ringPaint);
+  }
+
+  double _pseudo(double value) {
+    final raw = math.sin(value) * 43758.5453123;
+    return raw - raw.floorToDouble();
+  }
+
+  @override
+  bool shouldRepaint(covariant _WarpLoadingPainter oldDelegate) {
+    return oldDelegate.progress != progress;
+  }
+}
+
+class _EmptySearchMark extends StatelessWidget {
+  const _EmptySearchMark({required this.isError});
+
+  final bool isError;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = isError ? const Color(0xFFF87171) : const Color(0xFF60A5FA);
+    return SizedBox.square(
+      dimension: 132,
+      child: CustomPaint(
+        painter: _EmptySearchMarkPainter(accent: accent, isError: isError),
+      ),
+    );
+  }
+}
+
+class _EmptySearchMarkPainter extends CustomPainter {
+  const _EmptySearchMarkPainter({required this.accent, required this.isError});
+
+  final Color accent;
+  final bool isError;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final shortest = size.shortestSide;
+    final radius = shortest * 0.34;
+    final glowPaint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          accent.withValues(alpha: 0.22),
+          accent.withValues(alpha: 0.07),
+          Colors.transparent,
+        ],
+      ).createShader(Rect.fromCircle(center: center, radius: shortest * 0.5));
+    canvas.drawCircle(center, shortest * 0.5, glowPaint);
+
+    final orbitPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2
+      ..color = Colors.white.withValues(alpha: 0.12);
+    for (var i = 0; i < 3; i++) {
+      canvas.save();
+      canvas.translate(center.dx, center.dy);
+      canvas.rotate((i - 1) * math.pi / 8);
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset.zero,
+          width: shortest * (0.72 + i * 0.08),
+          height: shortest * (0.34 + i * 0.04),
+        ),
+        orbitPaint,
+      );
+      canvas.restore();
+    }
+
+    final iconPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = shortest * 0.055
+      ..color = accent.withValues(alpha: 0.9);
+    canvas.drawCircle(
+      center.translate(-shortest * 0.04, -shortest * 0.03),
+      radius,
+      iconPaint,
+    );
+    canvas.drawLine(
+      center.translate(radius * 0.58, radius * 0.58),
+      center.translate(radius * 1.15, radius * 1.15),
+      iconPaint,
+    );
+
+    final dotPaint = Paint()..color = Colors.white.withValues(alpha: 0.72);
+    for (final offset in const [
+      Offset(0.18, 0.22),
+      Offset(0.72, 0.18),
+      Offset(0.74, 0.72),
+      Offset(0.25, 0.78),
+    ]) {
+      canvas.drawCircle(
+        Offset(size.width * offset.dx, size.height * offset.dy),
+        shortest * 0.015,
+        dotPaint,
+      );
+    }
+
+    if (isError) {
+      final markPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = shortest * 0.035
+        ..color = Colors.white.withValues(alpha: 0.8);
+      canvas.drawLine(
+        center.translate(-shortest * 0.1, -shortest * 0.1),
+        center.translate(shortest * 0.1, shortest * 0.1),
+        markPaint,
+      );
+      canvas.drawLine(
+        center.translate(shortest * 0.1, -shortest * 0.1),
+        center.translate(-shortest * 0.1, shortest * 0.1),
+        markPaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _EmptySearchMarkPainter oldDelegate) {
+    return oldDelegate.accent != accent || oldDelegate.isError != isError;
   }
 }

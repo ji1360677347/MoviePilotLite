@@ -658,7 +658,11 @@ class SearchIndexPage extends GetView<SearchIndexController> {
         else
           ...List.generate(items.length * 2 - 1, (index) {
             if (index.isOdd) {
-              return const Divider(height: 1);
+              return Divider(
+                height: 0.5,
+                thickness: 0.5,
+                color: Colors.white.withValues(alpha: 0.08),
+              );
             }
             final item = items[index ~/ 2];
             return _SuggestionTile(

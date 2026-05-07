@@ -114,7 +114,14 @@ class SearchIndexController extends GetxController {
     loadHistories();
   }
 
-  void submit([String? value]) => openMediaSearch(value ?? keyword.value);
+  void submit([String? value]) {
+    var term = (value ?? keyword.value).trim();
+    if (term.isEmpty) {
+      term = textController.text.trim();
+    }
+    if (term.isEmpty) return;
+    openMediaSearch(term);
+  }
 
   void openMediaSearch(
     String keyword, {
