@@ -4,8 +4,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:moviepilot_mobile/modules/discover/controllers/discover_controller.dart';
-import 'package:moviepilot_mobile/modules/discover/defines/discover_filter_defines.dart';
-import 'package:moviepilot_mobile/modules/discover/models/discover_filters.dart';
 import 'package:moviepilot_mobile/modules/discover/widgets/discover_filter_sheet.dart';
 import 'package:moviepilot_mobile/modules/discover/widgets/discover_media_card.dart';
 import 'package:moviepilot_mobile/modules/recommend/models/recommend_api_item.dart';
@@ -293,9 +291,7 @@ class DiscoverPage extends GetView<DiscoverController> {
   }
 
   Widget _buildFilterSummary(BuildContext context) {
-    final source = controller.selectedSource.value;
-    final filters = controller.filters.value;
-    final parts = _summaryParts(_buildSummaryText(source, filters));
+    final parts = _summaryParts(controller.currentSummaryText());
     final visibleParts = parts.take(5).toList();
     final remaining = parts.length - visibleParts.length;
 
@@ -559,130 +555,17 @@ class DiscoverPage extends GetView<DiscoverController> {
       ),
       builder: (_) => DiscoverFilterSheet(
         initialSource: controller.selectedSource.value,
+        sources: controller.sourceEntries.toList(),
         filtersBySource: controller.snapshotFiltersBySource(),
+        dynamicFiltersBySource: controller.snapshotDynamicFiltersBySource(),
       ),
     );
     if (result == null) return;
-    controller.applySelection(result.selectedSource, result.filtersBySource);
-  }
-
-  String _buildSummaryText(DiscoverSource source, DiscoverFilters filters) {
-    switch (source) {
-      case DiscoverSource.tmdb:
-        return _joinSummary([
-          source.label,
-          _fallbackText(filters.mediaType, '类型:全部'),
-          _labelForSort(_tmdbSortLabels(filters.mediaType), filters.sortBy),
-          _formatListWithOptions(
-            filters.selectedGenres,
-            _tmdbGenreOptions(filters.mediaType),
-            '风格:全部',
-          ),
-          _formatListWithOptions(
-            filters.selectedLanguages,
-            DiscoverFilterDefines.tmdbLanguageOptions,
-            '语言:全部',
-          ),
-          _formatRating(filters.voteAverage),
-        ]);
-      case DiscoverSource.douban:
-        return _joinSummary([
-          source.label,
-          _fallbackText(filters.mediaType, '类型:全部'),
-          _labelForSort(DiscoverFilterDefines.doubanSortLabels, filters.sortBy),
-          _formatListWithOptions(
-            filters.selectedGenres,
-            DiscoverFilterDefines.doubanGenreOptions,
-            '风格:全部',
-          ),
-          _formatListWithOptions(
-            filters.selectedRegions,
-            DiscoverFilterDefines.regionOptions,
-            '地区:全部',
-          ),
-          _labelForOptionValue(
-            filters.selectedDecade,
-            DiscoverFilterDefines.decadeOptions,
-            '年代:全部',
-          ),
-        ]);
-      case DiscoverSource.bangumi:
-        return _joinSummary([
-          source.label,
-          _fallbackText(filters.bangumiCategory, '类别:全部'),
-          _labelForSort(
-            DiscoverFilterDefines.bangumiSortLabels,
-            filters.sortBy,
-          ),
-          _fallbackText(filters.bangumiYear, '年份:全部'),
-        ]);
-    }
-  }
-
-  String _labelForSort(Map<String, String> labels, String value) {
-    return labels[value] ?? value;
-  }
-
-  Map<String, String> _tmdbSortLabels(String mediaType) {
-    return _isTvType(mediaType)
-        ? DiscoverFilterDefines.tmdbTvSortLabels
-        : DiscoverFilterDefines.tmdbMovieSortLabels;
-  }
-
-  List<DiscoverFilterOption> _tmdbGenreOptions(String mediaType) {
-    return _isTvType(mediaType)
-        ? DiscoverFilterDefines.tmdbTvGenreOptions
-        : DiscoverFilterDefines.tmdbMovieGenreOptions;
-  }
-
-  bool _isTvType(String mediaType) {
-    final normalized = mediaType.trim();
-    if (normalized.isEmpty) return false;
-    return normalized == '电视剧';
-  }
-
-  String _formatListWithOptions(
-    List<String> values,
-    List<DiscoverFilterOption> options,
-    String emptyLabel,
-  ) {
-    if (values.isEmpty) return emptyLabel;
-    final labels = _labelsForValues(values, options);
-    if (labels.length <= 2) return labels.join('、');
-    return '${labels.take(2).join('、')}等${labels.length}项';
-  }
-
-  List<String> _labelsForValues(
-    List<String> values,
-    List<DiscoverFilterOption> options,
-  ) {
-    final map = {for (final option in options) option.value: option.label};
-    return values.map((value) => map[value] ?? value).toList();
-  }
-
-  String _labelForOptionValue(
-    String value,
-    List<DiscoverFilterOption> options,
-    String emptyLabel,
-  ) {
-    if (value.isEmpty) return emptyLabel;
-    for (final option in options) {
-      if (option.value == value) return option.label;
-    }
-    return value;
-  }
-
-  String _formatRating(int value) {
-    if (value <= 0) return '评分不限';
-    return '$value分+';
-  }
-
-  String _fallbackText(String value, String fallback) {
-    return value.isEmpty ? fallback : value;
-  }
-
-  String _joinSummary(List<String> parts) {
-    return parts.where((part) => part.isNotEmpty).join(' · ');
+    controller.applySelection(
+      result.selectedSource,
+      result.filtersBySource,
+      result.dynamicFiltersBySource,
+    );
   }
 
   List<String> _summaryParts(String summary) {
@@ -712,7 +595,7 @@ class DiscoverPage extends GetView<DiscoverController> {
     );
   }
 
-  String _compactHeroMeta(RecommendApiItem? item, DiscoverSource source) {
+  String _compactHeroMeta(RecommendApiItem? item, DiscoverSourceEntry source) {
     final result = <String>[source.label];
     if (item == null) return result.join(' · ');
     final type = item.type?.trim() ?? '';
