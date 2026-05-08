@@ -1,7 +1,6 @@
-import 'dart:typed_data';
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:modal_bottom_sheet/modal_bottom_sheet.dart';
@@ -15,6 +14,7 @@ import 'package:moviepilot_mobile/modules/site/models/site_models.dart';
 import 'package:moviepilot_mobile/theme/app_theme.dart';
 import 'package:moviepilot_mobile/utils/open_url.dart';
 import 'package:moviepilot_mobile/utils/size_formatter.dart';
+import 'package:moviepilot_mobile/utils/toast_util.dart';
 
 import '../models/search_result_models.dart';
 
@@ -83,98 +83,148 @@ class SearchResultTorrentItem extends StatelessWidget {
     final secondaryTags = tags.where((tag) => !tag.prominent).toList();
     final promotion = _promotionBadgeLabel(item);
 
-    return GestureDetector(
-      onTap: () => _openDownloadSheet(context, item),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: _cardBorderColor(context)),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [cardColor(context), _cardBottomTint(context)],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(
-                alpha: _isInverted() ? 0.18 : 0.06,
-              ),
-              blurRadius: 22,
-              offset: const Offset(0, 10),
+    return CupertinoContextMenu.builder(
+      enableHapticFeedback: true,
+      actions: _buildContextMenuActions(context, item),
+      builder: (context, animation) => GestureDetector(
+        onTap: () => _openDownloadSheet(context, item),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: _cardBorderColor(context)),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [cardColor(context), _cardBottomTint(context)],
             ),
-          ],
-        ),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            if (promotion != null)
-              Positioned(
-                top: 0,
-                right: 0,
-                child: _buildPromotionBadge(
-                  promotion,
-                  prominent: true,
-                  compact: true,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(
+                  alpha: _isInverted() ? 0.18 : 0.06,
                 ),
+                blurRadius: 22,
+                offset: const Offset(0, 10),
               ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeader(
-                    context,
-                    title: title,
-                    season: season,
-                    promotion: promotion,
-                    accent: accent,
-                    torrent: torrent,
+            ],
+          ),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              if (promotion != null)
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: _buildPromotionBadge(
+                    promotion,
+                    prominent: true,
+                    compact: true,
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    torrent?.title ?? meta?.title ?? '',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontSize: 15.5,
-                      height: 1.4,
-                      fontWeight: FontWeight.w600,
-                      color: primaryTextColor(context).withValues(alpha: 0.92),
+                ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeader(
+                      context,
+                      title: title,
+                      season: season,
+                      promotion: promotion,
+                      accent: accent,
+                      torrent: torrent,
                     ),
-                  ),
-                  if ((meta?.subtitle ?? torrent?.description)?.isNotEmpty ??
-                      false) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                     Text(
-                      meta?.subtitle ?? torrent?.description ?? '',
-                      maxLines: 3,
+                      torrent?.title ?? meta?.title ?? '',
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontSize: 14.5,
-                        height: 1.45,
-                        color: secondaryTextColor(context),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontSize: 15.5,
+                        height: 1.4,
+                        fontWeight: FontWeight.w600,
+                        color: primaryTextColor(
+                          context,
+                        ).withValues(alpha: 0.92),
                       ),
                     ),
-                  ],
-                  const SizedBox(height: 12),
-                  _buildMetaRow(context, item),
-                  if (primaryTags.isNotEmpty || secondaryTags.isNotEmpty) ...[
+                    if ((meta?.subtitle ?? torrent?.description)?.isNotEmpty ??
+                        false) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        meta?.subtitle ?? torrent?.description ?? '',
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontSize: 14.5,
+                          height: 1.45,
+                          color: secondaryTextColor(context),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    _buildMetaRow(context, item),
+                    if (primaryTags.isNotEmpty || secondaryTags.isNotEmpty) ...[
+                      const SizedBox(height: 14),
+                      _buildTagSection(
+                        context,
+                        primaryTags: primaryTags,
+                        secondaryTags: secondaryTags,
+                      ),
+                    ],
                     const SizedBox(height: 14),
-                    _buildTagSection(
-                      context,
-                      primaryTags: primaryTags,
-                      secondaryTags: secondaryTags,
-                    ),
+                    _buildMoreFooter(context, item),
                   ],
-                  const SizedBox(height: 14),
-                  _buildMoreFooter(context, item),
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  List<Widget> _buildContextMenuActions(
+    BuildContext context,
+    SearchResultItem item,
+  ) {
+    final downloadUrl = item.torrent_info?.enclosure?.trim() ?? '';
+    final pageUrl = item.torrent_info?.page_url?.trim() ?? '';
+    final actions = <Widget>[
+      CupertinoContextMenuAction(
+        trailingIcon: CupertinoIcons.arrow_down_circle,
+        onPressed: () {
+          Navigator.of(context).pop();
+          _copyUrl(downloadUrl, emptyMessage: '暂无下载地址');
+        },
+        child: const Text('复制下载地址'),
+      ),
+    ];
+
+    if (pageUrl.isNotEmpty && pageUrl != downloadUrl) {
+      actions.add(
+        CupertinoContextMenuAction(
+          trailingIcon: CupertinoIcons.link,
+          onPressed: () {
+            Navigator.of(context).pop();
+            _copyUrl(pageUrl, emptyMessage: '暂无页面地址');
+          },
+          child: const Text('复制页面地址'),
+        ),
+      );
+    }
+
+    return actions;
+  }
+
+  void _copyUrl(String url, {required String emptyMessage}) {
+    final value = url.trim();
+    if (value.isEmpty) {
+      ToastUtil.info(emptyMessage);
+      return;
+    }
+    Clipboard.setData(ClipboardData(text: value));
+    ToastUtil.success('已复制，可直接粘贴');
   }
 
   Widget _buildHeader(
