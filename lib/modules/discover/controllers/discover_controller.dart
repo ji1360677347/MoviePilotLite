@@ -11,6 +11,7 @@ import 'package:moviepilot_mobile/modules/recommend/models/recommend_api_item.da
 import 'package:moviepilot_mobile/modules/search/services/search_keyword_hints_service.dart';
 import 'package:moviepilot_mobile/services/app_service.dart';
 import 'package:moviepilot_mobile/services/api_client.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 enum DiscoverSource {
   tmdb('TheMovieDB'),
@@ -66,6 +67,7 @@ class DiscoverController extends GetxController {
   static const Duration _minRefreshInterval = Duration(seconds: 30);
   static const Duration _forceRefreshInterval = Duration(seconds: 10);
   static const Duration _throttleGap = Duration(milliseconds: 350);
+  static const String _lastSelectedSourceKey = 'discover.lastSelectedSourceId';
 
   final _apiClient = Get.find<ApiClient>();
   final _log = Get.find<AppLog>();
@@ -96,10 +98,7 @@ class DiscoverController extends GetxController {
   void onInit() {
     super.onInit();
     _bootstrapFilters();
-    unawaited(loadDynamicSources());
-    if (_appService.canDiscovery) {
-      loadCurrent();
-    }
+    unawaited(_restoreLastSelectedSourceAndLoad());
     ever(selectedSource, (_) {
       if (_suspendAutoLoad) return;
       if (!_appService.canDiscovery) return;
@@ -121,6 +120,14 @@ class DiscoverController extends GetxController {
 
   void selectSource(DiscoverSourceEntry source) {
     if (selectedSource.value == source) return;
+    _suspendAutoLoad = true;
+    _activateSource(source);
+    _suspendAutoLoad = false;
+    unawaited(_persistSelectedSource(source));
+    loadCurrent(forceRefresh: true);
+  }
+
+  void _activateSource(DiscoverSourceEntry source) {
     selectedSource.value = source;
     if (source.isDynamic) {
       final next =
@@ -134,6 +141,53 @@ class DiscoverController extends GetxController {
       final next = _filtersBySource[source.id] ?? _defaultFiltersFor(local);
       _filtersBySource[source.id] = next;
       filters.value = next;
+    }
+  }
+
+  Future<void> _restoreLastSelectedSourceAndLoad() async {
+    var storedSourceId = '';
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      storedSourceId = prefs.getString(_lastSelectedSourceKey) ?? '';
+    } catch (e, st) {
+      _log.handle(e, stackTrace: st, message: '读取探索来源偏好失败');
+    }
+
+    final localSource = _findSourceById(storedSourceId);
+    if (localSource != null) {
+      _suspendAutoLoad = true;
+      _activateSource(localSource);
+      _suspendAutoLoad = false;
+    }
+
+    await loadDynamicSources(forceRefresh: true);
+
+    final restoredSource = _findSourceById(storedSourceId);
+    if (restoredSource != null) {
+      _suspendAutoLoad = true;
+      _activateSource(restoredSource);
+      _suspendAutoLoad = false;
+    }
+
+    if (_appService.canDiscovery) {
+      loadCurrent();
+    }
+  }
+
+  DiscoverSourceEntry? _findSourceById(String id) {
+    if (id.isEmpty) return null;
+    for (final source in sourceEntries) {
+      if (source.id == id) return source;
+    }
+    return null;
+  }
+
+  Future<void> _persistSelectedSource(DiscoverSourceEntry source) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_lastSelectedSourceKey, source.id);
+    } catch (e, st) {
+      _log.handle(e, stackTrace: st, message: '保存探索来源偏好失败');
     }
   }
 
@@ -217,6 +271,7 @@ class DiscoverController extends GetxController {
       filters.value = filtersBySource[source.id] ?? _defaultFiltersFor(local);
     }
     _suspendAutoLoad = false;
+    unawaited(_persistSelectedSource(source));
     loadCurrent(forceRefresh: true);
   }
 
@@ -394,7 +449,14 @@ class DiscoverController extends GetxController {
       final dynamicEntries = dynamicSources
           .map((source) => DiscoverSourceEntry.dynamic(source))
           .toList();
-      sourceEntries.assignAll([...localEntries, ...dynamicEntries]);
+      final nextEntries = [...localEntries, ...dynamicEntries];
+      sourceEntries.assignAll(nextEntries);
+      final refreshedSelection = _findSourceById(selectedSource.value.id);
+      if (refreshedSelection != null) {
+        _suspendAutoLoad = true;
+        _activateSource(refreshedSelection);
+        _suspendAutoLoad = false;
+      }
     } catch (e, st) {
       _log.handle(e, stackTrace: st, message: '获取动态探索来源失败');
       dynamicSourcesError.value = '动态来源请求异常';

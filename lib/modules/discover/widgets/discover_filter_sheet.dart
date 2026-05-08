@@ -688,11 +688,10 @@ class _DiscoverFilterSheetState extends State<DiscoverFilterSheet> {
           for (final source in _sources)
             Padding(
               padding: const EdgeInsets.only(right: 8),
-              child: _FilterChipButton(
-                label: source.label,
+              child: _SourceSwitchChip(
+                source: source,
                 selected: _source == source,
                 color: _sourceColorOf(context),
-                subtle: false,
                 onTap: () => setState(() => _source = source),
               ),
             ),
@@ -724,6 +723,89 @@ class _DiscoverFilterSheetState extends State<DiscoverFilterSheet> {
     final normalized = mediaType.trim();
     if (normalized.isEmpty) return false;
     return normalized == '电视剧';
+  }
+}
+
+class _SourceSwitchChip extends StatelessWidget {
+  const _SourceSwitchChip({
+    required this.source,
+    required this.selected,
+    required this.color,
+    required this.onTap,
+  });
+
+  final DiscoverSourceEntry source;
+  final bool selected;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final textColor = selected
+        ? color
+        : theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.78) ??
+              scheme.onSurface.withValues(alpha: 0.78);
+    final iconColor = selected
+        ? color
+        : scheme.onSurface.withValues(alpha: 0.58);
+    final icon = _sourceIconOf(source);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          height: 38,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: selected
+                ? color.withValues(alpha: 0.12)
+                : scheme.surfaceContainerHighest.withValues(alpha: 0.62),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected
+                  ? color.withValues(alpha: 0.42)
+                  : theme.dividerColor.withValues(alpha: 0.36),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: iconColor, size: 17),
+              const SizedBox(width: 6),
+              Text(
+                source.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 13,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+IconData _sourceIconOf(DiscoverSourceEntry source) {
+  if (source.isDynamic) return Icons.auto_awesome_rounded;
+  switch (source.localSource) {
+    case DiscoverSource.tmdb:
+      return Icons.local_movies_rounded;
+    case DiscoverSource.douban:
+      return Icons.public_rounded;
+    case DiscoverSource.bangumi:
+      return Icons.animation_rounded;
+    case null:
+      return Icons.storage_rounded;
   }
 }
 
