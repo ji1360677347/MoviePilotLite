@@ -166,6 +166,8 @@ jobs:
             ${{ runner.os }}-pods-
 
       - name: Install CocoaPods
+        env:
+          TYPHOEUS_HTTP_VERSION: CURL_HTTP_VERSION_1_1
         run: |
           cd ios
           pod install
