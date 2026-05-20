@@ -98,6 +98,8 @@ If needed, you can further use the `web_scraper.py` file to scrape the web page 
 
 ## Done: 下载接口 500（对齐 WebUI POST /api/v1/download/ + 原始 torrent_in/media_in）
 
+## Done: iOS CI 构建失败 — altman_downloader_control 移除 controller_adaptor，本地 DownloaderControllerAdaptor 适配
+
 ## Current Task: Dashboard 页面编辑功能（隐藏/显示 + 换位）
 
 [ ] 理清 DashboardConfig / DashboardOrder 与 displayedWidgets 的映射关系

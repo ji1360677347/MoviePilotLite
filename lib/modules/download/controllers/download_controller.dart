@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:async';
 import 'dart:io';
 
-import 'package:altman_downloader_control/controller/controller_adaptor.dart';
 import 'package:altman_downloader_control/controller/downloader_config.dart';
+import 'package:moviepilot_mobile/utils/downloader_controller_adaptor.dart';
 import 'package:altman_downloader_control/page/torrent_download_screen.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
