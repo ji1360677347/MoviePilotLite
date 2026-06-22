@@ -193,7 +193,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
       title: '电影订阅',
       count: info.movieCount,
       accent: _primaryStrong,
-      poster: moviePosters.firstOrNull ?? '',
+      posters: moviePosters,
       onTap: movieModule == null
           ? null
           : () => controller.handleRouteTap(
@@ -205,7 +205,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
       title: '剧集订阅',
       count: info.tvCount,
       accent: _secondaryStrong,
-      poster: tvPosters.firstOrNull ?? '',
+      posters: tvPosters,
       onTap: tvModule == null
           ? null
           : () => controller.handleRouteTap(
@@ -267,7 +267,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
     required String title,
     required int count,
     required Color accent,
-    required String poster,
+    required List<String> posters,
     VoidCallback? onTap,
   }) {
     return Semantics(
@@ -292,23 +292,13 @@ class MultifunctionPage extends GetView<MultifunctionController> {
                     left: Radius.circular(13),
                   ),
                   child: SizedBox(
-                    width: 92,
+                    width: 108,
                     height: double.infinity,
-                    child: poster.isEmpty
-                        ? ColoredBox(
-                            color: _surfaceHighest,
-                            child: Icon(
-                              title.startsWith('电影')
-                                  ? Icons.movie_filter_rounded
-                                  : Icons.live_tv_rounded,
-                              color: accent,
-                              size: 30,
-                            ),
-                          )
-                        : CachedImage(
-                            imageUrl: ImageUtil.convertCacheImageUrl(poster),
-                            fit: BoxFit.cover,
-                          ),
+                    child: _buildSubscriptionPosterCollage(
+                      title: title,
+                      accent: accent,
+                      posters: posters,
+                    ),
                   ),
                 ),
                 Expanded(
@@ -365,6 +355,87 @@ class MultifunctionPage extends GetView<MultifunctionController> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSubscriptionPosterCollage({
+    required String title,
+    required Color accent,
+    required List<String> posters,
+  }) {
+    if (posters.isEmpty) {
+      return ColoredBox(
+        color: _surfaceHighest,
+        child: Icon(
+          title.startsWith('电影')
+              ? Icons.movie_filter_rounded
+              : Icons.live_tv_rounded,
+          color: accent,
+          size: 30,
+        ),
+      );
+    }
+
+    final visiblePosters = posters.take(3).toList();
+    final leftOffsets = switch (visiblePosters.length) {
+      1 => const [19.0],
+      2 => const [10.0, 30.0],
+      _ => const [5.0, 21.0, 37.0],
+    };
+    final topOffsets = switch (visiblePosters.length) {
+      1 => const [13.0],
+      2 => const [17.0, 11.0],
+      _ => const [20.0, 15.0, 10.0],
+    };
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: _isDark ? 0.08 : 0.055),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            accent.withValues(alpha: _isDark ? 0.13 : 0.09),
+            _surfaceHighest.withValues(alpha: 0.88),
+          ],
+        ),
+      ),
+      child: Stack(
+        children: [
+          for (var index = 0; index < visiblePosters.length; index++)
+            Positioned(
+              left: leftOffsets[index],
+              top: topOffsets[index],
+              child: Container(
+                width: 66,
+                height: 102,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(9),
+                  border: Border.all(
+                    color: _isDark
+                        ? Colors.white.withValues(alpha: 0.18)
+                        : Colors.white.withValues(alpha: 0.92),
+                    width: 1.2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(
+                        alpha: _isDark ? 0.26 : 0.14,
+                      ),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: CachedImage(
+                  imageUrl: visiblePosters[index],
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
