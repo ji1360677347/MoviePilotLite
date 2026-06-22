@@ -27,6 +27,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _background,
+      extendBodyBehindAppBar: true,
       appBar: _buildNavigationBar(),
       body: Obx(() {
         final modules = controller.buildDashboardModules();
@@ -54,6 +55,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
             final pageWidth = constraints.maxWidth;
             final horizontalPadding = pageWidth >= 720 ? 24.0 : 20.0;
             final contentMaxWidth = pageWidth >= 1100 ? 1024.0 : 920.0;
+            final topPadding = MediaQuery.paddingOf(context).top + 4;
 
             return Stack(
               children: [
@@ -70,7 +72,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
                         physics: const AlwaysScrollableScrollPhysics(),
                         padding: EdgeInsets.fromLTRB(
                           horizontalPadding,
-                          16,
+                          topPadding,
                           horizontalPadding,
                           104,
                         ),
@@ -125,7 +127,6 @@ class MultifunctionPage extends GetView<MultifunctionController> {
       elevation: 0,
       scrolledUnderElevation: 0,
       surfaceTintColor: Colors.transparent,
-      flexibleSpace: const _NavigationBackdrop(),
       titleSpacing: 0,
       leading: Builder(
         builder: (buttonContext) => CupertinoButton(
@@ -907,6 +908,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
         ),
         const SizedBox(height: 16),
         GridView.builder(
+          padding: EdgeInsets.zero,
           itemCount: modules.length,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -1064,38 +1066,6 @@ class _PageBackdrop extends StatelessWidget {
             child: _SoftGlow(
               size: 340,
               color: const Color(0xFF2563EB).withValues(alpha: 0.07),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _NavigationBackdrop extends StatelessWidget {
-  const _NavigationBackdrop();
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRect(
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          const ColoredBox(color: Color(0xFF111827)),
-          Positioned(
-            top: -110,
-            left: -70,
-            child: _SoftGlow(
-              size: 250,
-              color: const Color(0xFF3B82F6).withValues(alpha: 0.20),
-            ),
-          ),
-          Positioned(
-            bottom: -150,
-            right: -120,
-            child: _SoftGlow(
-              size: 300,
-              color: const Color(0xFFA855F7).withValues(alpha: 0.12),
             ),
           ),
         ],
