@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:moviepilot_mobile/modules/discover/controllers/discover_controller.dart';
 import 'package:moviepilot_mobile/modules/discover/widgets/discover_filter_sheet.dart';
@@ -34,18 +35,20 @@ class DiscoverPage extends GetView<DiscoverController> {
     });
     final appService = Get.find<AppService>();
     return Obx(() {
+      final theme = Theme.of(context);
+      final isDark = theme.brightness == Brightness.dark;
       final hasPageBackground =
           appService.backgroundImageEnabled.value &&
           appService.backgroundImageBytes.value != null;
       return Scaffold(
-        backgroundColor: _cinemaBlack,
+        backgroundColor: isDark ? _cinemaBlack : const Color(0xFFF4F7FB),
         extendBodyBehindAppBar: true,
         appBar: _buildNavigationBar(context),
         body: Stack(
           fit: StackFit.expand,
           children: [
             if (hasPageBackground)
-              Positioned.fill(child: _buildBackgroundImage(appService))
+              Positioned.fill(child: _buildBackgroundImage(context, appService))
             else
               const Positioned.fill(child: _CinematicAtmosphere()),
             CustomScrollView(
@@ -79,21 +82,29 @@ class DiscoverPage extends GetView<DiscoverController> {
   }
 
   AppBar _buildNavigationBar(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     return AppBar(
       backgroundColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
       surfaceTintColor: Colors.transparent,
-      foregroundColor: Colors.white,
+      systemOverlayStyle: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+      ),
+      foregroundColor: colorScheme.onSurface,
       leading: CupertinoButton(
         padding: EdgeInsets.zero,
         onPressed: () {},
-        child: const Icon(Icons.explore_outlined, color: Colors.white),
+        child: Icon(Icons.explore_outlined, color: colorScheme.onSurface),
       ),
-      title: const Text(
+      title: Text(
         'Discover',
         style: TextStyle(
-          color: Colors.white,
+          color: colorScheme.onSurface,
           fontSize: 24,
           fontWeight: FontWeight.w800,
           letterSpacing: -0.4,
@@ -114,7 +125,8 @@ class DiscoverPage extends GetView<DiscoverController> {
     );
   }
 
-  Widget _buildBackgroundImage(AppService appService) {
+  Widget _buildBackgroundImage(BuildContext context, AppService appService) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final bytes = appService.backgroundImageBytes.value;
     if (bytes == null) return const SizedBox.shrink();
     return IgnorePointer(
@@ -141,8 +153,12 @@ class DiscoverPage extends GetView<DiscoverController> {
               ),
             ),
           ),
-          const DecoratedBox(
-            decoration: BoxDecoration(color: Color(0xBB050501)),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: isDark
+                  ? const Color(0xBB050501)
+                  : Colors.white.withValues(alpha: 0.54),
+            ),
           ),
         ],
       ),
@@ -291,6 +307,9 @@ class DiscoverPage extends GetView<DiscoverController> {
   }
 
   Widget _buildFilterSummary(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     final parts = _summaryParts(controller.currentSummaryText());
     final visibleParts = parts.take(5).toList();
     final remaining = parts.length - visibleParts.length;
@@ -307,9 +326,13 @@ class DiscoverPage extends GetView<DiscoverController> {
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.075),
+                color: colorScheme.surface.withValues(
+                  alpha: isDark ? 0.72 : 0.92,
+                ),
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                border: Border.all(
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.72),
+                ),
               ),
               child: Row(
                 children: [
@@ -349,7 +372,7 @@ class DiscoverPage extends GetView<DiscoverController> {
                   const SizedBox(width: 8),
                   Icon(
                     Icons.keyboard_arrow_right_rounded,
-                    color: Colors.white.withValues(alpha: 0.72),
+                    color: colorScheme.onSurfaceVariant,
                   ),
                 ],
               ),
@@ -415,7 +438,7 @@ class DiscoverPage extends GetView<DiscoverController> {
                 Text(
                   title,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontWeight: FontWeight.w900,
                     letterSpacing: -0.3,
                   ),
@@ -424,7 +447,7 @@ class DiscoverPage extends GetView<DiscoverController> {
                 Text(
                   subtitle,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.52),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     fontSize: 12,
                   ),
                 ),
@@ -483,15 +506,20 @@ class DiscoverPage extends GetView<DiscoverController> {
   }
 
   Widget _buildEmptyRail(BuildContext context, String message) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 34),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.055),
+          color: colorScheme.surface.withValues(alpha: isDark ? 0.66 : 0.94),
           borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+          border: Border.all(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.72),
+          ),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -504,7 +532,7 @@ class DiscoverPage extends GetView<DiscoverController> {
                 gradient: RadialGradient(
                   colors: [
                     _netflixRed.withValues(alpha: 0.42),
-                    _surfaceSoft.withValues(alpha: 0.96),
+                    colorScheme.surfaceContainerHighest,
                   ],
                 ),
               ),
@@ -515,10 +543,10 @@ class DiscoverPage extends GetView<DiscoverController> {
               ),
             ),
             const SizedBox(height: 18),
-            const Text(
+            Text(
               '片场暂时安静',
               style: TextStyle(
-                color: Colors.white,
+                color: colorScheme.onSurface,
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
               ),
@@ -528,7 +556,7 @@ class DiscoverPage extends GetView<DiscoverController> {
               message,
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.58),
+                color: colorScheme.onSurfaceVariant,
                 fontSize: 13,
                 height: 1.4,
               ),
@@ -577,17 +605,24 @@ class DiscoverPage extends GetView<DiscoverController> {
   }
 
   Widget _buildSummaryChip(BuildContext context, String label) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.28),
+        color: isDark
+            ? Colors.black.withValues(alpha: 0.28)
+            : colorScheme.surfaceContainerHighest.withValues(alpha: 0.82),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.72),
+        ),
       ),
       child: Text(
         label,
-        style: const TextStyle(
-          color: Colors.white,
+        style: TextStyle(
+          color: colorScheme.onSurface,
           fontSize: 12,
           fontWeight: FontWeight.w600,
         ),
@@ -667,6 +702,9 @@ class _GlassButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     return ClipRRect(
       borderRadius: BorderRadius.circular(999),
       child: BackdropFilter(
@@ -681,20 +719,28 @@ class _GlassButton extends StatelessWidget {
               vertical: 8,
             ),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.12),
+              color: colorScheme.surface.withValues(
+                alpha: isDark ? 0.72 : 0.92,
+              ),
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+              border: Border.all(
+                color: colorScheme.outlineVariant.withValues(alpha: 0.72),
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, color: Colors.white, size: compact ? 18 : 19),
+                Icon(
+                  icon,
+                  color: colorScheme.onSurface,
+                  size: compact ? 18 : 19,
+                ),
                 if (!compact) ...[
                   const SizedBox(width: 8),
                   Text(
                     label,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: colorScheme.onSurface,
                       fontSize: 13,
                       fontWeight: FontWeight.w800,
                     ),
@@ -774,14 +820,19 @@ class _CinematicAtmosphere extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final base = isDark ? DiscoverPage._cinemaBlack : const Color(0xFFF4F7FB);
+    final surface = isDark
+        ? DiscoverPage._surfaceSoft
+        : const Color(0xFFE8EEF6);
     return DecoratedBox(
       decoration: BoxDecoration(
         gradient: RadialGradient(
           center: const Alignment(-0.72, -0.92),
           radius: 1.25,
           colors: [
-            DiscoverPage._netflixRed.withValues(alpha: 0.18),
-            DiscoverPage._cinemaBlack,
+            DiscoverPage._netflixRed.withValues(alpha: isDark ? 0.18 : 0.08),
+            base,
           ],
         ),
       ),
@@ -791,9 +842,9 @@ class _CinematicAtmosphere extends StatelessWidget {
             begin: Alignment.topRight,
             end: Alignment.bottomLeft,
             colors: [
-              Colors.white.withValues(alpha: 0.035),
+              Colors.white.withValues(alpha: isDark ? 0.035 : 0.32),
               Colors.transparent,
-              DiscoverPage._surfaceSoft.withValues(alpha: 0.32),
+              surface.withValues(alpha: isDark ? 0.32 : 0.56),
             ],
           ),
         ),
@@ -807,22 +858,25 @@ class _HeroPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return DecoratedBox(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            DiscoverPage._surfaceSoft,
+            isDark ? DiscoverPage._surfaceSoft : const Color(0xFFE2E8F0),
             DiscoverPage._netflixRed.withValues(alpha: 0.42),
-            DiscoverPage._cinemaBlack,
+            isDark ? DiscoverPage._cinemaBlack : const Color(0xFFCBD5E1),
           ],
         ),
       ),
       child: Center(
         child: Icon(
           Icons.local_movies_rounded,
-          color: Colors.white.withValues(alpha: 0.18),
+          color: Theme.of(
+            context,
+          ).colorScheme.onSurface.withValues(alpha: 0.18),
           size: 88,
         ),
       ),
@@ -835,11 +889,16 @@ class _DiscoverCardSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.055),
+        color: colorScheme.surface.withValues(alpha: isDark ? 0.66 : 0.94),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.7),
+        ),
       ),
       child: Stack(
         children: [
@@ -851,9 +910,9 @@ class _DiscoverCardSkeleton extends StatelessWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    Colors.white.withValues(alpha: 0.03),
-                    Colors.white.withValues(alpha: 0.09),
-                    Colors.white.withValues(alpha: 0.035),
+                    colorScheme.surfaceContainerHighest.withValues(alpha: 0.36),
+                    colorScheme.surfaceContainerHighest.withValues(alpha: 0.72),
+                    colorScheme.surfaceContainerHighest.withValues(alpha: 0.42),
                   ],
                 ),
               ),
@@ -869,7 +928,7 @@ class _DiscoverCardSkeleton extends StatelessWidget {
                 Container(
                   height: 12,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.16),
+                    color: colorScheme.onSurface.withValues(alpha: 0.16),
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
@@ -879,7 +938,7 @@ class _DiscoverCardSkeleton extends StatelessWidget {
                   child: Container(
                     height: 10,
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.1),
+                      color: colorScheme.onSurface.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(999),
                     ),
                   ),

@@ -252,6 +252,7 @@ class MyApp extends StatelessWidget {
             binding: BindingsBuilder(() {
               Get.lazyPut(() => SystemMessageController());
             }),
+            middlewares: permissionGuards('/system-message'),
           ),
           GetPage(
             name: '/cache',

@@ -18,7 +18,7 @@ class SystemMessagePage extends StatefulWidget {
 class _SystemMessagePageState extends State<SystemMessagePage> {
   late final SystemMessageController controller;
 
-  static const double _pageHorizontalPadding = 12;
+  static const double _pageHorizontalPadding = 16;
   String _selectedType = '全部';
 
   @override
@@ -38,10 +38,13 @@ class _SystemMessagePageState extends State<SystemMessagePage> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     return Scaffold(
       appBar: AppBar(
         title: const Text('系统消息'),
+        centerTitle: false,
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 10),
@@ -52,11 +55,12 @@ class _SystemMessagePageState extends State<SystemMessagePage> {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: cs.onSurface.withValues(alpha: 0.06),
+                  color: cs.surfaceContainerHighest.withValues(
+                    alpha: isDark ? 0.54 : 0.82,
+                  ),
                   borderRadius: BorderRadius.circular(999),
                   border: Border.all(
-                    color: cs.outline.withValues(alpha: 0.10),
-                    width: 0.5,
+                    color: cs.outlineVariant.withValues(alpha: 0.72),
                   ),
                 ),
                 child: Stack(
@@ -93,8 +97,13 @@ class _SystemMessagePageState extends State<SystemMessagePage> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Theme.of(context).colorScheme.surface,
-              Theme.of(context).colorScheme.surface.withValues(alpha: 0.92),
+              theme.scaffoldBackgroundColor,
+              Color.lerp(
+                    theme.scaffoldBackgroundColor,
+                    cs.primary,
+                    isDark ? 0.025 : 0.018,
+                  ) ??
+                  theme.scaffoldBackgroundColor,
             ],
           ),
         ),
@@ -128,7 +137,7 @@ class _SystemMessagePageState extends State<SystemMessagePage> {
               height: 56,
               decoration: BoxDecoration(
                 color: cs.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(18),
               ),
               child: Icon(CupertinoIcons.bell, color: cs.primary),
             ),
@@ -136,9 +145,9 @@ class _SystemMessagePageState extends State<SystemMessagePage> {
             Text(
               '暂无系统消息',
               style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: cs.onSurface.withValues(alpha: 0.9),
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: cs.onSurface,
               ),
             ),
             const SizedBox(height: 8),
@@ -148,7 +157,7 @@ class _SystemMessagePageState extends State<SystemMessagePage> {
               style: TextStyle(
                 fontSize: 13,
                 height: 1.4,
-                color: cs.onSurface.withValues(alpha: 0.55),
+                color: cs.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 14),
@@ -326,30 +335,30 @@ class _SystemMessagePageState extends State<SystemMessagePage> {
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(
             _pageHorizontalPadding,
-            12,
+            10,
             _pageHorizontalPadding,
-            12,
+            16,
           ),
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate((context, index) {
               final message = items[index];
               return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.only(bottom: 12),
                 child: SystemMessageItem(message: message),
               );
             }, childCount: items.length),
           ),
         ),
         if (!controller.hasMore.value)
-          const SliverToBoxAdapter(
+          SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.only(bottom: 18),
+              padding: const EdgeInsets.only(bottom: 18),
               child: Center(
                 child: Text(
                   '没有更多了',
                   style: TextStyle(
                     fontSize: 12,
-                    color: CupertinoColors.systemGrey,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -365,6 +374,7 @@ class _SystemMessagePageState extends State<SystemMessagePage> {
     SystemMessageController controller,
   ) {
     final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return SafeArea(
       top: false,
       child: ClipRect(
@@ -378,11 +388,10 @@ class _SystemMessagePageState extends State<SystemMessagePage> {
               10,
             ),
             decoration: BoxDecoration(
-              color: cs.surface.withValues(alpha: 0.78),
+              color: cs.surface.withValues(alpha: isDark ? 0.86 : 0.96),
               border: Border(
                 top: BorderSide(
-                  color: cs.outline.withValues(alpha: 0.12),
-                  width: 0.5,
+                  color: cs.outlineVariant.withValues(alpha: 0.72),
                 ),
               ),
             ),
@@ -399,10 +408,12 @@ class _SystemMessagePageState extends State<SystemMessagePage> {
                       vertical: 10,
                     ),
                     decoration: BoxDecoration(
-                      color: cs.onSurface.withValues(alpha: 0.06),
-                      borderRadius: BorderRadius.circular(12),
+                      color: cs.surfaceContainerHighest.withValues(
+                        alpha: isDark ? 0.52 : 0.76,
+                      ),
+                      borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: cs.outline.withValues(alpha: 0.14),
+                        color: cs.outlineVariant.withValues(alpha: 0.72),
                       ),
                     ),
                   ),

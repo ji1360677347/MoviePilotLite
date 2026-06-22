@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:modal_bottom_sheet/modal_bottom_sheet.dart';
 import 'package:moviepilot_mobile/gen/assets.gen.dart';
@@ -227,6 +228,7 @@ class DashboardPage extends GetView<DashboardController> {
   AppBar _buildNavigationBar(BuildContext context) {
     final avatarStr = _dashboardBarAvatar();
     final palette = DashboardPalette.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isSuperuser = Get.find<AppService>().isSuperuser;
 
     return AppBar(
@@ -234,6 +236,11 @@ class DashboardPage extends GetView<DashboardController> {
       elevation: 0,
       scrolledUnderElevation: 0,
       surfaceTintColor: Colors.transparent,
+      systemOverlayStyle: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+      ),
       titleSpacing: 0,
       leading: Builder(
         builder: (buttonContext) => CupertinoButton(
@@ -306,31 +313,38 @@ class DashboardPage extends GetView<DashboardController> {
         CupertinoButton(
           padding: const EdgeInsets.only(left: 6, right: 12),
           onPressed: () => _showProfile(context),
-          child: avatarStr != null && avatarStr.isNotEmpty
-              ? () {
-                  final avatarBytes = _decodeAvatar(avatarStr);
-                  if (avatarBytes.isNotEmpty) {
-                    return Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: palette.primary.withValues(alpha: 0.42),
-                        ),
-                        image: DecorationImage(
-                          image: MemoryImage(avatarBytes),
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    );
-                  } else {
-                    return const Icon(CupertinoIcons.person_circle);
-                  }
-                }()
-              : Assets.images.avatars.avatar1.image(width: 34, height: 34),
+          child: _buildDashboardAvatar(avatarStr, palette),
         ),
       ],
+    );
+  }
+
+  Widget _buildDashboardAvatar(String? avatar, DashboardPaletteData palette) {
+    final avatarBytes = avatar == null || avatar.trim().isEmpty
+        ? Uint8List(0)
+        : _decodeAvatar(avatar);
+
+    if (avatarBytes.isEmpty) {
+      return ClipOval(
+        child: Assets.images.avatars.avatar1.image(
+          width: 36,
+          height: 36,
+          fit: BoxFit.cover,
+        ),
+      );
+    }
+
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: palette.primary.withValues(alpha: 0.42)),
+        image: DecorationImage(
+          image: MemoryImage(avatarBytes),
+          fit: BoxFit.cover,
+        ),
+      ),
     );
   }
 

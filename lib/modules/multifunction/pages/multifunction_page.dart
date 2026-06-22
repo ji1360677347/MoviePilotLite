@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:moviepilot_mobile/modules/multifunction/controllers/multifunction_controller.dart';
 import 'package:moviepilot_mobile/utils/image_util.dart';
@@ -10,24 +11,39 @@ class MultifunctionPage extends GetView<MultifunctionController> {
 
   final ScrollController? scrollController;
 
-  static const Color _background = Color(0xFF131315);
-  static const Color _surface = Color(0x4D1F1F21);
-  static const Color _surfaceHighest = Color(0xFF353437);
-  static const Color _outlineSoft = Color(0x1A8B91A0);
-  static const Color _textPrimary = Color(0xFFE4E2E4);
-  static const Color _textSecondary = Color(0xFFC0C6D6);
-  static const Color _textMuted = Color(0xFF8B91A0);
-  static const Color _primary = Color(0xFFAAC7FF);
-  static const Color _primaryStrong = Color(0xFF3E90FF);
-  static const Color _secondary = Color(0xFFE9B3FF);
-  static const Color _secondaryStrong = Color(0xFF7D01B1);
-  static const Color _error = Color(0xFFFFB4AB);
+  static bool get _isDark => Get.isDarkMode;
+  static Color get _background =>
+      _isDark ? const Color(0xFF111827) : const Color(0xFFF4F7FB);
+  static Color get _surface =>
+      _isDark ? const Color(0xE60B1220) : const Color(0xF7FFFFFF);
+  static Color get _surfaceHighest =>
+      _isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0);
+  static Color get _outlineSoft =>
+      _isDark ? const Color(0x14FFFFFF) : const Color(0x1F0F172A);
+  static Color get _textPrimary =>
+      _isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
+  static Color get _textSecondary =>
+      _isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569);
+  static Color get _textMuted =>
+      _isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+  static Color get _primary =>
+      _isDark ? const Color(0xFF93C5FD) : const Color(0xFF2563EB);
+  static Color get _primaryStrong =>
+      _isDark ? const Color(0xFF3B82F6) : const Color(0xFF1D4ED8);
+  static Color get _secondary =>
+      _isDark ? const Color(0xFFD8B4FE) : const Color(0xFF7C3AED);
+  static Color get _secondaryStrong =>
+      _isDark ? const Color(0xFFA855F7) : const Color(0xFF6D28D9);
+  static Color get _error =>
+      _isDark ? const Color(0xFFFFB4AB) : const Color(0xFFB42318);
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     return Scaffold(
       backgroundColor: _background,
-      appBar: _buildNavigationBar(),
+      extendBodyBehindAppBar: true,
+      appBar: _buildNavigationBar(context),
       body: Obx(() {
         final modules = controller.buildDashboardModules();
         final modulesByRoute = <String, DashboardModuleViewModel>{
@@ -39,7 +55,6 @@ class MultifunctionPage extends GetView<MultifunctionController> {
             ? calendarInfo.todayItems
             : calendarInfo.weekItems;
         final hiddenRoutes = <String>{
-          '/search-result',
           '/subscribe-movie',
           '/subscribe-tv',
           '/site',
@@ -55,6 +70,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
             final pageWidth = constraints.maxWidth;
             final horizontalPadding = pageWidth >= 720 ? 24.0 : 20.0;
             final contentMaxWidth = pageWidth >= 1100 ? 1024.0 : 920.0;
+            final topPadding = MediaQuery.paddingOf(context).top + 4;
 
             return Stack(
               children: [
@@ -65,21 +81,17 @@ class MultifunctionPage extends GetView<MultifunctionController> {
                     child: RefreshIndicator(
                       onRefresh: controller.refreshDashboard,
                       color: _primaryStrong,
-                      backgroundColor: const Color(0xFF1B1B1D),
+                      backgroundColor: _surfaceHighest,
                       child: ListView(
                         controller: scrollController,
                         physics: const AlwaysScrollableScrollPhysics(),
                         padding: EdgeInsets.fromLTRB(
                           horizontalPadding,
-                          16,
+                          topPadding,
                           horizontalPadding,
                           104,
                         ),
                         children: [
-                          _buildRecentSearchSection(
-                            modulesByRoute['/search-result'],
-                          ),
-                          const SizedBox(height: 16),
                           if (controller.canAccessSubscribe) ...[
                             _buildSubscriptionSection(
                               pageWidth: pageWidth,
@@ -124,12 +136,18 @@ class MultifunctionPage extends GetView<MultifunctionController> {
     );
   }
 
-  PreferredSizeWidget _buildNavigationBar() {
+  PreferredSizeWidget _buildNavigationBar(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return AppBar(
       backgroundColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
       surfaceTintColor: Colors.transparent,
+      systemOverlayStyle: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+      ),
       titleSpacing: 0,
       leading: Builder(
         builder: (buttonContext) => CupertinoButton(
@@ -142,7 +160,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
           ),
         ),
       ),
-      title: const Text(
+      title: Text(
         'More',
         style: TextStyle(
           fontSize: 24,
@@ -161,164 +179,262 @@ class MultifunctionPage extends GetView<MultifunctionController> {
     );
   }
 
-  Widget _buildRecentSearchSection(DashboardModuleViewModel? module) {
-    return _glassCard(
-      onTap: module == null
-          ? null
-          : () => controller.handleRouteTap(module.route, title: module.title),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(
-        children: [
-          Container(
-            width: 20,
-            height: 20,
-            decoration: BoxDecoration(
-              color: _primaryStrong.withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.history_rounded, color: _primary, size: 20),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '近期搜索',
-                  style: TextStyle(
-                    color: _textPrimary,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Icon(Icons.chevron_right_rounded, color: _textMuted, size: 20),
-        ],
-      ),
-    );
-  }
-
   Widget _buildSubscriptionSection({
     required double pageWidth,
     DashboardModuleViewModel? movieModule,
     DashboardModuleViewModel? tvModule,
   }) {
     final info = controller.subscribeInfo.value;
-    final moviePoster = _posterForRoute('/subscribe-movie');
-    final tvPoster = _posterForRoute('/subscribe-tv');
-    final total = (info.movieCount + info.tvCount).clamp(1, 999999);
-    final columns = pageWidth >= 760 ? 2 : 1;
+    final moviePosters = _postersForRoute('/subscribe-movie');
+    final tvPosters = _postersForRoute('/subscribe-tv');
+    final useColumns = pageWidth >= 700;
 
-    final cards = <Widget>[
-      _subscriptionCard(
-        title: '电影',
-        poster: moviePoster,
-        subtitle: '已订阅 ${info.movieCount} 部',
-        progress: info.movieCount / total,
-        progressColor: _primaryStrong,
-        onTap: movieModule == null
-            ? null
-            : () => controller.handleRouteTap(
-                movieModule.route,
-                title: movieModule.title,
-              ),
-      ),
-      _subscriptionCard(
-        title: '剧集',
-        poster: tvPoster,
-        subtitle: '已订阅 ${info.tvCount} 部',
-        progress: info.tvCount / total,
-        progressColor: _secondaryStrong,
-        onTap: tvModule == null
-            ? null
-            : () => controller.handleRouteTap(
-                tvModule.route,
-                title: tvModule.title,
-              ),
-      ),
-    ];
+    final movieCard = _subscriptionCategoryCard(
+      title: '电影订阅',
+      count: info.movieCount,
+      accent: _primaryStrong,
+      posters: moviePosters,
+      onTap: movieModule == null
+          ? null
+          : () => controller.handleRouteTap(
+              movieModule.route,
+              title: movieModule.title,
+            ),
+    );
+    final tvCard = _subscriptionCategoryCard(
+      title: '剧集订阅',
+      count: info.tvCount,
+      accent: _secondaryStrong,
+      posters: tvPosters,
+      onTap: tvModule == null
+          ? null
+          : () => controller.handleRouteTap(
+              tvModule.route,
+              title: tvModule.title,
+            ),
+    );
 
-    if (columns == 1) {
-      return Column(children: [cards[0], const SizedBox(height: 16), cards[1]]);
-    }
-
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(child: cards[0]),
-        const SizedBox(width: 16),
-        Expanded(child: cards[1]),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                '订阅',
+                style: TextStyle(
+                  color: _textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.2,
+                ),
+              ),
+            ),
+            if (!controller.subscribeDataReady.value)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.cloud_off_outlined, size: 14, color: _textMuted),
+                  const SizedBox(width: 5),
+                  Text(
+                    '数据暂不可用',
+                    style: TextStyle(
+                      color: _textMuted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (useColumns)
+          Row(
+            children: [
+              Expanded(child: movieCard),
+              const SizedBox(width: 12),
+              Expanded(child: tvCard),
+            ],
+          )
+        else
+          Column(children: [movieCard, const SizedBox(height: 12), tvCard]),
       ],
     );
   }
 
-  Widget _subscriptionCard({
+  Widget _subscriptionCategoryCard({
     required String title,
-    required String poster,
-    required String subtitle,
-    required double progress,
-    required Color progressColor,
+    required int count,
+    required Color accent,
+    required List<String> posters,
     VoidCallback? onTap,
   }) {
-    return _glassCard(
-      onTap: onTap,
-      padding: const EdgeInsets.all(12),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              width: 56,
-              height: 80,
-              color: _surfaceHighest,
-              child: poster.isEmpty
-                  ? const Icon(Icons.movie_creation_outlined, color: _textMuted)
-                  : CachedImage(
-                      imageUrl: ImageUtil.convertCacheImageUrl(poster),
-                      fit: BoxFit.cover,
-                    ),
+    return Semantics(
+      button: onTap != null,
+      label: '$title，共 $count 部',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Ink(
+            height: 132,
+            decoration: BoxDecoration(
+              color: _surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: _outlineSoft, width: 0.5),
             ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: _textPrimary,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -0.4,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    color: _textSecondary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-                const SizedBox(height: 12),
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
-                  child: Container(
-                    height: 4,
-                    color: _surfaceHighest,
-                    child: FractionallySizedBox(
-                      alignment: Alignment.centerLeft,
-                      widthFactor: progress.clamp(0.08, 1.0),
-                      child: Container(color: progressColor),
+                  borderRadius: const BorderRadius.horizontal(
+                    left: Radius.circular(13),
+                  ),
+                  child: SizedBox(
+                    width: 108,
+                    height: double.infinity,
+                    child: _buildSubscriptionPosterCollage(
+                      title: title,
+                      accent: accent,
+                      posters: posters,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 12, 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          title,
+                          style: TextStyle(
+                            color: _textPrimary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '$count 部',
+                          style: TextStyle(
+                            color: accent,
+                            fontSize: 26,
+                            height: 1,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.8,
+                          ),
+                        ),
+                        const Spacer(),
+                        Row(
+                          children: [
+                            Text(
+                              '查看订阅',
+                              style: TextStyle(
+                                color: _textMuted,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const Spacer(),
+                            Icon(
+                              Icons.arrow_forward_rounded,
+                              size: 17,
+                              color: accent,
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubscriptionPosterCollage({
+    required String title,
+    required Color accent,
+    required List<String> posters,
+  }) {
+    if (posters.isEmpty) {
+      return ColoredBox(
+        color: _surfaceHighest,
+        child: Icon(
+          title.startsWith('电影')
+              ? Icons.movie_filter_rounded
+              : Icons.live_tv_rounded,
+          color: accent,
+          size: 30,
+        ),
+      );
+    }
+
+    final visiblePosters = posters.take(3).toList();
+    final leftOffsets = switch (visiblePosters.length) {
+      1 => const [19.0],
+      2 => const [10.0, 30.0],
+      _ => const [5.0, 21.0, 37.0],
+    };
+    final topOffsets = switch (visiblePosters.length) {
+      1 => const [13.0],
+      2 => const [17.0, 11.0],
+      _ => const [20.0, 15.0, 10.0],
+    };
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: _isDark ? 0.08 : 0.055),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            accent.withValues(alpha: _isDark ? 0.13 : 0.09),
+            _surfaceHighest.withValues(alpha: 0.88),
+          ],
+        ),
+      ),
+      child: Stack(
+        children: [
+          for (var index = 0; index < visiblePosters.length; index++)
+            Positioned(
+              left: leftOffsets[index],
+              top: topOffsets[index],
+              child: Container(
+                width: 66,
+                height: 102,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(9),
+                  border: Border.all(
+                    color: _isDark
+                        ? Colors.white.withValues(alpha: 0.18)
+                        : Colors.white.withValues(alpha: 0.92),
+                    width: 1.2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(
+                        alpha: _isDark ? 0.26 : 0.14,
+                      ),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: CachedImage(
+                  imageUrl: visiblePosters[index],
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -337,7 +453,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
       children: [
         Row(
           children: [
-            const Expanded(
+            Expanded(
               child: Text(
                 '上映日历',
                 style: TextStyle(
@@ -398,12 +514,12 @@ class MultifunctionPage extends GetView<MultifunctionController> {
     required ValueChanged<String> onChanged,
   }) {
     return CupertinoTheme(
-      data: const CupertinoThemeData(primaryColor: _textPrimary),
+      data: CupertinoThemeData(primaryColor: _textPrimary),
       child: CupertinoSlidingSegmentedControl<String>(
         groupValue: value,
-        backgroundColor: const Color(0xFF1F1F21),
-        thumbColor: const Color(0xFF353437),
-        children: const {
+        backgroundColor: _surface,
+        thumbColor: _surfaceHighest,
+        children: {
           'today': Padding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Text(
@@ -470,7 +586,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
                           fit: BoxFit.cover,
                         )
                       else
-                        const Center(
+                        Center(
                           child: Icon(
                             Icons.live_tv_rounded,
                             color: _textMuted,
@@ -496,7 +612,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
                                 ),
                                 child: Text(
                                   seasonEpisodeTag,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: _primary,
                                     fontSize: 10,
                                     fontWeight: FontWeight.w600,
@@ -521,7 +637,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
                           ),
                           child: Text(
                             chipText,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Colors.white,
                               fontSize: 10,
                               fontWeight: FontWeight.w500,
@@ -537,7 +653,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
             const SizedBox(height: 8),
             Text(
               entry.showName,
-              style: const TextStyle(
+              style: TextStyle(
                 color: _textPrimary,
                 fontSize: 12,
                 fontWeight: FontWeight.w400,
@@ -557,7 +673,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
           ? null
           : () => controller.handleRouteTap(module.route, title: module.title),
       child: _glassCard(
-        child: const Center(
+        child: Center(
           child: Text(
             '暂无上映日历数据',
             style: TextStyle(
@@ -577,7 +693,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           '站点',
           style: TextStyle(
             color: _textPrimary,
@@ -660,7 +776,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: _textPrimary,
                     fontSize: 17,
                     fontWeight: FontWeight.w600,
@@ -723,13 +839,9 @@ class MultifunctionPage extends GetView<MultifunctionController> {
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.cloud_download_rounded,
-                color: _primary,
-                size: 20,
-              ),
+              Icon(Icons.cloud_download_rounded, color: _primary, size: 20),
               const SizedBox(width: 8),
-              const Expanded(
+              Expanded(
                 child: Text(
                   '下载器',
                   style: TextStyle(
@@ -749,7 +861,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
                 ),
                 child: Text(
                   '${info.clients.length} 个活跃',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: _primary,
                     fontSize: 12,
                     fontWeight: FontWeight.w400,
@@ -797,7 +909,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
+        color: _surfaceHighest.withValues(alpha: _isDark ? 0.34 : 0.72),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: _outlineSoft),
       ),
@@ -810,7 +922,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
               const SizedBox(width: 6),
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   color: _textMuted,
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
@@ -826,7 +938,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
             children: [
               Text(
                 value,
-                style: const TextStyle(
+                style: TextStyle(
                   color: _textPrimary,
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
@@ -837,7 +949,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
                 padding: const EdgeInsets.only(bottom: 2),
                 child: Text(
                   unit,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: _textSecondary,
                     fontSize: 12,
                     fontWeight: FontWeight.w400,
@@ -865,15 +977,16 @@ class MultifunctionPage extends GetView<MultifunctionController> {
     required List<DashboardModuleViewModel> modules,
   }) {
     final crossAxisCount = pageWidth >= 960
-        ? 5
-        : pageWidth >= 760
         ? 4
-        : 3;
+        : pageWidth >= 640
+        ? 3
+        : 2;
+    final childAspectRatio = pageWidth >= 640 ? 1.65 : 1.35;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           '实用工具',
           style: TextStyle(
             color: _textPrimary,
@@ -884,6 +997,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
         ),
         const SizedBox(height: 16),
         GridView.builder(
+          padding: EdgeInsets.zero,
           itemCount: modules.length,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -891,36 +1005,104 @@ class MultifunctionPage extends GetView<MultifunctionController> {
             crossAxisCount: crossAxisCount,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
-            childAspectRatio: 1,
+            childAspectRatio: childAspectRatio,
           ),
-          itemBuilder: (_, index) => _utilityCard(modules[index]),
+          itemBuilder: (_, index) => _utilityCard(modules[index], index: index),
         ),
       ],
     );
   }
 
-  Widget _utilityCard(DashboardModuleViewModel module) {
-    return _glassCard(
-      onTap: () => controller.handleRouteTap(module.route, title: module.title),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(module.icon, size: 28, color: module.accent),
-          const SizedBox(height: 10),
-          Text(
-            _utilityTitle(module.title),
-            style: const TextStyle(
-              color: _textPrimary,
-              fontSize: 12,
-              fontWeight: FontWeight.w400,
-              height: 1.2,
+  Widget _utilityCard(DashboardModuleViewModel module, {required int index}) {
+    final title = _utilityTitle(module.title);
+    final subtitle = module.primaryText.trim();
+
+    return Semantics(
+      button: true,
+      label: '$title，$subtitle',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () =>
+              controller.handleRouteTap(module.route, title: module.title),
+          borderRadius: BorderRadius.circular(16),
+          child: Ink(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: module.accent.withValues(alpha: 0.18),
+                width: 0.8,
+              ),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  module.accent.withValues(alpha: index.isEven ? 0.11 : 0.08),
+                  _surface,
+                ],
+              ),
             ),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: module.accent.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(module.icon, size: 21, color: module.accent),
+                    ),
+                    const Spacer(),
+                    Container(
+                      width: 26,
+                      height: 26,
+                      decoration: BoxDecoration(
+                        color: _surfaceHighest.withValues(
+                          alpha: _isDark ? 0.36 : 0.82,
+                        ),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.arrow_outward_rounded,
+                        size: 15,
+                        color: _textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: _textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: _textMuted,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    height: 1.25,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -948,12 +1130,13 @@ class MultifunctionPage extends GetView<MultifunctionController> {
     );
   }
 
-  String _posterForRoute(String route) {
-    final item = controller.subscribeInfo.value.posterItems.firstWhereOrNull(
-      (item) => item.route == route && item.poster.trim().isNotEmpty,
-    );
-    if (item == null) return '';
-    return controller.normalizePoster(item.poster);
+  List<String> _postersForRoute(String route) {
+    return controller.subscribeInfo.value.posterItems
+        .where((item) => item.route == route && item.poster.trim().isNotEmpty)
+        .map((item) => controller.normalizePoster(item.poster))
+        .where((poster) => poster.isNotEmpty)
+        .take(3)
+        .toList();
   }
 
   String _metricNumber(double value) {
@@ -1007,30 +1190,49 @@ class _PageBackdrop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = isDark
+        ? const [Color(0xFF111827), Color(0xFF0F172A), Color(0xFF0B1220)]
+        : const [Color(0xFFF8FAFC), Color(0xFFF1F5F9), Color(0xFFEFF4FA)];
     return DecoratedBox(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFF111214), Color(0xFF131315), Color(0xFF0E0E10)],
+          colors: colors,
+          stops: [0, 0.56, 1],
         ),
       ),
       child: Stack(
         children: [
           Positioned(
-            top: -100,
-            left: -60,
+            top: -110,
+            left: -90,
             child: _SoftGlow(
-              size: 220,
-              color: const Color(0xFF3E90FF).withValues(alpha: 0.08),
+              size: 300,
+              color: const Color(
+                0xFF3B82F6,
+              ).withValues(alpha: isDark ? 0.14 : 0.09),
             ),
           ),
           Positioned(
-            top: 260,
-            right: -80,
+            top: 220,
+            right: -140,
             child: _SoftGlow(
-              size: 240,
-              color: const Color(0xFF7D01B1).withValues(alpha: 0.07),
+              size: 360,
+              color: const Color(
+                0xFFA855F7,
+              ).withValues(alpha: isDark ? 0.10 : 0.06),
+            ),
+          ),
+          Positioned(
+            bottom: -180,
+            left: -130,
+            child: _SoftGlow(
+              size: 340,
+              color: const Color(
+                0xFF2563EB,
+              ).withValues(alpha: isDark ? 0.07 : 0.045),
             ),
           ),
         ],

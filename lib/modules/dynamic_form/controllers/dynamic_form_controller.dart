@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:dio/dio.dart';
 import 'package:get/get.dart';
 import 'package:moviepilot_mobile/applog/app_log.dart';
 import 'package:moviepilot_mobile/modules/dynamic_form/adapters/plugin_form_adapter.dart';
@@ -36,7 +35,7 @@ class DynamicFormController extends GetxController {
   final _appService = Get.find<AppService>();
   final _jpushService = Get.find<JPushService>();
   final _log = Get.find<AppLog>();
-  static const _appLitePushNotifyUrl = 'http://106.14.89.6/api/push';
+  static const _appLitePushRunPath = '/api/v1/plugin/AppPushMsg/run';
 
   /// 接口路径（GET 拉取），如 /api/v1/plugin/page/xxx
   late final String apiPath;
@@ -403,28 +402,27 @@ class DynamicFormController extends GetxController {
       return false;
     }
 
+    final token = _getToken();
+    if (token == null || token.isEmpty) {
+      appLitePushLastTestText.value = _formatAppLitePushTestResult(
+        false,
+        '请先登录',
+      );
+      return false;
+    }
+
     isTestingAppLitePush.value = true;
     try {
-      final dio = Dio(
-        BaseOptions(
-          connectTimeout: const Duration(seconds: 30),
-          receiveTimeout: const Duration(seconds: 30),
-          validateStatus: (_) => true,
-        ),
-      );
-      final response = await dio.post<dynamic>(
-        _appLitePushNotifyUrl,
-        data: <String, dynamic>{
-          'token': pushToken,
-          'title': '测试消息',
-          'content': '这是一条本地测试通知',
-        },
-        options: Options(
-          headers: <String, dynamic>{
-            'Content-Type': 'application/json',
-            'X-API-Key': pushKey,
-          },
-        ),
+      final cookieHeader =
+          await _apiClient.getCookieHeader() ?? _appService.cookie;
+      final headers = cookieHeader != null && cookieHeader.isNotEmpty
+          ? <String, dynamic>{'cookie': cookieHeader}
+          : null;
+      final response = await _apiClient.get<dynamic>(
+        _appLitePushRunPath,
+        queryParameters: <String, dynamic>{'apikey': pushKey},
+        token: token,
+        headers: headers,
       );
       final status = response.statusCode ?? 0;
       final responseMap = _extractMap(response.data);

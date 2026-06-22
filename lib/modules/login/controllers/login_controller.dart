@@ -211,7 +211,10 @@ class LoginController extends GetxController {
 
   void _applyProfilesList(List<LoginProfile> list) {
     profiles.assignAll(list);
-    if (profiles.isEmpty) return;
+    if (profiles.isEmpty) {
+      selectedProfile.value = null;
+      return;
+    }
 
     final currentId = selectedProfile.value?.id;
     LoginProfile? match;
@@ -224,6 +227,52 @@ class LoginController extends GetxController {
       }
     }
     fillFromProfile(match ?? profiles.first);
+  }
+
+  Future<void> deleteProfile(LoginProfile profile) async {
+    final id = profile.id;
+    final username = profile.username;
+    final server = profile.server;
+    final password = profile.password;
+    final wasSelected = selectedProfile.value?.id == id;
+    final formStillMatches =
+        serverController.text.trim() == server.trim() &&
+        usernameController.text.trim() == username.trim() &&
+        passwordController.text == password;
+
+    try {
+      await _repository.deleteProfile(id);
+      final remaining = await _repository.getProfilesAsync();
+      profiles.assignAll(remaining);
+
+      if (wasSelected) {
+        selectedProfile.value = null;
+        if (formStillMatches) {
+          otpController.clear();
+          passwordController.clear();
+          usernameController.clear();
+          serverController.clear();
+          step.value = 1;
+        }
+      } else {
+        final selectedId = selectedProfile.value?.id;
+        if (selectedId != null) {
+          LoginProfile? refreshedSelection;
+          for (final item in remaining) {
+            if (item.id == selectedId) {
+              refreshedSelection = item;
+              break;
+            }
+          }
+          selectedProfile.value = refreshedSelection;
+        }
+      }
+
+      ToastUtil.success('已删除账号 $username');
+    } catch (e) {
+      _talker.warning('删除登录账号失败: $e');
+      ToastUtil.error('删除账号失败，请稍后重试');
+    }
   }
 
   void fillFromProfile(LoginProfile profile) {

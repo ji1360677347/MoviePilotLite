@@ -12,6 +12,7 @@ import 'package:moviepilot_mobile/modules/subscribe/models/subscribe_submit_resp
 import 'package:moviepilot_mobile/services/api_client.dart';
 import 'package:moviepilot_mobile/services/app_service.dart';
 import 'package:moviepilot_mobile/services/realm_service.dart';
+import 'package:moviepilot_mobile/utils/toast_util.dart';
 
 /// 订阅类型：电视剧 / 电影
 enum SubscribeType { tv, movie }
@@ -102,6 +103,12 @@ class SubscribeController extends GetxController {
       _appService.loginResponse?.accessToken ??
       _appService.latestLoginProfileAccessToken ??
       _apiClient.token;
+
+  bool _ensureCanSubscribe() {
+    if (_appService.canSubscribe) return true;
+    ToastUtil.info('当前帐号无订阅权限');
+    return false;
+  }
 
   String? _normalizeUsername(String? value) {
     final normalized = value?.trim();
@@ -460,6 +467,7 @@ class SubscribeController extends GetxController {
     int id, {
     required Map<String, dynamic> fullPayload,
   }) async {
+    if (!_ensureCanSubscribe()) return false;
     fullPayload['id'] = id;
     if (fullPayload['doubanid'] is int) {
       fullPayload['doubanid'] = fullPayload['doubanid'].toString();
@@ -477,6 +485,7 @@ class SubscribeController extends GetxController {
   }
 
   Future<bool> pauseSubscribe(String id) async {
+    if (!_ensureCanSubscribe()) return false;
     final payload = {'state': 'S'};
     final response = await _apiClient.put(
       '/api/v1/subscribe/status/$id',
@@ -491,6 +500,7 @@ class SubscribeController extends GetxController {
   }
 
   Future<bool> resumeSubscribe(String id) async {
+    if (!_ensureCanSubscribe()) return false;
     final payload = {'state': 'R'};
     final response = await _apiClient.put(
       '/api/v1/subscribe/status/$id',
@@ -505,6 +515,7 @@ class SubscribeController extends GetxController {
   }
 
   Future<bool> resetSubscribeState(String id) async {
+    if (!_ensureCanSubscribe()) return false;
     final response = await _apiClient.get('/api/v1/subscribe/reset/$id');
     final ok = response.statusCode == 200 && response.data['success'] == true;
     if (ok) {
@@ -514,6 +525,7 @@ class SubscribeController extends GetxController {
   }
 
   Future<bool> searchSubscribe(String id) async {
+    if (!_ensureCanSubscribe()) return false;
     final response = await _apiClient.get('/api/v1/subscribe/search/$id');
     return response.statusCode == 200 && response.data['success'] == true;
   }
@@ -525,6 +537,7 @@ class SubscribeController extends GetxController {
     String? shareComment,
     String? shareUser,
   }) async {
+    if (!_ensureCanSubscribe()) return false;
     final data = {
       'share_comment': shareComment,
       'share_title': title,
@@ -539,6 +552,9 @@ class SubscribeController extends GetxController {
   }
 
   Future<SubscribeSubmitResp> forkSubscribe({SubscribeShareItem? item}) async {
+    if (!_ensureCanSubscribe()) {
+      return SubscribeSubmitResp(success: false, message: '当前帐号无订阅权限');
+    }
     Map<String, dynamic> data = {};
     if (item != null) {
       data = item.toJson();

@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:moviepilot_mobile/modules/recommend/controllers/recommend_controller.dart';
 import 'package:moviepilot_mobile/modules/recommend/models/recommend_api_item.dart';
@@ -24,67 +25,83 @@ class SearchIndexPage extends GetView<SearchIndexController> {
   static const double _scrollBottomGap = 96;
   static const String _defaultPagerSubcategory = 'TMDB 热门电影';
 
-  static const Color _sectionBgColor = Color(0xFF0B1220);
-  static final Color _backgroundColor = Color(0xFF111827);
-
   @override
   Widget build(BuildContext context) {
-    final baseTheme = Theme.of(context);
-
-    return Theme(
-      data: baseTheme.copyWith(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: _backgroundColor,
-        colorScheme: baseTheme.colorScheme.copyWith(
-          brightness: Brightness.dark,
-          surface: _backgroundColor,
-          onSurface: Colors.white,
-          onSurfaceVariant: const Color(0xFF94A3B8),
-          surfaceContainerHighest: const Color(0xFF1E293B),
-        ),
-      ),
-      child: Scaffold(
-        // backgroundColor: const Color(0xFF0B1220),
-        body: Obx(() {
-          final isQuery = controller.isEditing.value;
-          return CustomScrollView(
-            controller: scrollController,
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            physics: const BouncingScrollPhysics(
-              parent: AlwaysScrollableScrollPhysics(),
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    return Scaffold(
+      backgroundColor: isDark
+          ? const Color(0xFF111827)
+          : const Color(0xFFF4F7FB),
+      body: Obx(() {
+        final isQuery = controller.isEditing.value;
+        return CustomScrollView(
+          controller: scrollController,
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          physics: const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics(),
+          ),
+          slivers: [
+            _sliverAppBar(context),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
+                child: _historyStyleSearchBar(context),
+              ),
             ),
-            slivers: [
-              _sliverAppBar(context),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
-                  child: _historyStyleSearchBar(context),
-                ),
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 12)),
-              if (!isQuery)
-                ..._buildIdleSlivers(context)
-              else
-                ..._buildSuggestionSlivers(context),
-              SliverToBoxAdapter(
-                child: SizedBox(height: _scrollBottomInset(context)),
-              ),
-            ],
-          );
-        }),
-      ),
+            const SliverToBoxAdapter(child: SizedBox(height: 12)),
+            if (!isQuery)
+              ..._buildIdleSlivers(context)
+            else
+              ..._buildSuggestionSlivers(context),
+            SliverToBoxAdapter(
+              child: SizedBox(height: _scrollBottomInset(context)),
+            ),
+          ],
+        );
+      }),
     );
   }
 
   Widget _sliverAppBar(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     return SliverAppBar(
       pinned: true,
       stretch: true,
       expandedHeight: 88,
       backgroundColor: Colors.transparent,
       elevation: 0,
+      systemOverlayStyle: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+      ),
       automaticallyImplyLeading: false,
+      actions: [
+        TextButton.icon(
+          onPressed: () => Get.toNamed('/search-result'),
+          icon: Icon(
+            Icons.history_rounded,
+            size: 18,
+            color: colorScheme.onSurface.withValues(alpha: 0.86),
+          ),
+          label: Text(
+            '近期搜索',
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: colorScheme.onSurface.withValues(alpha: 0.86),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ),
+        const SizedBox(width: 4),
+      ],
       flexibleSpace: FlexibleSpaceBar(
         background: Stack(
           fit: StackFit.expand,
@@ -132,7 +149,7 @@ class SearchIndexPage extends GetView<SearchIndexController> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.titleLarge?.copyWith(
-                    color: Colors.white,
+                    color: colorScheme.onSurface,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -159,11 +176,14 @@ class SearchIndexPage extends GetView<SearchIndexController> {
           child: Container(
             height: barH,
             decoration: BoxDecoration(
+              color: colorScheme.surface.withValues(
+                alpha: theme.brightness == Brightness.dark ? 0.62 : 0.94,
+              ),
               borderRadius: BorderRadius.circular(radius),
               border: Border.all(
                 color: controller.focusNode.hasFocus
-                    ? colorScheme.primary.withOpacity(0.45)
-                    : Colors.white.withOpacity(0.06),
+                    ? colorScheme.primary.withValues(alpha: 0.45)
+                    : colorScheme.outlineVariant.withValues(alpha: 0.72),
                 width: controller.focusNode.hasFocus ? 1.2 : 1,
               ),
             ),
@@ -177,12 +197,14 @@ class SearchIndexPage extends GetView<SearchIndexController> {
                     decoration: const BoxDecoration(color: Colors.transparent),
                     placeholder: '搜索媒体 / 订阅 / 站点资源',
                     placeholderStyle: TextStyle(
-                      color: Colors.white.withOpacity(0.42),
+                      color: colorScheme.onSurfaceVariant.withValues(
+                        alpha: 0.78,
+                      ),
                       fontSize: textFontSize,
                       fontWeight: FontWeight.w400,
                     ),
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.92),
+                      color: colorScheme.onSurface,
                       fontSize: textFontSize,
                       fontWeight: FontWeight.w400,
                     ),
@@ -194,11 +216,45 @@ class SearchIndexPage extends GetView<SearchIndexController> {
                       child: Icon(
                         CupertinoIcons.search,
                         size: 18,
-                        color: Colors.white.withOpacity(0.52),
+                        color: colorScheme.onSurfaceVariant,
                       ),
                     ),
                     prefixMode: OverlayVisibilityMode.always,
-                    clearButtonMode: OverlayVisibilityMode.editing,
+                    suffix: Obx(() {
+                      if (controller.keyword.value.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+                      return Padding(
+                        padding: const EdgeInsetsDirectional.only(end: 8),
+                        child: Semantics(
+                          button: true,
+                          label: '清除搜索内容',
+                          child: CupertinoButton(
+                            minimumSize: const Size.square(32),
+                            padding: EdgeInsets.zero,
+                            onPressed: controller.textController.clear,
+                            child: Container(
+                              width: 24,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: colorScheme.onSurface.withValues(
+                                  alpha: theme.brightness == Brightness.dark
+                                      ? 0.12
+                                      : 0.08,
+                                ),
+                              ),
+                              child: Icon(
+                                CupertinoIcons.xmark,
+                                size: 12,
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                    suffixMode: OverlayVisibilityMode.always,
                     padding: const EdgeInsetsDirectional.only(
                       top: 10,
                       bottom: 10,
@@ -214,7 +270,7 @@ class SearchIndexPage extends GetView<SearchIndexController> {
                   thickness: 1,
                   indent: 12,
                   endIndent: 12,
-                  color: Colors.white.withOpacity(0.07),
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.72),
                 ),
                 Obx(() {
                   final enabled = Get.find<AppService>().showSearchButton.value;
@@ -229,7 +285,7 @@ class SearchIndexPage extends GetView<SearchIndexController> {
                         child: Icon(
                           Icons.search_rounded,
                           size: 22,
-                          color: colorScheme.primary.withOpacity(0.95),
+                          color: colorScheme.primary.withValues(alpha: 0.95),
                         ),
                       ),
                     ),
@@ -248,7 +304,7 @@ class SearchIndexPage extends GetView<SearchIndexController> {
           return Padding(
             padding: const EdgeInsets.only(top: 10),
             child: Material(
-              color: _sectionBgColor,
+              color: colorScheme.surface,
               borderRadius: BorderRadius.circular(20),
               elevation: 8,
               shadowColor: Colors.black.withValues(alpha: 0.2),
@@ -310,7 +366,7 @@ class SearchIndexPage extends GetView<SearchIndexController> {
         title,
         style: theme.textTheme.titleMedium?.copyWith(
           fontWeight: FontWeight.w800,
-          color: Colors.white,
+          color: theme.colorScheme.onSurface,
         ),
       ),
     );
@@ -431,7 +487,7 @@ class SearchIndexPage extends GetView<SearchIndexController> {
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w800,
-                    color: Colors.white,
+                    color: colorScheme.onSurface,
                   ),
                 ),
                 if (overview != null && overview.isNotEmpty) ...[
@@ -597,7 +653,7 @@ class SearchIndexPage extends GetView<SearchIndexController> {
     if (mediaSuggestions.isNotEmpty) {
       addSection(
         Section(
-          color: _sectionBgColor,
+          color: Theme.of(context).colorScheme.surface,
           header: SectionHeader(title: '媒体推荐'),
           child: _buildSuggestionSection(
             context,
@@ -610,7 +666,7 @@ class SearchIndexPage extends GetView<SearchIndexController> {
     if (siteSuggestions.isNotEmpty) {
       addSection(
         Section(
-          color: _sectionBgColor,
+          color: Theme.of(context).colorScheme.surface,
           header: SectionHeader(title: '站点资源'),
           child: _buildSuggestionSection(
             context,
@@ -623,7 +679,7 @@ class SearchIndexPage extends GetView<SearchIndexController> {
     if (historyItems.isNotEmpty) {
       addSection(
         Section(
-          color: _sectionBgColor,
+          color: Theme.of(context).colorScheme.surface,
           header: SectionHeader(title: '整理历史'),
           child: _buildSuggestionSection(
             context,
@@ -657,7 +713,9 @@ class SearchIndexPage extends GetView<SearchIndexController> {
               return Divider(
                 height: 0.5,
                 thickness: 0.5,
-                color: Colors.white.withValues(alpha: 0.08),
+                color: Theme.of(
+                  context,
+                ).colorScheme.outlineVariant.withValues(alpha: 0.7),
               );
             }
             final item = items[index ~/ 2];
@@ -786,7 +844,7 @@ class _EmptyState extends StatelessWidget {
             title,
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w600,
-              color: Colors.white,
+              color: theme.colorScheme.onSurface,
               fontSize: 14,
             ),
           ),

@@ -129,7 +129,7 @@ class _IndexState extends State<Index> {
       case 2:
         return _appService.canDiscovery;
       case 4:
-        return _appService.canSearch;
+        return _appService.canBrowseMediaCatalog;
       default:
         return true;
     }
@@ -150,7 +150,7 @@ class _IndexState extends State<Index> {
         ToastUtil.info('当前帐号无发现内容权限');
         return;
       case 4:
-        ToastUtil.info('当前帐号无搜索权限');
+        ToastUtil.info('请先登录');
         return;
       default:
         return;
