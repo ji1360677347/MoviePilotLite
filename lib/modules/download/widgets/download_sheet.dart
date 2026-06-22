@@ -13,67 +13,49 @@ class DownloadSheet extends GetView<DownloadController> {
 
   final SearchResultItem item;
 
-  static const Color _background = Color(0xFF0F172A);
-  static const Color _surface = Color(0xFF111C30);
-  static const Color _surfaceStrong = Color(0xFF1E293B);
-  static const Color _outline = Color(0x1FFFFFFF);
-
   AppService get _appService => Get.find<AppService>();
 
   @override
   Widget build(BuildContext context) {
-    final baseTheme = Theme.of(context);
-    final sheetTheme = baseTheme.copyWith(
-      brightness: Brightness.dark,
-      scaffoldBackgroundColor: _background,
-      dividerColor: _outline,
-      colorScheme: baseTheme.colorScheme.copyWith(
-        brightness: Brightness.dark,
-        surface: _background,
-        surfaceContainer: _surface,
-        surfaceContainerHighest: _surfaceStrong,
-        onSurface: const Color(0xFFF8FAFC),
-        onSurfaceVariant: const Color(0xFF94A3B8),
-        outlineVariant: _outline,
-        primary: const Color(0xFF60A5FA),
-        secondary: const Color(0xFFC084FC),
-      ),
-    );
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final background = theme.scaffoldBackgroundColor;
+    final backgroundAlt =
+        Color.lerp(background, scheme.primary, isDark ? 0.035 : 0.018) ??
+        background;
 
-    return Theme(
-      data: sheetTheme,
-      child: ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        child: BottomSheetWidget(
-          header: Builder(builder: _buildHeader),
-          scrollController: controller.scrollController,
-          snap: false,
-          snapSizes: const [],
-          initialChildSize: 0.7,
-          minChildSize: 0.28,
-          maxChildSize: 0.8,
-          builder: (context, scrollController) => DecoratedBox(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [_background, Color(0xFF0B1220)],
-              ),
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      child: BottomSheetWidget(
+        header: Builder(builder: _buildHeader),
+        scrollController: controller.scrollController,
+        snap: false,
+        snapSizes: const [],
+        initialChildSize: 0.7,
+        minChildSize: 0.28,
+        maxChildSize: 0.8,
+        builder: (context, scrollController) => DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [backgroundAlt, background],
             ),
-            child: ListView(
-              controller: scrollController,
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 20),
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              children: [
-                _buildCompactSummary(context),
-                const SizedBox(height: 12),
-                _buildDownloadSettingsSection(context),
-                const SizedBox(height: 12),
-                _buildTmdbInput(context),
-                const SizedBox(height: 14),
-                _buildBottomActions(context),
-              ],
-            ),
+          ),
+          child: ListView(
+            controller: scrollController,
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 20),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            children: [
+              _buildCompactSummary(context),
+              const SizedBox(height: 12),
+              _buildDownloadSettingsSection(context),
+              const SizedBox(height: 12),
+              _buildTmdbInput(context),
+              const SizedBox(height: 14),
+              _buildBottomActions(context),
+            ],
           ),
         ),
       ),
@@ -378,8 +360,8 @@ class DownloadSheet extends GetView<DownloadController> {
             return Padding(
               padding: const EdgeInsets.only(right: 8),
               child: SizedBox(
-                width: isAuto ? 132 : 220,
-                height: 50,
+                width: isAuto ? 116 : 164,
+                height: 46,
                 child: _buildChoiceTile(
                   context,
                   title: label,
@@ -462,9 +444,9 @@ class DownloadSheet extends GetView<DownloadController> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
               clearButtonMode: OverlayVisibilityMode.editing,
               decoration: BoxDecoration(
-                color: _surfaceStrong,
+                color: _controlSurface(context),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _outline),
+                border: Border.all(color: _outlineColor(context)),
               ),
             ),
           ],
@@ -697,7 +679,7 @@ class DownloadSheet extends GetView<DownloadController> {
           decoration: BoxDecoration(
             color: isSelected
                 ? accentColor.withValues(alpha: 0.12)
-                : _surfaceStrong,
+                : _controlSurface(context),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: isSelected
@@ -777,9 +759,9 @@ class DownloadSheet extends GetView<DownloadController> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
-        color: _surfaceStrong,
+        color: _controlSurface(context),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _outline),
+        border: Border.all(color: _outlineColor(context)),
       ),
       child: Text(
         label,
@@ -798,18 +780,31 @@ class DownloadSheet extends GetView<DownloadController> {
   }
 
   BoxDecoration _panelDecoration(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return BoxDecoration(
-      color: _surface,
+      color: theme.cardColor.withValues(alpha: isDark ? 0.90 : 0.98),
       borderRadius: BorderRadius.circular(18),
-      border: Border.all(color: _outline),
+      border: Border.all(color: _outlineColor(context)),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withValues(alpha: 0.14),
+          color: Colors.black.withValues(alpha: isDark ? 0.14 : 0.055),
           blurRadius: 16,
           offset: const Offset(0, 6),
         ),
       ],
     );
+  }
+
+  Color _controlSurface(BuildContext context) {
+    final theme = Theme.of(context);
+    return theme.colorScheme.surfaceContainerHighest.withValues(
+      alpha: theme.brightness == Brightness.dark ? 0.72 : 0.64,
+    );
+  }
+
+  Color _outlineColor(BuildContext context) {
+    return Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.72);
   }
 
   String _displayVolumeFactor(SearchTorrentInfo? torrent) {

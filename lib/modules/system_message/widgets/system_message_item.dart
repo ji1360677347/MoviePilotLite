@@ -30,25 +30,48 @@ class SystemMessageItem extends StatelessWidget {
     return _buildTextCard(context);
   }
 
-  Widget _wrapCard(BuildContext context, Widget child) {
-    final cs = Theme.of(context).colorScheme;
+  Widget _wrapCard(
+    BuildContext context,
+    Widget child, {
+    required Color accent,
+  }) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     final radius = BorderRadius.circular(_cardRadius);
     return Container(
       decoration: BoxDecoration(
+        color: theme.cardColor,
         borderRadius: radius,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
+            color: Colors.black.withValues(alpha: isDark ? 0.16 : 0.055),
+            blurRadius: 20,
+            offset: const Offset(0, 7),
           ),
         ],
-        border: Border.all(
-          color: cs.outline.withValues(alpha: 0.08),
-          width: 0.5,
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.70)),
+      ),
+      child: ClipRRect(
+        borderRadius: radius,
+        child: Stack(
+          children: [
+            child,
+            Positioned(
+              left: 0,
+              top: 16,
+              bottom: 16,
+              child: Container(
+                width: 3,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.82),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
-      child: ClipRRect(borderRadius: radius, child: child),
     );
   }
 
@@ -61,7 +84,7 @@ class SystemMessageItem extends StatelessWidget {
 
   Widget _buildCardHeader({
     required BuildContext context,
-    required IconData icon,
+    IconData? icon,
     required Color color,
     required String type,
     required String time,
@@ -72,17 +95,19 @@ class SystemMessageItem extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Row(
       children: [
-        Container(
-          width: 28,
-          height: 28,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(9),
-            border: Border.all(color: color.withValues(alpha: 0.18), width: 0.5),
+        if (icon != null) ...[
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: color.withValues(alpha: 0.20)),
+            ),
+            child: Icon(icon, size: 17, color: color),
           ),
-          child: Icon(icon, size: 16, color: color),
-        ),
-        const SizedBox(width: 8),
+          const SizedBox(width: 8),
+        ],
         _buildTypeChip(
           type,
           background: chipBackground ?? color.withValues(alpha: 0.12),
@@ -90,18 +115,14 @@ class SystemMessageItem extends StatelessWidget {
           borderColor: chipBorderColor ?? color.withValues(alpha: 0.20),
         ),
         const Spacer(),
-        Text(
-          time,
-          style: TextStyle(
-            fontSize: 11,
-            color: cs.onSurface.withValues(alpha: 0.45),
-          ),
-        ),
+        Text(time, style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
       ],
     );
   }
 
   Widget _buildUserTextCard(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
     final time = DateFormat('MM-dd HH:mm').format(message.regTime);
     final text = message.text.trim();
     return Align(
@@ -112,17 +133,22 @@ class SystemMessageItem extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 11),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    CupertinoColors.systemBlue,
-                    CupertinoColors.systemBlue.withValues(alpha: 0.88),
+                    cs.primary,
+                    Color.lerp(cs.primary, cs.secondary, 0.22) ?? cs.primary,
                   ],
                 ),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
+                  bottomLeft: Radius.circular(16),
+                  bottomRight: Radius.circular(5),
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.08),
@@ -143,10 +169,7 @@ class SystemMessageItem extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               time,
-              style: const TextStyle(
-                fontSize: 11,
-                color: CupertinoColors.systemGrey,
-              ),
+              style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
             ),
           ],
         ),
@@ -155,6 +178,9 @@ class SystemMessageItem extends StatelessWidget {
   }
 
   Widget _buildTextCard(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    const accent = CupertinoColors.systemBlue;
     final time = DateFormat('MM-dd HH:mm').format(message.regTime);
     final parsed = _parseText(message.text);
     final meta = parsed.meta;
@@ -169,7 +195,6 @@ class SystemMessageItem extends StatelessWidget {
           children: [
             _buildCardHeader(
               context: context,
-              icon: CupertinoIcons.bell,
               color: CupertinoColors.systemBlue,
               type: _messageType(message),
               time: time,
@@ -177,7 +202,16 @@ class SystemMessageItem extends StatelessWidget {
             const SizedBox(height: 10),
             _buildSelectableText(
               message.title.trim(),
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              style:
+                  theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: cs.onSurface,
+                  ) ??
+                  TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: cs.onSurface,
+                  ),
             ),
             if (meta.isNotEmpty) const SizedBox(height: 10),
             if (meta.isNotEmpty) _buildMetaRow(meta),
@@ -185,19 +219,22 @@ class SystemMessageItem extends StatelessWidget {
             if (body.isNotEmpty)
               _buildSelectableText(
                 body,
-                style: const TextStyle(
-                  fontSize: 13,
+                style: TextStyle(
+                  fontSize: 14,
                   height: 1.45,
-                  color: CupertinoColors.systemGrey,
+                  color: cs.onSurfaceVariant,
                 ),
               ),
           ],
         ),
       ),
+      accent: accent,
     );
   }
 
   Widget _buildPosterCard(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    const accent = CupertinoColors.systemOrange;
     final time = DateFormat('MM-dd HH:mm').format(message.regTime);
     final parsed = _parseText(message.text);
     final meta = parsed.meta;
@@ -211,7 +248,7 @@ class SystemMessageItem extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(
-              height: 220,
+              height: 196,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -276,10 +313,10 @@ class SystemMessageItem extends StatelessWidget {
                   if (body.isNotEmpty)
                     _buildSelectableText(
                       body,
-                      style: const TextStyle(
-                        fontSize: 13,
+                      style: TextStyle(
+                        fontSize: 14,
                         height: 1.45,
-                        color: CupertinoColors.systemGrey,
+                        color: cs.onSurfaceVariant,
                       ),
                     ),
                 ],
@@ -288,10 +325,14 @@ class SystemMessageItem extends StatelessWidget {
           ],
         ),
       ),
+      accent: accent,
     );
   }
 
   Widget _buildNoteCard(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    const accent = CupertinoColors.systemPurple;
     final time = DateFormat('MM-dd HH:mm').format(message.regTime);
     final items = message.note;
     final primary = items.isNotEmpty ? items.first : null;
@@ -330,10 +371,16 @@ class SystemMessageItem extends StatelessWidget {
             if (messageTitle.isNotEmpty)
               _buildSelectableText(
                 messageTitle,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
+                style:
+                    theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: cs.onSurface,
+                    ) ??
+                    TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: cs.onSurface,
+                    ),
               ),
             if (noteTitle.isNotEmpty) const SizedBox(height: 10),
             if (noteTitle.isNotEmpty)
@@ -349,10 +396,10 @@ class SystemMessageItem extends StatelessWidget {
             if (noteDescription.isNotEmpty)
               _buildSelectableText(
                 noteDescription,
-                style: const TextStyle(
-                  fontSize: 12,
+                style: TextStyle(
+                  fontSize: 13,
                   height: 1.45,
-                  color: CupertinoColors.systemGrey,
+                  color: cs.onSurfaceVariant,
                 ),
               ),
             const SizedBox(height: 8),
@@ -375,18 +422,18 @@ class SystemMessageItem extends StatelessWidget {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(
+                            Icon(
                               CupertinoIcons.circle_fill,
                               size: 6,
-                              color: CupertinoColors.systemGrey2,
+                              color: cs.onSurfaceVariant,
                             ),
                             const SizedBox(width: 6),
                             Expanded(
                               child: _buildSelectableText(
                                 item.title ?? '',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 12,
-                                  color: CupertinoColors.systemGrey,
+                                  color: cs.onSurfaceVariant,
                                 ),
                               ),
                             ),
@@ -399,6 +446,7 @@ class SystemMessageItem extends StatelessWidget {
           ],
         ),
       ),
+      accent: accent,
     );
   }
 
@@ -514,8 +562,9 @@ class SystemMessageItem extends StatelessWidget {
       textAlign: textAlign,
       contextMenuBuilder: (context, editableTextState) {
         final selection = editableTextState.currentTextEditingValue.selection;
-        final selectedText =
-            selection.textInside(editableTextState.textEditingValue.text);
+        final selectedText = selection.textInside(
+          editableTextState.textEditingValue.text,
+        );
         final url = _extractUrl(selectedText);
         final items = editableTextState.contextMenuButtonItems.toList();
         if (url != null) {
