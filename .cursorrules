@@ -103,12 +103,10 @@ If needed, you can further use the `web_scraper.py` file to scrape the web page 
 
 ## Done: 下载 startDownload — API detail 为 List 时 ToastUtil.error 类型错误（_downloadApiErrorMessage）
 
-## Current Task: Dashboard 页面编辑功能（隐藏/显示 + 换位）
+## Current Task: GitHub Issue #74 子用户权限
 
-[ ] 理清 DashboardConfig / DashboardOrder 与 displayedWidgets 的映射关系
-[ ] 设计并实现 Dashboard 编辑 UI（从 AppSettingPage 进入）
-[ ] 将编辑结果写回 /api/v1/user/config/Dashboard 与 /api/v1/user/config/DashboardOrder
-[ ] 确保隐藏状态下不会触发对应组件的定时请求（复用 _loadDataBasedOnConfig 逻辑）
-[ ] 本地持久化与远端配置保持兼容
+[X] 拆分资源搜索(search) vs TMDB/豆瓣目录搜索(media-search-list)
+[X] 订阅写操作统一校验 subscribe 权限
+[X] 系统消息仅超级管理员可访问/轮询
 
-Previous: Fix App Store ITMS-90771（已完成）
+Previous: Dashboard 页面编辑功能（暂缓）

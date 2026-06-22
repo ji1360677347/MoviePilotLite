@@ -659,6 +659,10 @@ class MediaDetailController extends GetxController {
   }
 
   Future<(bool, bool, int? subscribeId)> handleSubscribe({int? season}) async {
+    if (!_appService.canSubscribe) {
+      ToastUtil.info('当前帐号无订阅权限');
+      return (false, false, null);
+    }
     subscribeLoadingState.value = true;
     var detail = mediaDetail.value ?? prefillDetail;
     if (detail == null) {

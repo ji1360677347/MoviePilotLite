@@ -39,7 +39,6 @@ class MultifunctionPage extends GetView<MultifunctionController> {
             ? calendarInfo.todayItems
             : calendarInfo.weekItems;
         final hiddenRoutes = <String>{
-          '/search-result',
           '/subscribe-movie',
           '/subscribe-tv',
           '/site',
@@ -76,10 +75,6 @@ class MultifunctionPage extends GetView<MultifunctionController> {
                           104,
                         ),
                         children: [
-                          _buildRecentSearchSection(
-                            modulesByRoute['/search-result'],
-                          ),
-                          const SizedBox(height: 16),
                           if (controller.canAccessSubscribe) ...[
                             _buildSubscriptionSection(
                               pageWidth: pageWidth,
@@ -158,45 +153,6 @@ class MultifunctionPage extends GetView<MultifunctionController> {
           child: const Icon(Icons.settings_outlined),
         ),
       ],
-    );
-  }
-
-  Widget _buildRecentSearchSection(DashboardModuleViewModel? module) {
-    return _glassCard(
-      onTap: module == null
-          ? null
-          : () => controller.handleRouteTap(module.route, title: module.title),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(
-        children: [
-          Container(
-            width: 20,
-            height: 20,
-            decoration: BoxDecoration(
-              color: _primaryStrong.withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.history_rounded, color: _primary, size: 20),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '近期搜索',
-                  style: TextStyle(
-                    color: _textPrimary,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Icon(Icons.chevron_right_rounded, color: _textMuted, size: 20),
-        ],
-      ),
     );
   }
 

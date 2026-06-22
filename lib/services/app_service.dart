@@ -484,11 +484,22 @@ class AppService extends GetxService {
 
   bool get canDiscovery => hasPermission('discovery');
 
+  /// 站点资源搜索（搜索结果页、详情内搜资源）
   bool get canSearch => hasPermission('search');
 
   bool get canSubscribe => hasPermission('subscribe');
 
   bool get canManage => hasPermission('manage');
+
+  bool get hasLoggedInSession {
+    final loginToken = _loginResponse?.accessToken?.trim();
+    if (loginToken != null && loginToken.isNotEmpty) return true;
+    final profileToken = currentStoredProfile?.accessToken.trim();
+    return profileToken != null && profileToken.isNotEmpty;
+  }
+
+  /// TMDB/豆瓣等媒体目录搜索（与 Web 一致，不依赖 search 权限）
+  bool get canBrowseMediaCatalog => hasLoggedInSession;
 
   bool get canAccessAppSettings => true;
 
@@ -504,8 +515,12 @@ class AppService extends GetxService {
       return canAccessAppSettings;
     }
 
-    if (normalized == '/search-result') {
+    if (normalized == '/search-result' || normalized == '/search-media-result') {
       return canSearch;
+    }
+
+    if (normalized == '/system-message') {
+      return isSuperuser;
     }
 
     if (normalized.startsWith('/subscribe') || normalized == '/workflow') {
@@ -520,10 +535,9 @@ class AppService extends GetxService {
     }
 
     if (normalized == '/media-search-list' ||
-        normalized == '/search-media-result' ||
         normalized == '/person-search-list' ||
         normalized == '/person-search-result') {
-      return canSearch;
+      return canBrowseMediaCatalog;
     }
 
     if (normalized == '/storage-list' ||
@@ -561,11 +575,11 @@ class AppService extends GetxService {
       return '当前帐号无应用设置权限';
     }
     if (normalized == '/search-result' ||
-        normalized == '/media-search-list' ||
-        normalized == '/search-media-result' ||
-        normalized == '/person-search-list' ||
-        normalized == '/person-search-result') {
-      return '当前帐号无搜索权限';
+        normalized == '/search-media-result') {
+      return '当前帐号无资源搜索权限';
+    }
+    if (normalized == '/system-message') {
+      return '当前帐号无系统消息权限';
     }
     if (normalized.startsWith('/subscribe') || normalized == '/workflow') {
       return '当前帐号无订阅权限';

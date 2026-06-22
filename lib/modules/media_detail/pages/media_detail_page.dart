@@ -1068,34 +1068,58 @@ class MediaDetailPage extends GetWidget<MediaDetailController> {
     }
     final isTv = _isTv(detail);
     return Obx(() {
+      final appService = Get.find<AppService>();
+      final canSubscribe = appService.canSubscribe;
+      final canSearch = appService.canSearch;
       final movieSubscribed = controller.movieSubscribeItem.value != null;
       final seasons = detail.season_info;
-      return LayoutBuilder(
-        builder: (context, constraints) {
-          final search = _buildPrimaryAction(
-            label: '搜索资源',
-            icon: CupertinoIcons.search,
-            onPressed: isLoading ? null : () => _openSearch(context),
-            backgroundColor: Theme.of(context).colorScheme.secondary,
-          );
-          if (isTv && seasons?.isNotEmpty == true) {
-            return Row(children: [Expanded(child: search)]);
-          }
-          final subscribe = _buildSubscribeButton(
-            context,
-            detail,
-            isLoading,
-            movieSubscribed,
-          );
-          return Row(
-            children: [
-              Expanded(child: subscribe),
-              const SizedBox(width: 12),
-              Expanded(child: search),
-            ],
-          );
-        },
-      );
+      if (isTv && seasons?.isNotEmpty == true) {
+        if (!canSearch) return const SizedBox.shrink();
+        return Row(
+          children: [
+            Expanded(
+              child: _buildPrimaryAction(
+                label: '搜索资源',
+                icon: CupertinoIcons.search,
+                onPressed: isLoading ? null : () => _openSearch(context),
+                backgroundColor: Theme.of(context).colorScheme.secondary,
+              ),
+            ),
+          ],
+        );
+      }
+      final actions = <Widget>[];
+      if (canSubscribe) {
+        actions.add(
+          Expanded(
+            child: _buildSubscribeButton(
+              context,
+              detail,
+              isLoading,
+              movieSubscribed,
+            ),
+          ),
+        );
+      }
+      if (canSearch) {
+        if (actions.isNotEmpty) {
+          actions.add(const SizedBox(width: 12));
+        }
+        actions.add(
+          Expanded(
+            child: _buildPrimaryAction(
+              label: '搜索资源',
+              icon: CupertinoIcons.search,
+              onPressed: isLoading ? null : () => _openSearch(context),
+              backgroundColor: Theme.of(context).colorScheme.secondary,
+            ),
+          ),
+        );
+      }
+      if (actions.isEmpty) {
+        return const SizedBox.shrink();
+      }
+      return Row(children: actions);
     });
   }
 
@@ -1401,6 +1425,10 @@ class MediaDetailPage extends GetWidget<MediaDetailController> {
   }
 
   void _openSearch(BuildContext context) async {
+    if (!Get.find<AppService>().canSearch) {
+      ToastUtil.info('当前帐号无资源搜索权限');
+      return;
+    }
     final searchKey = controller.args.path;
     final detail = controller.mediaDetail.value;
     final result = await Get.bottomSheet<({String area, List<int> sites})>(

@@ -171,6 +171,10 @@ class _MediaSeasonDetailPageState extends State<MediaSeasonDetailPage> {
   }
 
   void _openSearch(BuildContext context) async {
+    if (!Get.find<AppService>().canSearch) {
+      ToastUtil.info('当前帐号无资源搜索权限');
+      return;
+    }
     final detail = _mediaDetailController.mediaDetail.value;
     final source = detail?.source;
     final searchKey = widget.subscribeMediaKey;
@@ -391,10 +395,17 @@ class _MediaSeasonDetailPageState extends State<MediaSeasonDetailPage> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
       child: Obx(() {
+        final appService = Get.find<AppService>();
+        final canSubscribe = appService.canSubscribe;
+        final canSearch = appService.canSearch;
+        if (!canSubscribe && !canSearch) {
+          return const SizedBox.shrink();
+        }
         final isLoading = _mediaDetailController.subscribeLoadingState.value;
         final subscribed = _isSubscribed;
-        return Row(
-          children: [
+        final children = <Widget>[];
+        if (canSubscribe) {
+          children.add(
             Expanded(
               child: FilledButton.icon(
                 onPressed: (isLoading || _submitting) ? null : _onSubscribeTap,
@@ -410,7 +421,13 @@ class _MediaSeasonDetailPageState extends State<MediaSeasonDetailPage> {
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+          );
+        }
+        if (canSearch) {
+          if (children.isNotEmpty) {
+            children.add(const SizedBox(width: 12));
+          }
+          children.add(
             Expanded(
               child: FilledButton.icon(
                 style: FilledButton.styleFrom(
@@ -424,8 +441,9 @@ class _MediaSeasonDetailPageState extends State<MediaSeasonDetailPage> {
                 label: const Text('搜索资源'),
               ),
             ),
-          ],
-        );
+          );
+        }
+        return Row(children: children);
       }),
     );
   }

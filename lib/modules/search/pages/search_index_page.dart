@@ -85,6 +85,29 @@ class SearchIndexPage extends GetView<SearchIndexController> {
       backgroundColor: Colors.transparent,
       elevation: 0,
       automaticallyImplyLeading: false,
+      actions: [
+        TextButton.icon(
+          onPressed: () => Get.toNamed('/search-result'),
+          icon: Icon(
+            Icons.history_rounded,
+            size: 18,
+            color: Colors.white.withValues(alpha: 0.9),
+          ),
+          label: Text(
+            '近期搜索',
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: Colors.white.withValues(alpha: 0.9),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ),
+        const SizedBox(width: 4),
+      ],
       flexibleSpace: FlexibleSpaceBar(
         background: Stack(
           fit: StackFit.expand,
@@ -162,8 +185,8 @@ class SearchIndexPage extends GetView<SearchIndexController> {
               borderRadius: BorderRadius.circular(radius),
               border: Border.all(
                 color: controller.focusNode.hasFocus
-                    ? colorScheme.primary.withOpacity(0.45)
-                    : Colors.white.withOpacity(0.06),
+                    ? colorScheme.primary.withValues(alpha: 0.45)
+                    : Colors.white.withValues(alpha: 0.06),
                 width: controller.focusNode.hasFocus ? 1.2 : 1,
               ),
             ),
@@ -177,12 +200,12 @@ class SearchIndexPage extends GetView<SearchIndexController> {
                     decoration: const BoxDecoration(color: Colors.transparent),
                     placeholder: '搜索媒体 / 订阅 / 站点资源',
                     placeholderStyle: TextStyle(
-                      color: Colors.white.withOpacity(0.42),
+                      color: Colors.white.withValues(alpha: 0.42),
                       fontSize: textFontSize,
                       fontWeight: FontWeight.w400,
                     ),
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.92),
+                      color: Colors.white.withValues(alpha: 0.92),
                       fontSize: textFontSize,
                       fontWeight: FontWeight.w400,
                     ),
@@ -194,11 +217,41 @@ class SearchIndexPage extends GetView<SearchIndexController> {
                       child: Icon(
                         CupertinoIcons.search,
                         size: 18,
-                        color: Colors.white.withOpacity(0.52),
+                        color: Colors.white.withValues(alpha: 0.52),
                       ),
                     ),
                     prefixMode: OverlayVisibilityMode.always,
-                    clearButtonMode: OverlayVisibilityMode.editing,
+                    suffix: Obx(() {
+                      if (controller.keyword.value.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+                      return Padding(
+                        padding: const EdgeInsetsDirectional.only(end: 8),
+                        child: Semantics(
+                          button: true,
+                          label: '清除搜索内容',
+                          child: CupertinoButton(
+                            minimumSize: const Size.square(32),
+                            padding: EdgeInsets.zero,
+                            onPressed: controller.textController.clear,
+                            child: Container(
+                              width: 24,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white.withValues(alpha: 0.12),
+                              ),
+                              child: Icon(
+                                CupertinoIcons.xmark,
+                                size: 12,
+                                color: Colors.white.withValues(alpha: 0.82),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                    suffixMode: OverlayVisibilityMode.always,
                     padding: const EdgeInsetsDirectional.only(
                       top: 10,
                       bottom: 10,
@@ -214,7 +267,7 @@ class SearchIndexPage extends GetView<SearchIndexController> {
                   thickness: 1,
                   indent: 12,
                   endIndent: 12,
-                  color: Colors.white.withOpacity(0.07),
+                  color: Colors.white.withValues(alpha: 0.07),
                 ),
                 Obx(() {
                   final enabled = Get.find<AppService>().showSearchButton.value;
@@ -229,7 +282,7 @@ class SearchIndexPage extends GetView<SearchIndexController> {
                         child: Icon(
                           Icons.search_rounded,
                           size: 22,
-                          color: colorScheme.primary.withOpacity(0.95),
+                          color: colorScheme.primary.withValues(alpha: 0.95),
                         ),
                       ),
                     ),

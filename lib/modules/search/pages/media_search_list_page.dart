@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:moviepilot_mobile/modules/plugin/services/plugin_palette_cache.dart';
 import 'package:moviepilot_mobile/modules/recommend/models/recommend_api_item.dart';
+import 'package:moviepilot_mobile/modules/recommend/widgets/recommend_item_base_card.dart';
 import 'package:moviepilot_mobile/modules/recommend/widgets/recommend_item_card.dart';
 import 'package:moviepilot_mobile/modules/search_result/controllers/search_result_controller.dart';
 import 'package:moviepilot_mobile/theme/app_theme.dart';
@@ -21,7 +22,9 @@ class MediaSearchListPage extends GetView<MediaSearchListController> {
   static const double _gridSpacing = 8;
   static const double _gridPadding = 16;
   static const double _cardAspectRatio = 1 / 1.3;
-  static const double _listCardHeight = 250;
+  static const double _listCardHeight = 108;
+  static const double _listPosterWidth = 72;
+  static const double _listPosterHeight = 96;
   static const double _immersiveHeaderHeight = 250;
   static const double _narrowScreenBreakpoint = 600;
   @override
@@ -220,13 +223,162 @@ class MediaSearchListPage extends GetView<MediaSearchListController> {
       final existsKey = controller.mediaserverExistsKey(item);
       final inLib =
           existsOn && (controller.mediaserverInLibrary[existsKey] ?? false);
+      if (listMode) {
+        return RecommendItemBaseCard(
+          item: item,
+          child: _buildListRow(item, inLibrary: inLib),
+        );
+      }
       return RecommendItemCard(
         item: item,
-        cardHeight: listMode ? _listCardHeight : null,
         inLibrary: inLib,
         onTap: () => _openDetail(item),
       );
     });
+  }
+
+  Widget _buildListRow(RecommendApiItem item, {required bool inLibrary}) {
+    final title = _bestTitle(item) ?? '';
+    final year = _displayYear(item);
+    final overview = item.overview?.trim();
+    final type = item.type?.trim();
+    final vote = item.vote_average;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => _openDetail(item),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: _listPoster(item),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: SizedBox(
+                  height: _listPosterHeight,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          if (inLibrary) ...[
+                            const Icon(
+                              Icons.check_circle_rounded,
+                              size: 14,
+                              color: Color(0xFF81C784),
+                            ),
+                            const SizedBox(width: 4),
+                          ],
+                          Expanded(
+                            child: Text(
+                              title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                height: 1.2,
+                              ),
+                            ),
+                          ),
+                          if (vote != null && vote > 0) ...[
+                            const SizedBox(width: 8),
+                            _buildListMetaPill(vote.toStringAsFixed(1)),
+                          ],
+                        ],
+                      ),
+                      if (type != null && type.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        _buildListMetaPill(type),
+                      ],
+                      if (year.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          year,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.72),
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                      if (overview != null && overview.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Expanded(
+                          child: Text(
+                            overview,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.58),
+                              fontSize: 12,
+                              height: 1.35,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _listPoster(RecommendApiItem item) {
+    final raw = item.poster_path ?? item.backdrop_path;
+    if (raw != null && raw.isNotEmpty) {
+      return CachedImage(
+        imageUrl: ImageUtil.convertCacheImageUrl(raw),
+        width: _listPosterWidth,
+        height: _listPosterHeight,
+        fit: BoxFit.cover,
+      );
+    }
+    return Container(
+      width: _listPosterWidth,
+      height: _listPosterHeight,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF9FA8DA), Color(0xFF5C6BC0)],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildListMetaPill(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0xFF4C6FFF).withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  String _displayYear(RecommendApiItem item) {
+    final year = item.year?.trim() ?? '';
+    if (year.isNotEmpty) return year;
+    return item.title_year?.trim() ?? '';
   }
 
   Widget _buildSummary(BuildContext context, {required bool immersive}) {

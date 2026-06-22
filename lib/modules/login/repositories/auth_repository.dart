@@ -27,6 +27,16 @@ class AuthRepository extends GetxService {
 
   Realm get _realm => Get.find<RealmService>().realm;
 
+  void _syncSystemMessagePolling() {
+    if (_appService.isSuperuser) {
+      if (!Get.isRegistered<SystemMessageController>()) {
+        Get.put(SystemMessageController(), permanent: true);
+      }
+    } else if (Get.isRegistered<SystemMessageController>()) {
+      Get.find<SystemMessageController>().clearForLogout();
+    }
+  }
+
   Future<LoginResponse> login({
     required String server,
     required String username,
@@ -65,10 +75,7 @@ class AuthRepository extends GetxService {
     await _iosSharedSessionService.reloadWidgets();
     unawaited(_warmSiteWidgetData());
 
-    // 登录成功后启动消息轮询
-    if (!Get.isRegistered<SystemMessageController>()) {
-      Get.put(SystemMessageController(), permanent: true);
-    }
+    _syncSystemMessagePolling();
 
     return login;
   }
@@ -142,6 +149,7 @@ class AuthRepository extends GetxService {
         _appService.clearLoginState();
         return false;
       }
+      _syncSystemMessagePolling();
       await _iosSharedSessionService.syncSession(
         server: normalizedServer,
         accessToken: profile.accessToken,
@@ -282,6 +290,7 @@ class AuthRepository extends GetxService {
     }
     final userInfo = UserInfo.fromJson(data);
     _appService.saveUserInfo(userInfo);
+    _syncSystemMessagePolling();
     _talker.info('获取用户信息成功');
     return userInfo;
   }
@@ -319,6 +328,18 @@ class AuthRepository extends GetxService {
   Future<List<LoginProfile>> getProfilesAsync() async {
     if (kIsWeb) return _readWebProfiles();
     return Future.value(getProfiles());
+  }
+
+  Future<void> deleteProfile(String id) async {
+    if (kIsWeb) {
+      final profiles = await _readWebProfiles();
+      await _persistWebProfiles(profiles.where((p) => p.id != id).toList());
+      return;
+    }
+
+    final profile = _realm.find<LoginProfile>(id);
+    if (profile == null) return;
+    _realm.write(() => _realm.delete(profile));
   }
 
   Future<List<LoginProfile>> _readWebProfiles() async {

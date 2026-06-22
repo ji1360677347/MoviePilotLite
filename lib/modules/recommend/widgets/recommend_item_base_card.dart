@@ -6,6 +6,7 @@ import 'package:moviepilot_mobile/modules/recommend/models/recommend_api_item.da
 import 'package:moviepilot_mobile/modules/search/pages/search_mid_sheet.dart';
 import 'package:moviepilot_mobile/modules/subscribe/controllers/subscribe_service.dart';
 import 'package:moviepilot_mobile/modules/subscribe/models/subscribe_models.dart';
+import 'package:moviepilot_mobile/services/app_service.dart';
 
 import 'package:moviepilot_mobile/utils/toast_util.dart';
 
@@ -25,59 +26,62 @@ class RecommendItemBaseCard extends GetView<SubscribeService> {
       child: Obx(() {
         final subscribeItem = controller.subscribeItems[item?.subscribeKey];
         final isSubscribed = subscribeItem != null && subscribeItem.id != null;
-        return CupertinoContextMenu.builder(
-          enableHapticFeedback: true,
-          builder: (context, menuState) {
-            return child;
-          },
-          actions: [
-            Material(
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      item?.overview ?? '',
-                      maxLines: 4,
-                      overflow: TextOverflow.ellipsis,
+        final appService = Get.find<AppService>();
+        final menuActions = <Widget>[
+          Material(
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    item?.overview ?? '',
+                    maxLines: 4,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (_sourceLabels.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          CupertinoIcons.link,
+                          size: 14,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Wrap(
+                            spacing: 4,
+                            runSpacing: 4,
+                            children: _buildSourceSpans(context),
+                          ),
+                        ),
+                      ],
                     ),
-                    if (_sourceLabels.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(
-                            CupertinoIcons.link,
-                            size: 14,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Wrap(
-                              spacing: 4,
-                              runSpacing: 4,
-                              children: _buildSourceSpans(context),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
                   ],
-                ),
+                ],
               ),
             ),
+          ),
+          if (appService.canSubscribe)
             _buildSubscribeAction(
               context,
               isSubscribed: isSubscribed,
               subscribeKey: item!.subscribeKey,
               subscribeItem: subscribeItem,
             ),
-            _buildSearchAction(context),
-          ],
+          if (appService.canSearch) _buildSearchAction(context),
+        ];
+        return CupertinoContextMenu.builder(
+          enableHapticFeedback: true,
+          builder: (context, menuState) {
+            return child;
+          },
+          actions: menuActions,
         );
       }),
     );
@@ -291,6 +295,10 @@ class RecommendItemBaseCard extends GetView<SubscribeService> {
   }
 
   void _openSearch(BuildContext context) async {
+    if (!Get.find<AppService>().canSearch) {
+      ToastUtil.info('当前帐号无资源搜索权限');
+      return;
+    }
     final searchKey = item?.mediaKey;
     final detail = item;
     final season = item?.season;
