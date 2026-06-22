@@ -10,17 +10,17 @@ class MultifunctionPage extends GetView<MultifunctionController> {
 
   final ScrollController? scrollController;
 
-  static const Color _background = Color(0xFF131315);
-  static const Color _surface = Color(0x4D1F1F21);
-  static const Color _surfaceHighest = Color(0xFF353437);
-  static const Color _outlineSoft = Color(0x1A8B91A0);
-  static const Color _textPrimary = Color(0xFFE4E2E4);
-  static const Color _textSecondary = Color(0xFFC0C6D6);
-  static const Color _textMuted = Color(0xFF8B91A0);
-  static const Color _primary = Color(0xFFAAC7FF);
-  static const Color _primaryStrong = Color(0xFF3E90FF);
-  static const Color _secondary = Color(0xFFE9B3FF);
-  static const Color _secondaryStrong = Color(0xFF7D01B1);
+  static const Color _background = Color(0xFF111827);
+  static const Color _surface = Color(0xE60B1220);
+  static const Color _surfaceHighest = Color(0xFF1E293B);
+  static const Color _outlineSoft = Color(0x14FFFFFF);
+  static const Color _textPrimary = Color(0xFFF8FAFC);
+  static const Color _textSecondary = Color(0xFFCBD5E1);
+  static const Color _textMuted = Color(0xFF94A3B8);
+  static const Color _primary = Color(0xFF93C5FD);
+  static const Color _primaryStrong = Color(0xFF3B82F6);
+  static const Color _secondary = Color(0xFFD8B4FE);
+  static const Color _secondaryStrong = Color(0xFFA855F7);
   static const Color _error = Color(0xFFFFB4AB);
 
   @override
@@ -64,7 +64,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
                     child: RefreshIndicator(
                       onRefresh: controller.refreshDashboard,
                       color: _primaryStrong,
-                      backgroundColor: const Color(0xFF1B1B1D),
+                      backgroundColor: _surfaceHighest,
                       child: ListView(
                         controller: scrollController,
                         physics: const AlwaysScrollableScrollPhysics(),
@@ -125,6 +125,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
       elevation: 0,
       scrolledUnderElevation: 0,
       surfaceTintColor: Colors.transparent,
+      flexibleSpace: const _NavigationBackdrop(),
       titleSpacing: 0,
       leading: Builder(
         builder: (buttonContext) => CupertinoButton(
@@ -162,120 +163,186 @@ class MultifunctionPage extends GetView<MultifunctionController> {
     DashboardModuleViewModel? tvModule,
   }) {
     final info = controller.subscribeInfo.value;
-    final moviePoster = _posterForRoute('/subscribe-movie');
-    final tvPoster = _posterForRoute('/subscribe-tv');
-    final total = (info.movieCount + info.tvCount).clamp(1, 999999);
-    final columns = pageWidth >= 760 ? 2 : 1;
+    final moviePosters = _postersForRoute('/subscribe-movie');
+    final tvPosters = _postersForRoute('/subscribe-tv');
+    final useColumns = pageWidth >= 700;
 
-    final cards = <Widget>[
-      _subscriptionCard(
-        title: '电影',
-        poster: moviePoster,
-        subtitle: '已订阅 ${info.movieCount} 部',
-        progress: info.movieCount / total,
-        progressColor: _primaryStrong,
-        onTap: movieModule == null
-            ? null
-            : () => controller.handleRouteTap(
-                movieModule.route,
-                title: movieModule.title,
-              ),
-      ),
-      _subscriptionCard(
-        title: '剧集',
-        poster: tvPoster,
-        subtitle: '已订阅 ${info.tvCount} 部',
-        progress: info.tvCount / total,
-        progressColor: _secondaryStrong,
-        onTap: tvModule == null
-            ? null
-            : () => controller.handleRouteTap(
-                tvModule.route,
-                title: tvModule.title,
-              ),
-      ),
-    ];
+    final movieCard = _subscriptionCategoryCard(
+      title: '电影订阅',
+      count: info.movieCount,
+      accent: _primaryStrong,
+      poster: moviePosters.firstOrNull ?? '',
+      onTap: movieModule == null
+          ? null
+          : () => controller.handleRouteTap(
+              movieModule.route,
+              title: movieModule.title,
+            ),
+    );
+    final tvCard = _subscriptionCategoryCard(
+      title: '剧集订阅',
+      count: info.tvCount,
+      accent: _secondaryStrong,
+      poster: tvPosters.firstOrNull ?? '',
+      onTap: tvModule == null
+          ? null
+          : () => controller.handleRouteTap(
+              tvModule.route,
+              title: tvModule.title,
+            ),
+    );
 
-    if (columns == 1) {
-      return Column(children: [cards[0], const SizedBox(height: 16), cards[1]]);
-    }
-
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(child: cards[0]),
-        const SizedBox(width: 16),
-        Expanded(child: cards[1]),
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                '订阅',
+                style: TextStyle(
+                  color: _textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.2,
+                ),
+              ),
+            ),
+            if (!controller.subscribeDataReady.value)
+              const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.cloud_off_outlined, size: 14, color: _textMuted),
+                  SizedBox(width: 5),
+                  Text(
+                    '数据暂不可用',
+                    style: TextStyle(
+                      color: _textMuted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (useColumns)
+          Row(
+            children: [
+              Expanded(child: movieCard),
+              const SizedBox(width: 12),
+              Expanded(child: tvCard),
+            ],
+          )
+        else
+          Column(children: [movieCard, const SizedBox(height: 12), tvCard]),
       ],
     );
   }
 
-  Widget _subscriptionCard({
+  Widget _subscriptionCategoryCard({
     required String title,
+    required int count,
+    required Color accent,
     required String poster,
-    required String subtitle,
-    required double progress,
-    required Color progressColor,
     VoidCallback? onTap,
   }) {
-    return _glassCard(
-      onTap: onTap,
-      padding: const EdgeInsets.all(12),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              width: 56,
-              height: 80,
-              color: _surfaceHighest,
-              child: poster.isEmpty
-                  ? const Icon(Icons.movie_creation_outlined, color: _textMuted)
-                  : CachedImage(
-                      imageUrl: ImageUtil.convertCacheImageUrl(poster),
-                      fit: BoxFit.cover,
-                    ),
+    return Semantics(
+      button: onTap != null,
+      label: '$title，共 $count 部',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Ink(
+            height: 132,
+            decoration: BoxDecoration(
+              color: _surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: _outlineSoft, width: 0.5),
             ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: _textPrimary,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -0.4,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    color: _textSecondary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-                const SizedBox(height: 12),
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
-                  child: Container(
-                    height: 4,
-                    color: _surfaceHighest,
-                    child: FractionallySizedBox(
-                      alignment: Alignment.centerLeft,
-                      widthFactor: progress.clamp(0.08, 1.0),
-                      child: Container(color: progressColor),
+                  borderRadius: const BorderRadius.horizontal(
+                    left: Radius.circular(13),
+                  ),
+                  child: SizedBox(
+                    width: 92,
+                    height: double.infinity,
+                    child: poster.isEmpty
+                        ? ColoredBox(
+                            color: _surfaceHighest,
+                            child: Icon(
+                              title.startsWith('电影')
+                                  ? Icons.movie_filter_rounded
+                                  : Icons.live_tv_rounded,
+                              color: accent,
+                              size: 30,
+                            ),
+                          )
+                        : CachedImage(
+                            imageUrl: ImageUtil.convertCacheImageUrl(poster),
+                            fit: BoxFit.cover,
+                          ),
+                  ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 12, 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            color: _textPrimary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '$count 部',
+                          style: TextStyle(
+                            color: accent,
+                            fontSize: 26,
+                            height: 1,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.8,
+                          ),
+                        ),
+                        const Spacer(),
+                        Row(
+                          children: [
+                            const Text(
+                              '查看订阅',
+                              style: TextStyle(
+                                color: _textMuted,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const Spacer(),
+                            Icon(
+                              Icons.arrow_forward_rounded,
+                              size: 17,
+                              color: accent,
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -357,8 +424,8 @@ class MultifunctionPage extends GetView<MultifunctionController> {
       data: const CupertinoThemeData(primaryColor: _textPrimary),
       child: CupertinoSlidingSegmentedControl<String>(
         groupValue: value,
-        backgroundColor: const Color(0xFF1F1F21),
-        thumbColor: const Color(0xFF353437),
+        backgroundColor: _surface,
+        thumbColor: _surfaceHighest,
         children: const {
           'today': Padding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -904,12 +971,13 @@ class MultifunctionPage extends GetView<MultifunctionController> {
     );
   }
 
-  String _posterForRoute(String route) {
-    final item = controller.subscribeInfo.value.posterItems.firstWhereOrNull(
-      (item) => item.route == route && item.poster.trim().isNotEmpty,
-    );
-    if (item == null) return '';
-    return controller.normalizePoster(item.poster);
+  List<String> _postersForRoute(String route) {
+    return controller.subscribeInfo.value.posterItems
+        .where((item) => item.route == route && item.poster.trim().isNotEmpty)
+        .map((item) => controller.normalizePoster(item.poster))
+        .where((poster) => poster.isNotEmpty)
+        .take(3)
+        .toList();
   }
 
   String _metricNumber(double value) {
@@ -968,25 +1036,66 @@ class _PageBackdrop extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFF111214), Color(0xFF131315), Color(0xFF0E0E10)],
+          colors: [Color(0xFF111827), Color(0xFF0F172A), Color(0xFF0B1220)],
+          stops: [0, 0.56, 1],
         ),
       ),
       child: Stack(
         children: [
           Positioned(
-            top: -100,
-            left: -60,
+            top: -110,
+            left: -90,
             child: _SoftGlow(
-              size: 220,
-              color: const Color(0xFF3E90FF).withValues(alpha: 0.08),
+              size: 300,
+              color: const Color(0xFF3B82F6).withValues(alpha: 0.14),
             ),
           ),
           Positioned(
-            top: 260,
-            right: -80,
+            top: 220,
+            right: -140,
             child: _SoftGlow(
-              size: 240,
-              color: const Color(0xFF7D01B1).withValues(alpha: 0.07),
+              size: 360,
+              color: const Color(0xFFA855F7).withValues(alpha: 0.10),
+            ),
+          ),
+          Positioned(
+            bottom: -180,
+            left: -130,
+            child: _SoftGlow(
+              size: 340,
+              color: const Color(0xFF2563EB).withValues(alpha: 0.07),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NavigationBackdrop extends StatelessWidget {
+  const _NavigationBackdrop();
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRect(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          const ColoredBox(color: Color(0xFF111827)),
+          Positioned(
+            top: -110,
+            left: -70,
+            child: _SoftGlow(
+              size: 250,
+              color: const Color(0xFF3B82F6).withValues(alpha: 0.20),
+            ),
+          ),
+          Positioned(
+            bottom: -150,
+            right: -120,
+            child: _SoftGlow(
+              size: 300,
+              color: const Color(0xFFA855F7).withValues(alpha: 0.12),
             ),
           ),
         ],

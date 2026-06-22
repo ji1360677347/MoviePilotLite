@@ -22,7 +22,6 @@ class MediaSearchListPage extends GetView<MediaSearchListController> {
   static const double _gridSpacing = 8;
   static const double _gridPadding = 16;
   static const double _cardAspectRatio = 1 / 1.3;
-  static const double _listCardHeight = 108;
   static const double _listPosterWidth = 72;
   static const double _listPosterHeight = 96;
   static const double _immersiveHeaderHeight = 250;
@@ -198,14 +197,21 @@ class MediaSearchListPage extends GetView<MediaSearchListController> {
   Widget _buildListSliver(List<RecommendApiItem> items) {
     return SliverList(
       delegate: SliverChildBuilderDelegate((context, index) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: index == items.length - 1 ? 0 : _gridSpacing,
-          ),
-          child: SizedBox(
-            height: _listCardHeight,
-            child: _buildMediaItem(items, index, listMode: true),
-          ),
+        final isLast = index == items.length - 1;
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildMediaItem(items, index, listMode: true),
+            if (!isLast) ...[
+              const SizedBox(height: 10),
+              Divider(
+                height: 1,
+                thickness: 1,
+                color: Colors.white.withValues(alpha: 0.08),
+              ),
+              const SizedBox(height: 10),
+            ],
+          ],
         );
       }, childCount: items.length),
     );
@@ -243,13 +249,25 @@ class MediaSearchListPage extends GetView<MediaSearchListController> {
     final overview = item.overview?.trim();
     final type = item.type?.trim();
     final vote = item.vote_average;
+    final metaChips = <Widget>[
+      if (type != null && type.isNotEmpty) _buildListMetaPill(type),
+      if (year.isNotEmpty)
+        Text(
+          year,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.72),
+            fontSize: 13,
+          ),
+        ),
+      if (vote != null && vote > 0) _buildListMetaPill(vote.toStringAsFixed(1)),
+    ];
     return Material(
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () => _openDetail(item),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
+          padding: const EdgeInsets.symmetric(vertical: 8),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -259,71 +277,62 @@ class MediaSearchListPage extends GetView<MediaSearchListController> {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: SizedBox(
-                  height: _listPosterHeight,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          if (inLibrary) ...[
-                            const Icon(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (inLibrary) ...[
+                          const Padding(
+                            padding: EdgeInsets.only(top: 2),
+                            child: Icon(
                               Icons.check_circle_rounded,
                               size: 14,
                               color: Color(0xFF81C784),
                             ),
-                            const SizedBox(width: 4),
-                          ],
-                          Expanded(
-                            child: Text(
-                              title,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                                height: 1.2,
-                              ),
-                            ),
                           ),
-                          if (vote != null && vote > 0) ...[
-                            const SizedBox(width: 8),
-                            _buildListMetaPill(vote.toStringAsFixed(1)),
-                          ],
+                          const SizedBox(width: 4),
                         ],
-                      ),
-                      if (type != null && type.isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        _buildListMetaPill(type),
-                      ],
-                      if (year.isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          year,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.72),
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                      if (overview != null && overview.isNotEmpty) ...[
-                        const SizedBox(height: 4),
                         Expanded(
                           child: Text(
-                            overview,
+                            title,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.58),
-                              fontSize: 12,
-                              height: 1.35,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              height: 1.25,
                             ),
                           ),
                         ),
                       ],
+                    ),
+                    if (metaChips.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: metaChips,
+                      ),
                     ],
-                  ),
+                    if (overview != null && overview.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        overview,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.58),
+                          fontSize: 12,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ],
