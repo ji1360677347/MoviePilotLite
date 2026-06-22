@@ -889,10 +889,11 @@ class MultifunctionPage extends GetView<MultifunctionController> {
     required List<DashboardModuleViewModel> modules,
   }) {
     final crossAxisCount = pageWidth >= 960
-        ? 5
-        : pageWidth >= 760
         ? 4
-        : 3;
+        : pageWidth >= 640
+        ? 3
+        : 2;
+    final childAspectRatio = pageWidth >= 640 ? 1.65 : 1.35;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -916,36 +917,102 @@ class MultifunctionPage extends GetView<MultifunctionController> {
             crossAxisCount: crossAxisCount,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
-            childAspectRatio: 1,
+            childAspectRatio: childAspectRatio,
           ),
-          itemBuilder: (_, index) => _utilityCard(modules[index]),
+          itemBuilder: (_, index) => _utilityCard(modules[index], index: index),
         ),
       ],
     );
   }
 
-  Widget _utilityCard(DashboardModuleViewModel module) {
-    return _glassCard(
-      onTap: () => controller.handleRouteTap(module.route, title: module.title),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(module.icon, size: 28, color: module.accent),
-          const SizedBox(height: 10),
-          Text(
-            _utilityTitle(module.title),
-            style: const TextStyle(
-              color: _textPrimary,
-              fontSize: 12,
-              fontWeight: FontWeight.w400,
-              height: 1.2,
+  Widget _utilityCard(DashboardModuleViewModel module, {required int index}) {
+    final title = _utilityTitle(module.title);
+    final subtitle = module.primaryText.trim();
+
+    return Semantics(
+      button: true,
+      label: '$title，$subtitle',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () =>
+              controller.handleRouteTap(module.route, title: module.title),
+          borderRadius: BorderRadius.circular(16),
+          child: Ink(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: module.accent.withValues(alpha: 0.18),
+                width: 0.8,
+              ),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  module.accent.withValues(alpha: index.isEven ? 0.11 : 0.08),
+                  _surface,
+                ],
+              ),
             ),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: module.accent.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(module.icon, size: 21, color: module.accent),
+                    ),
+                    const Spacer(),
+                    Container(
+                      width: 26,
+                      height: 26,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.05),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.arrow_outward_rounded,
+                        size: 15,
+                        color: _textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: _textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: _textMuted,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    height: 1.25,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
