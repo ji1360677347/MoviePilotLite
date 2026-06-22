@@ -17,57 +17,154 @@ class DownloadSheet extends GetView<DownloadController> {
 
   @override
   Widget build(BuildContext context) {
-    return BottomSheetWidget(
-      header: _buildHeader(context),
-      scrollController: controller.scrollController,
-      snap: false,
-      snapSizes: const [],
-      initialChildSize: 0.7,
-      minChildSize: 0.28,
-      maxChildSize: 0.8,
-      builder: (context, scrollController) => ListView(
-        controller: scrollController,
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
-        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-        children: [
-          _buildCompactSummary(context),
-          const SizedBox(height: 10),
-          _buildDownloadSettingsSection(context),
-          const SizedBox(height: 10),
-          _buildTmdbInput(context),
-          const SizedBox(height: 12),
-          _buildBottomActions(context),
-        ],
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final background = theme.scaffoldBackgroundColor;
+    final backgroundAlt =
+        Color.lerp(background, scheme.primary, isDark ? 0.035 : 0.018) ??
+        background;
+
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      child: BottomSheetWidget(
+        header: Builder(builder: _buildHeader),
+        scrollController: controller.scrollController,
+        snap: false,
+        snapSizes: const [],
+        initialChildSize: 0.7,
+        minChildSize: 0.28,
+        maxChildSize: 0.8,
+        builder: (context, scrollController) => DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [backgroundAlt, background],
+            ),
+          ),
+          child: ListView(
+            controller: scrollController,
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 20),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            children: [
+              _buildCompactSummary(context),
+              const SizedBox(height: 12),
+              _buildDownloadSettingsSection(context),
+              const SizedBox(height: 12),
+              _buildTmdbInput(context),
+              const SizedBox(height: 14),
+              _buildBottomActions(context),
+            ],
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildHeader(BuildContext context) {
     final theme = Theme.of(context);
-    return SafeArea(
-      bottom: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
-        child: Column(
-          children: [
-            Container(
-              width: 34,
-              height: 4,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.outlineVariant,
-                borderRadius: BorderRadius.circular(999),
+    return Stack(
+      children: [
+        Positioned(
+          top: -90,
+          left: -70,
+          child: Container(
+            width: 220,
+            height: 180,
+            decoration: const BoxDecoration(
+              gradient: RadialGradient(
+                colors: [
+                  Color.fromRGBO(59, 130, 246, 0.22),
+                  Color.fromRGBO(59, 130, 246, 0),
+                ],
               ),
             ),
-            const SizedBox(height: 10),
-            Text(
-              '下载资源',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
+          ),
         ),
-      ),
+        Positioned(
+          right: -100,
+          bottom: -100,
+          child: Container(
+            width: 240,
+            height: 200,
+            decoration: const BoxDecoration(
+              gradient: RadialGradient(
+                colors: [
+                  Color.fromRGBO(168, 85, 247, 0.16),
+                  Color.fromRGBO(168, 85, 247, 0),
+                ],
+              ),
+            ),
+          ),
+        ),
+        SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 10, 10),
+            child: Column(
+              children: [
+                Container(
+                  width: 38,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.onSurfaceVariant.withValues(
+                      alpha: 0.45,
+                    ),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withValues(
+                          alpha: 0.14,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.download_rounded,
+                        color: theme.colorScheme.primary,
+                        size: 21,
+                      ),
+                    ),
+                    const SizedBox(width: 11),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '下载资源',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '选择下载器和保存位置',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: '关闭',
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -91,7 +188,7 @@ class DownloadSheet extends GetView<DownloadController> {
     );
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      padding: const EdgeInsets.fromLTRB(15, 14, 15, 14),
       decoration: _panelDecoration(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -180,6 +277,7 @@ class DownloadSheet extends GetView<DownloadController> {
     return _buildSection(
       context,
       title: '下载设置',
+      icon: Icons.tune_rounded,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -262,8 +360,8 @@ class DownloadSheet extends GetView<DownloadController> {
             return Padding(
               padding: const EdgeInsets.only(right: 8),
               child: SizedBox(
-                width: isAuto ? 132 : 220,
-                height: 50,
+                width: isAuto ? 116 : 164,
+                height: 46,
                 child: _buildChoiceTile(
                   context,
                   title: label,
@@ -346,11 +444,9 @@ class DownloadSheet extends GetView<DownloadController> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
               clearButtonMode: OverlayVisibilityMode.editing,
               decoration: BoxDecoration(
-                color: CupertinoDynamicColor.resolve(
-                  CupertinoColors.tertiarySystemGroupedBackground,
-                  context,
-                ),
+                color: _controlSurface(context),
                 borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: _outlineColor(context)),
               ),
             ),
           ],
@@ -415,25 +511,30 @@ class DownloadSheet extends GetView<DownloadController> {
   }) {
     final theme = Theme.of(context);
     return SizedBox(
-      height: 46,
-      child: CupertinoButton(
-        padding: EdgeInsets.zero,
-        borderRadius: BorderRadius.circular(14),
-        color: enabled
-            ? theme.colorScheme.primary
-            : theme.colorScheme.surfaceContainerHighest,
+      height: 48,
+      child: FilledButton.icon(
         onPressed: enabled && !busy ? onTap : null,
-        child: busy
-            ? const CupertinoActivityIndicator(color: Colors.white)
-            : Text(
-                label,
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: enabled
-                      ? Colors.white
-                      : theme.colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w700,
+        style: FilledButton.styleFrom(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        icon: busy
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
                 ),
-              ),
+              )
+            : const Icon(Icons.download_rounded, size: 19),
+        label: Text(
+          label,
+          style: theme.textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ),
     );
   }
@@ -447,25 +548,36 @@ class DownloadSheet extends GetView<DownloadController> {
   }) {
     final theme = Theme.of(context);
     return SizedBox(
-      height: 46,
-      child: CupertinoButton(
-        padding: EdgeInsets.zero,
-        borderRadius: BorderRadius.circular(14),
-        color: theme.colorScheme.secondary.withValues(
-          alpha: enabled ? 0.14 : 0.08,
-        ),
+      height: 48,
+      child: OutlinedButton.icon(
         onPressed: enabled && !busy ? onTap : null,
-        child: busy
-            ? CupertinoActivityIndicator(color: theme.colorScheme.secondary)
-            : Text(
-                label,
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: enabled
-                      ? theme.colorScheme.secondary
-                      : theme.colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w700,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: theme.colorScheme.secondary,
+          side: BorderSide(
+            color: theme.colorScheme.secondary.withValues(
+              alpha: enabled ? 0.55 : 0.16,
+            ),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        icon: busy
+            ? SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: theme.colorScheme.secondary,
                 ),
-              ),
+              )
+            : const Icon(Icons.link_rounded, size: 19),
+        label: Text(
+          label,
+          style: theme.textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ),
     );
   }
@@ -473,17 +585,38 @@ class DownloadSheet extends GetView<DownloadController> {
   Widget _buildSection(
     BuildContext context, {
     required String title,
+    required IconData icon,
     required Widget child,
   }) {
+    final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+      padding: const EdgeInsets.all(14),
       decoration: _panelDecoration(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 10),
+          Row(
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Icon(icon, size: 16, color: theme.colorScheme.primary),
+              ),
+              const SizedBox(width: 9),
+              Text(
+                title,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
           child,
-          const SizedBox(height: 10),
         ],
       ),
     );
@@ -546,10 +679,7 @@ class DownloadSheet extends GetView<DownloadController> {
           decoration: BoxDecoration(
             color: isSelected
                 ? accentColor.withValues(alpha: 0.12)
-                : CupertinoDynamicColor.resolve(
-                    CupertinoColors.tertiarySystemGroupedBackground,
-                    context,
-                  ),
+                : _controlSurface(context),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: isSelected
@@ -629,11 +759,9 @@ class DownloadSheet extends GetView<DownloadController> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
-        color: CupertinoDynamicColor.resolve(
-          CupertinoColors.tertiarySystemGroupedBackground,
-          context,
-        ),
+        color: _controlSurface(context),
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _outlineColor(context)),
       ),
       child: Text(
         label,
@@ -652,13 +780,31 @@ class DownloadSheet extends GetView<DownloadController> {
   }
 
   BoxDecoration _panelDecoration(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return BoxDecoration(
-      color: CupertinoDynamicColor.resolve(
-        CupertinoColors.secondarySystemGroupedBackground,
-        context,
-      ),
+      color: theme.cardColor.withValues(alpha: isDark ? 0.90 : 0.98),
       borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: _outlineColor(context)),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: isDark ? 0.14 : 0.055),
+          blurRadius: 16,
+          offset: const Offset(0, 6),
+        ),
+      ],
     );
+  }
+
+  Color _controlSurface(BuildContext context) {
+    final theme = Theme.of(context);
+    return theme.colorScheme.surfaceContainerHighest.withValues(
+      alpha: theme.brightness == Brightness.dark ? 0.72 : 0.64,
+    );
+  }
+
+  Color _outlineColor(BuildContext context) {
+    return Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.72);
   }
 
   String _displayVolumeFactor(SearchTorrentInfo? torrent) {

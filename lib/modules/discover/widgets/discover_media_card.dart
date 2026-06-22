@@ -84,7 +84,7 @@ class DiscoverCardSurface extends StatelessWidget {
     required this.vote,
     required this.year,
     required this.type,
-    this.surfaceColor = const Color(0xFF121214),
+    this.surfaceColor,
     this.ratingColor = const Color(0xFFFFC46B),
   });
 
@@ -93,19 +93,24 @@ class DiscoverCardSurface extends StatelessWidget {
   final double? vote;
   final String year;
   final String? type;
-  final Color surfaceColor;
+  final Color? surfaceColor;
   final Color ratingColor;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: surfaceColor,
+        color: surfaceColor ?? colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.7),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.32),
+            color: Colors.black.withValues(alpha: isDark ? 0.32 : 0.12),
             blurRadius: 18,
             offset: const Offset(0, 10),
           ),
@@ -210,12 +215,13 @@ class _PosterPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
-      color: const Color(0xFF1D1D21),
+      color: colorScheme.surfaceContainerHighest,
       child: Center(
         child: Icon(
           Icons.movie_creation_outlined,
-          color: Colors.white.withValues(alpha: 0.22),
+          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.42),
           size: 34,
         ),
       ),

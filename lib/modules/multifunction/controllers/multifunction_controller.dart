@@ -773,16 +773,6 @@ class MultifunctionController extends GetxController {
                 '上传 ${_formatSize(infoSite.totalUpload)} / 下载 ${_formatSize(infoSite.totalDownload)}',
             hasData: siteDataReady.value,
           );
-        case '/search-result':
-          return DashboardModuleViewModel(
-            title: item.title,
-            route: route,
-            icon: item.icon,
-            accent: item.accent,
-            primaryText: '快速查看近期搜索',
-            secondaryText: item.subtitle ?? '支持关键词和结果回看',
-            hasData: false,
-          );
         default:
           return DashboardModuleViewModel(
             title: item.title,
@@ -805,7 +795,6 @@ class MultifunctionController extends GetxController {
   }
 
   static const List<String> _dashboardOrder = [
-    '/search-result',
     '/subscribe-movie',
     '/subscribe-tv',
     '/subscribe-calendar',

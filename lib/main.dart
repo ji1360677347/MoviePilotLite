@@ -1,5 +1,5 @@
-import 'package:altman_downloader_control/controller/controller_adaptor.dart';
 import 'package:altman_downloader_control/controller/downloader_config.dart';
+import 'package:moviepilot_mobile/utils/downloader_controller_adaptor.dart';
 import 'package:altman_totp/page/totp_manage_page.dart';
 import 'package:get/get.dart';
 import 'package:flutter/cupertino.dart';
@@ -252,6 +252,7 @@ class MyApp extends StatelessWidget {
             binding: BindingsBuilder(() {
               Get.lazyPut(() => SystemMessageController());
             }),
+            middlewares: permissionGuards('/system-message'),
           ),
           GetPage(
             name: '/cache',

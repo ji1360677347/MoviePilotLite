@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:moviepilot_mobile/modules/search/pages/search_mid_sheet.dart';
 import 'package:moviepilot_mobile/modules/search/services/search_keyword_hints_service.dart';
+import 'package:moviepilot_mobile/services/app_service.dart';
 import 'package:moviepilot_mobile/utils/toast_util.dart';
 
 import '../models/search_history.dart';
@@ -162,6 +163,10 @@ class SearchIndexController extends GetxController {
         Get.toNamed('/subscribe-tv', parameters: {'keyword': term});
         break;
       case SearchSuggestionCategory.site:
+        if (!Get.find<AppService>().canSearch) {
+          ToastUtil.info('当前帐号无资源搜索权限');
+          return;
+        }
         final result = await Get.bottomSheet<({String area, List<int> sites})>(
           SiteSelectSheet(hasSegment: false),
           isScrollControlled: true,
