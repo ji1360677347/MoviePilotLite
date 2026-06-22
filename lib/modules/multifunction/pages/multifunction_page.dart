@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:moviepilot_mobile/modules/multifunction/controllers/multifunction_controller.dart';
 import 'package:moviepilot_mobile/utils/image_util.dart';
@@ -10,25 +11,39 @@ class MultifunctionPage extends GetView<MultifunctionController> {
 
   final ScrollController? scrollController;
 
-  static const Color _background = Color(0xFF111827);
-  static const Color _surface = Color(0xE60B1220);
-  static const Color _surfaceHighest = Color(0xFF1E293B);
-  static const Color _outlineSoft = Color(0x14FFFFFF);
-  static const Color _textPrimary = Color(0xFFF8FAFC);
-  static const Color _textSecondary = Color(0xFFCBD5E1);
-  static const Color _textMuted = Color(0xFF94A3B8);
-  static const Color _primary = Color(0xFF93C5FD);
-  static const Color _primaryStrong = Color(0xFF3B82F6);
-  static const Color _secondary = Color(0xFFD8B4FE);
-  static const Color _secondaryStrong = Color(0xFFA855F7);
-  static const Color _error = Color(0xFFFFB4AB);
+  static bool get _isDark => Get.isDarkMode;
+  static Color get _background =>
+      _isDark ? const Color(0xFF111827) : const Color(0xFFF4F7FB);
+  static Color get _surface =>
+      _isDark ? const Color(0xE60B1220) : const Color(0xF7FFFFFF);
+  static Color get _surfaceHighest =>
+      _isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0);
+  static Color get _outlineSoft =>
+      _isDark ? const Color(0x14FFFFFF) : const Color(0x1F0F172A);
+  static Color get _textPrimary =>
+      _isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
+  static Color get _textSecondary =>
+      _isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569);
+  static Color get _textMuted =>
+      _isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+  static Color get _primary =>
+      _isDark ? const Color(0xFF93C5FD) : const Color(0xFF2563EB);
+  static Color get _primaryStrong =>
+      _isDark ? const Color(0xFF3B82F6) : const Color(0xFF1D4ED8);
+  static Color get _secondary =>
+      _isDark ? const Color(0xFFD8B4FE) : const Color(0xFF7C3AED);
+  static Color get _secondaryStrong =>
+      _isDark ? const Color(0xFFA855F7) : const Color(0xFF6D28D9);
+  static Color get _error =>
+      _isDark ? const Color(0xFFFFB4AB) : const Color(0xFFB42318);
 
   @override
   Widget build(BuildContext context) {
+    Theme.of(context);
     return Scaffold(
       backgroundColor: _background,
       extendBodyBehindAppBar: true,
-      appBar: _buildNavigationBar(),
+      appBar: _buildNavigationBar(context),
       body: Obx(() {
         final modules = controller.buildDashboardModules();
         final modulesByRoute = <String, DashboardModuleViewModel>{
@@ -121,12 +136,18 @@ class MultifunctionPage extends GetView<MultifunctionController> {
     );
   }
 
-  PreferredSizeWidget _buildNavigationBar() {
+  PreferredSizeWidget _buildNavigationBar(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return AppBar(
       backgroundColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
       surfaceTintColor: Colors.transparent,
+      systemOverlayStyle: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+      ),
       titleSpacing: 0,
       leading: Builder(
         builder: (buttonContext) => CupertinoButton(
@@ -139,7 +160,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
           ),
         ),
       ),
-      title: const Text(
+      title: Text(
         'More',
         style: TextStyle(
           fontSize: 24,
@@ -198,7 +219,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
       children: [
         Row(
           children: [
-            const Expanded(
+            Expanded(
               child: Text(
                 '订阅',
                 style: TextStyle(
@@ -210,11 +231,11 @@ class MultifunctionPage extends GetView<MultifunctionController> {
               ),
             ),
             if (!controller.subscribeDataReady.value)
-              const Row(
+              Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.cloud_off_outlined, size: 14, color: _textMuted),
-                  SizedBox(width: 5),
+                  const SizedBox(width: 5),
                   Text(
                     '数据暂不可用',
                     style: TextStyle(
@@ -299,7 +320,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
                       children: [
                         Text(
                           title,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: _textPrimary,
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -320,7 +341,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
                         const Spacer(),
                         Row(
                           children: [
-                            const Text(
+                            Text(
                               '查看订阅',
                               style: TextStyle(
                                 color: _textMuted,
@@ -361,7 +382,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
       children: [
         Row(
           children: [
-            const Expanded(
+            Expanded(
               child: Text(
                 '上映日历',
                 style: TextStyle(
@@ -422,12 +443,12 @@ class MultifunctionPage extends GetView<MultifunctionController> {
     required ValueChanged<String> onChanged,
   }) {
     return CupertinoTheme(
-      data: const CupertinoThemeData(primaryColor: _textPrimary),
+      data: CupertinoThemeData(primaryColor: _textPrimary),
       child: CupertinoSlidingSegmentedControl<String>(
         groupValue: value,
         backgroundColor: _surface,
         thumbColor: _surfaceHighest,
-        children: const {
+        children: {
           'today': Padding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Text(
@@ -494,7 +515,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
                           fit: BoxFit.cover,
                         )
                       else
-                        const Center(
+                        Center(
                           child: Icon(
                             Icons.live_tv_rounded,
                             color: _textMuted,
@@ -520,7 +541,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
                                 ),
                                 child: Text(
                                   seasonEpisodeTag,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: _primary,
                                     fontSize: 10,
                                     fontWeight: FontWeight.w600,
@@ -545,7 +566,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
                           ),
                           child: Text(
                             chipText,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Colors.white,
                               fontSize: 10,
                               fontWeight: FontWeight.w500,
@@ -561,7 +582,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
             const SizedBox(height: 8),
             Text(
               entry.showName,
-              style: const TextStyle(
+              style: TextStyle(
                 color: _textPrimary,
                 fontSize: 12,
                 fontWeight: FontWeight.w400,
@@ -581,7 +602,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
           ? null
           : () => controller.handleRouteTap(module.route, title: module.title),
       child: _glassCard(
-        child: const Center(
+        child: Center(
           child: Text(
             '暂无上映日历数据',
             style: TextStyle(
@@ -601,7 +622,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           '站点',
           style: TextStyle(
             color: _textPrimary,
@@ -684,7 +705,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: _textPrimary,
                     fontSize: 17,
                     fontWeight: FontWeight.w600,
@@ -747,13 +768,9 @@ class MultifunctionPage extends GetView<MultifunctionController> {
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.cloud_download_rounded,
-                color: _primary,
-                size: 20,
-              ),
+              Icon(Icons.cloud_download_rounded, color: _primary, size: 20),
               const SizedBox(width: 8),
-              const Expanded(
+              Expanded(
                 child: Text(
                   '下载器',
                   style: TextStyle(
@@ -773,7 +790,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
                 ),
                 child: Text(
                   '${info.clients.length} 个活跃',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: _primary,
                     fontSize: 12,
                     fontWeight: FontWeight.w400,
@@ -821,7 +838,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
+        color: _surfaceHighest.withValues(alpha: _isDark ? 0.34 : 0.72),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: _outlineSoft),
       ),
@@ -834,7 +851,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
               const SizedBox(width: 6),
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   color: _textMuted,
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
@@ -850,7 +867,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
             children: [
               Text(
                 value,
-                style: const TextStyle(
+                style: TextStyle(
                   color: _textPrimary,
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
@@ -861,7 +878,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
                 padding: const EdgeInsets.only(bottom: 2),
                 child: Text(
                   unit,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: _textSecondary,
                     fontSize: 12,
                     fontWeight: FontWeight.w400,
@@ -898,7 +915,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           '实用工具',
           style: TextStyle(
             color: _textPrimary,
@@ -974,7 +991,9 @@ class MultifunctionPage extends GetView<MultifunctionController> {
                       width: 26,
                       height: 26,
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.05),
+                        color: _surfaceHighest.withValues(
+                          alpha: _isDark ? 0.36 : 0.82,
+                        ),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -988,7 +1007,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
                 const Spacer(),
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: _textPrimary,
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
@@ -1000,7 +1019,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: _textMuted,
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
@@ -1100,12 +1119,16 @@ class _PageBackdrop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = isDark
+        ? const [Color(0xFF111827), Color(0xFF0F172A), Color(0xFF0B1220)]
+        : const [Color(0xFFF8FAFC), Color(0xFFF1F5F9), Color(0xFFEFF4FA)];
     return DecoratedBox(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFF111827), Color(0xFF0F172A), Color(0xFF0B1220)],
+          colors: colors,
           stops: [0, 0.56, 1],
         ),
       ),
@@ -1116,7 +1139,9 @@ class _PageBackdrop extends StatelessWidget {
             left: -90,
             child: _SoftGlow(
               size: 300,
-              color: const Color(0xFF3B82F6).withValues(alpha: 0.14),
+              color: const Color(
+                0xFF3B82F6,
+              ).withValues(alpha: isDark ? 0.14 : 0.09),
             ),
           ),
           Positioned(
@@ -1124,7 +1149,9 @@ class _PageBackdrop extends StatelessWidget {
             right: -140,
             child: _SoftGlow(
               size: 360,
-              color: const Color(0xFFA855F7).withValues(alpha: 0.10),
+              color: const Color(
+                0xFFA855F7,
+              ).withValues(alpha: isDark ? 0.10 : 0.06),
             ),
           ),
           Positioned(
@@ -1132,7 +1159,9 @@ class _PageBackdrop extends StatelessWidget {
             left: -130,
             child: _SoftGlow(
               size: 340,
-              color: const Color(0xFF2563EB).withValues(alpha: 0.07),
+              color: const Color(
+                0xFF2563EB,
+              ).withValues(alpha: isDark ? 0.07 : 0.045),
             ),
           ),
         ],

@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:modal_bottom_sheet/modal_bottom_sheet.dart';
 import 'package:moviepilot_mobile/gen/assets.gen.dart';
@@ -227,6 +228,7 @@ class DashboardPage extends GetView<DashboardController> {
   AppBar _buildNavigationBar(BuildContext context) {
     final avatarStr = _dashboardBarAvatar();
     final palette = DashboardPalette.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isSuperuser = Get.find<AppService>().isSuperuser;
 
     return AppBar(
@@ -234,6 +236,11 @@ class DashboardPage extends GetView<DashboardController> {
       elevation: 0,
       scrolledUnderElevation: 0,
       surfaceTintColor: Colors.transparent,
+      systemOverlayStyle: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+      ),
       titleSpacing: 0,
       leading: Builder(
         builder: (buttonContext) => CupertinoButton(
