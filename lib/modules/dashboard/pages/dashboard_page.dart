@@ -313,31 +313,38 @@ class DashboardPage extends GetView<DashboardController> {
         CupertinoButton(
           padding: const EdgeInsets.only(left: 6, right: 12),
           onPressed: () => _showProfile(context),
-          child: avatarStr != null && avatarStr.isNotEmpty
-              ? () {
-                  final avatarBytes = _decodeAvatar(avatarStr);
-                  if (avatarBytes.isNotEmpty) {
-                    return Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: palette.primary.withValues(alpha: 0.42),
-                        ),
-                        image: DecorationImage(
-                          image: MemoryImage(avatarBytes),
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    );
-                  } else {
-                    return const Icon(CupertinoIcons.person_circle);
-                  }
-                }()
-              : Assets.images.avatars.avatar1.image(width: 34, height: 34),
+          child: _buildDashboardAvatar(avatarStr, palette),
         ),
       ],
+    );
+  }
+
+  Widget _buildDashboardAvatar(String? avatar, DashboardPaletteData palette) {
+    final avatarBytes = avatar == null || avatar.trim().isEmpty
+        ? Uint8List(0)
+        : _decodeAvatar(avatar);
+
+    if (avatarBytes.isEmpty) {
+      return ClipOval(
+        child: Assets.images.avatars.avatar1.image(
+          width: 36,
+          height: 36,
+          fit: BoxFit.cover,
+        ),
+      );
+    }
+
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: palette.primary.withValues(alpha: 0.42)),
+        image: DecorationImage(
+          image: MemoryImage(avatarBytes),
+          fit: BoxFit.cover,
+        ),
+      ),
     );
   }
 
