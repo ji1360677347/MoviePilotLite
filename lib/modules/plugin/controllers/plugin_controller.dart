@@ -1,23 +1,19 @@
-import 'package:drift/drift.dart' hide Value;
-import 'package:drift/drift.dart' as drift show Value;
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:moviepilot_mobile/applog/app_log.dart';
-import 'package:moviepilot_mobile/database/app_database.dart';
-import 'package:moviepilot_mobile/database/tables/installed_plugin_caches.dart';
 import 'package:moviepilot_mobile/modules/plugin/models/installed_plugin_model_cache.dart';
 import 'package:moviepilot_mobile/modules/plugin/models/plugin_models.dart';
 import 'package:moviepilot_mobile/modules/plugin/services/plugin_palette_cache.dart';
 import 'package:moviepilot_mobile/services/api_client.dart';
 import 'package:moviepilot_mobile/services/app_service.dart';
-import 'package:moviepilot_mobile/services/database_service.dart';
+import 'package:moviepilot_mobile/services/realm_service.dart';
 import 'package:moviepilot_mobile/utils/image_util.dart';
 
 class PluginController extends GetxController {
   final _apiClient = Get.find<ApiClient>();
   final _log = Get.find<AppLog>();
   final _appService = Get.find<AppService>();
-  final _db = Get.find<DatabaseService>();
+  final _realm = Get.find<RealmService>();
   final items = <PluginItem>[].obs;
   final keyword = ''.obs;
   final isLoading = false.obs;
@@ -28,13 +24,17 @@ class PluginController extends GetxController {
 
   bool get _canAccessPlugins => _appService.canManage;
 
-  Future<void> _clearLocalCache() async {
+  void _clearLocalCache() {
     if (kIsWeb) return;
     final scopeKey = _appService.pluginCacheScopeKey;
     if (scopeKey.isEmpty) return;
-    await _db.db.pluginCacheDao.deleteInstalledPluginsByScope(
-      (id) => matchesInstalledPluginScope(id, scopeKey),
-    );
+    final stale = _realm.realm
+        .all<InstalledPluginModelCache>()
+        .where((item) => matchesInstalledPluginScope(item.id, scopeKey))
+        .toList();
+    _realm.realm.write(() {
+      _realm.realm.deleteMany(stale);
+    });
   }
 
   @override
@@ -95,7 +95,7 @@ class PluginController extends GetxController {
 
   Future<void> loadFromCache() async {
     if (!_canAccessPlugins) {
-      await _clearLocalCache();
+      _clearLocalCache();
       items.clear();
       _visibleCacheDirty = true;
       return;
@@ -107,11 +107,10 @@ class PluginController extends GetxController {
       _visibleCacheDirty = true;
       return;
     }
-    final cache = await _db.db.pluginCacheDao.getInstalledPluginsByScope(
-      (id) => matchesInstalledPluginScope(id, scopeKey),
-    );
+    final cache = _realm.realm.all<InstalledPluginModelCache>();
     if (cache.isEmpty) return;
     final locals = cache
+        .where((e) => matchesInstalledPluginScope(e.id, scopeKey))
         .map(
           (e) => PluginItem(
             id: extractInstalledPluginId(e.id),
@@ -140,47 +139,50 @@ class PluginController extends GetxController {
     items.assignAll(locals);
   }
 
-  Future<void> _saveToCache() async {
+  void _saveToCache() {
     if (kIsWeb) return;
     final scopeKey = _appService.pluginCacheScopeKey;
     if (scopeKey.isEmpty) return;
-    final list = <InstalledPluginModelCachesCompanion>[];
+    late final List<InstalledPluginModelCache> list = [];
     for (final item in items) {
-      list.add(
-        InstalledPluginModelCachesCompanion(
-          id: drift.Value(buildInstalledPluginCacheId(scopeKey, item.id)),
-          pluginName: drift.Value(item.pluginName),
-          pluginDesc: drift.Value(item.pluginDesc ?? ''),
-          pluginIcon: drift.Value(item.pluginIcon ?? ''),
-          pluginVersion: drift.Value(item.pluginVersion ?? ''),
-          pluginLabel: drift.Value(item.pluginLabel ?? ''),
-          pluginAuthor: drift.Value(item.pluginAuthor ?? ''),
-          authorUrl: drift.Value(item.authorUrl ?? ''),
-          pluginConfigPrefix: drift.Value(item.pluginConfigPrefix ?? ''),
-          pluginOrder: drift.Value(item.pluginOrder),
-          authLevel: drift.Value(item.authLevel),
-          installed: drift.Value(item.installed),
-          state: drift.Value(item.state),
-          hasPage: drift.Value(item.hasPage),
-          hasUpdate: drift.Value(item.hasUpdate),
-          isLocal: drift.Value(item.isLocal),
-          repoUrl: drift.Value(item.repoUrl ?? ''),
-          installCount: drift.Value(item.installCount),
-          addTime: drift.Value(item.addTime),
-          pluginPublicKey: drift.Value(item.pluginPublicKey ?? ''),
-        ),
+      final cache = InstalledPluginModelCache(
+        buildInstalledPluginCacheId(scopeKey, item.id),
+        item.pluginName,
+        item.pluginDesc ?? '',
+        item.pluginIcon ?? '',
+        item.pluginVersion ?? '',
+        item.pluginLabel ?? '',
+        item.pluginAuthor ?? '',
+        item.authorUrl ?? '',
+        item.pluginConfigPrefix ?? '',
+        item.pluginOrder,
+        item.authLevel,
+        item.installed,
+        item.state,
+        item.hasPage,
+        item.hasUpdate,
+        item.isLocal,
+        item.repoUrl ?? '',
+        item.installCount,
+        item.addTime,
+        item.pluginPublicKey ?? '',
       );
+      list.add(cache);
     }
-    await _db.db.pluginCacheDao.replaceInstalledPluginsByScope(
-      (id) => matchesInstalledPluginScope(id, scopeKey),
-      list,
-    );
+    final stale = _realm.realm
+        .all<InstalledPluginModelCache>()
+        .where((item) => matchesInstalledPluginScope(item.id, scopeKey))
+        .toList();
+    _realm.realm.write(() {
+      _realm.realm.deleteMany(stale);
+      _realm.realm.addAll(list, update: true);
+    });
   }
 
   Future<void> load({bool force = false}) async {
     if (!_canAccessPlugins) {
       errorText.value = '当前帐号无管理权限';
-      await _clearLocalCache();
+      _clearLocalCache();
       items.clear();
       _visibleCacheDirty = true;
       isLoading.value = false;
@@ -221,7 +223,7 @@ class PluginController extends GetxController {
       items.assignAll(parsed);
       _visibleCacheDirty = true;
       _preloadPalettes(limit: 12);
-      await _saveToCache();
+      _saveToCache();
     } catch (e, st) {
       _log.handle(e, stackTrace: st, message: '获取插件列表失败');
       errorText.value = '请求失败，请稍后重试';
