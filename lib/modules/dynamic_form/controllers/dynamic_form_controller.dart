@@ -8,6 +8,7 @@ import 'package:moviepilot_mobile/modules/dynamic_form/models/dynamic_form_model
 import 'package:moviepilot_mobile/modules/dynamic_form/models/form_block_models.dart';
 import 'package:moviepilot_mobile/modules/dynamic_form/services/form_block_converter.dart';
 import 'package:moviepilot_mobile/modules/dynamic_form/utils/vuetify_component_subset.dart';
+import 'package:moviepilot_mobile/modules/settings/models/system_env_model.dart';
 import 'package:moviepilot_mobile/services/api_client.dart';
 import 'package:moviepilot_mobile/services/app_service.dart';
 import 'package:moviepilot_mobile/services/jpush_service.dart';
@@ -36,6 +37,9 @@ class DynamicFormController extends GetxController {
   final _jpushService = Get.find<JPushService>();
   final _log = Get.find<AppLog>();
   static const _appLitePushRunPath = '/api/v1/plugin/AppPushMsg/run';
+  static final _appLitePushApiKeyPattern = RegExp(
+    r'''apikey\s*:\s*['"]([^'"]+)['"]''',
+  );
 
   /// 接口路径（GET 拉取），如 /api/v1/plugin/page/xxx
   late final String apiPath;
@@ -64,6 +68,7 @@ class DynamicFormController extends GetxController {
 
   /// vue 模式下注入的插件适配器
   PluginFormAdapter? _pluginAdapter;
+  String? _appLitePushMoviePilotApiKey;
 
   /// 当前使用的 formModel（vue 模式时指向 adapter 的 formModel）
   Rx<Map<String, dynamic>> get formModel =>
@@ -143,6 +148,7 @@ class DynamicFormController extends GetxController {
     saveSuccess.value = false;
     isTestingAppLitePush.value = false;
     appLitePushLastTestText.value = null;
+    _appLitePushMoviePilotApiKey = null;
     _pluginAdapter = null;
     if (isAppLitePushPlugin) {
       formMode.value = true;
@@ -186,6 +192,11 @@ class DynamicFormController extends GetxController {
       final parsed = DynamicFormResponse.fromJson(
         Map<String, dynamic>.from(map),
       );
+      if (isAppLitePushPlugin) {
+        _appLitePushMoviePilotApiKey = _extractAppLitePushMoviePilotApiKey(
+          parsed,
+        );
+      }
       final renderMode = parsed.render_mode?.toLowerCase().trim();
 
       if (renderMode == 'vue' &&
@@ -386,6 +397,76 @@ class DynamicFormController extends GetxController {
     return null;
   }
 
+  String? _extractAppLitePushMoviePilotApiKey(DynamicFormResponse parsed) {
+    for (final node in [...parsed.conf, ...parsed.page]) {
+      final value = _extractAppLitePushMoviePilotApiKeyFromNode(node);
+      if (value != null && value.isNotEmpty) {
+        return value;
+      }
+    }
+    return null;
+  }
+
+  String? _extractAppLitePushMoviePilotApiKeyFromNode(FormNode node) {
+    final value = _extractAppLitePushMoviePilotApiKeyFromValue(node.events);
+    if (value != null && value.isNotEmpty) return value;
+
+    final propsValue = _extractAppLitePushMoviePilotApiKeyFromValue(node.props);
+    if (propsValue != null && propsValue.isNotEmpty) return propsValue;
+
+    for (final child in node.content) {
+      final childValue = _extractAppLitePushMoviePilotApiKeyFromNode(child);
+      if (childValue != null && childValue.isNotEmpty) return childValue;
+    }
+    return null;
+  }
+
+  String? _extractAppLitePushMoviePilotApiKeyFromValue(dynamic value) {
+    if (value is Map) {
+      final direct = value['apikey']?.toString().trim();
+      if (direct != null && direct.isNotEmpty) return direct;
+      for (final entryValue in value.values) {
+        final nested = _extractAppLitePushMoviePilotApiKeyFromValue(entryValue);
+        if (nested != null && nested.isNotEmpty) return nested;
+      }
+    } else if (value is Iterable) {
+      for (final item in value) {
+        final nested = _extractAppLitePushMoviePilotApiKeyFromValue(item);
+        if (nested != null && nested.isNotEmpty) return nested;
+      }
+    } else if (value is String) {
+      final match = _appLitePushApiKeyPattern.firstMatch(value);
+      final matched = match?.group(1)?.trim();
+      if (matched != null && matched.isNotEmpty) return matched;
+    }
+    return null;
+  }
+
+  Future<String?> _getAppLitePushMoviePilotApiKey(String token) async {
+    final cached = _appLitePushMoviePilotApiKey?.trim();
+    if (cached != null && cached.isNotEmpty) return cached;
+
+    try {
+      final response = await _apiClient.get<Map<String, dynamic>>(
+        '/api/v1/system/env',
+        token: token,
+        skipUnauthorizedHandling: true,
+      );
+      final status = response.statusCode ?? 0;
+      final body = response.data;
+      if (status < 200 || status >= 300 || body == null) return null;
+      final parsed = SystemEnvResponse.fromJson(body);
+      final apiKey = parsed.data?.apiToken?.trim();
+      if (parsed.success && apiKey != null && apiKey.isNotEmpty) {
+        _appLitePushMoviePilotApiKey = apiKey;
+        return apiKey;
+      }
+    } catch (e, st) {
+      _log.handle(e, stackTrace: st, message: '获取 MoviePilot 接口令牌失败');
+    }
+    return null;
+  }
+
   Future<bool> runAppLitePushTest() async {
     if (!isAppLitePushPlugin || isTestingAppLitePush.value) return false;
 
@@ -413,6 +494,15 @@ class DynamicFormController extends GetxController {
 
     isTestingAppLitePush.value = true;
     try {
+      final moviePilotApiKey = await _getAppLitePushMoviePilotApiKey(token);
+      if (moviePilotApiKey == null || moviePilotApiKey.isEmpty) {
+        appLitePushLastTestText.value = _formatAppLitePushTestResult(
+          false,
+          '未获取到 MoviePilot 接口令牌',
+        );
+        return false;
+      }
+
       final cookieHeader =
           await _apiClient.getCookieHeader() ?? _appService.cookie;
       final headers = cookieHeader != null && cookieHeader.isNotEmpty
@@ -420,9 +510,10 @@ class DynamicFormController extends GetxController {
           : null;
       final response = await _apiClient.get<dynamic>(
         _appLitePushRunPath,
-        queryParameters: <String, dynamic>{'apikey': pushKey},
+        queryParameters: <String, dynamic>{'apikey': moviePilotApiKey},
         token: token,
         headers: headers,
+        skipUnauthorizedHandling: true,
       );
       final status = response.statusCode ?? 0;
       final responseMap = _extractMap(response.data);

@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
@@ -496,6 +495,7 @@ class ApiClient extends g.GetxController {
     String? token,
     int? timeout,
     Map<String, dynamic>? headers,
+    bool skipUnauthorizedHandling = false,
   }) async {
     await _ensureReady();
     final authToken = token ?? this.token;
@@ -511,13 +511,16 @@ class ApiClient extends g.GetxController {
         // 允许所有状态码，让调用者自己处理错误
         return true;
       },
+      extra: {if (skipUnauthorizedHandling) 'skipUnauthorizedHandling': true},
     );
     final response = await _dio.get<T>(
       path,
       queryParameters: queryParameters,
       options: options,
     );
-    _handleUnauthorized(response.statusCode);
+    if (!skipUnauthorizedHandling) {
+      _handleUnauthorized(response.statusCode);
+    }
     return response;
   }
 
