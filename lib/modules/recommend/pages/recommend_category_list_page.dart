@@ -8,7 +8,6 @@ import 'package:moviepilot_mobile/modules/recommend/models/recommend_api_item.da
 import 'package:moviepilot_mobile/modules/recommend/widgets/recommend_item_base_card.dart';
 import 'package:moviepilot_mobile/modules/recommend/widgets/recommend_item_card.dart';
 import 'package:moviepilot_mobile/modules/search_result/controllers/search_result_controller.dart';
-import 'package:moviepilot_mobile/theme/app_theme.dart';
 import 'package:moviepilot_mobile/utils/grid_layout.dart';
 import 'package:moviepilot_mobile/utils/http_path_builder_util.dart';
 import 'package:moviepilot_mobile/utils/image_util.dart';
@@ -39,7 +38,7 @@ class RecommendCategoryListPage
       );
     }
 
-    final bodyColor = AppTheme.darkBackgroundColor;
+    final bodyColor = Theme.of(context).colorScheme.surface;
     return Scaffold(
       backgroundColor: bodyColor,
       body: _buildBody(context, immersive: true, bodyColor: bodyColor),
@@ -122,10 +121,10 @@ class RecommendCategoryListPage
                     sliver: SliverToBoxAdapter(
                       child: Text(
                         controller.categoryTitle,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 25,
                           fontWeight: FontWeight.w900,
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                     ),
@@ -141,7 +140,7 @@ class RecommendCategoryListPage
               sliver: Skeletonizer.sliver(
                 enabled: isLoading || items.isEmpty,
                 child: viewMode == SearchResultViewMode.list
-                    ? _buildListSliver(items)
+                    ? _buildListSliver(context, items)
                     : _buildGridSliver(items, layout.crossAxisCount),
               ),
             ),
@@ -165,10 +164,7 @@ class RecommendCategoryListPage
     return SliverGrid(
       delegate: SliverChildBuilderDelegate((context, index) {
         final item = items[index];
-        return RecommendItemCard(
-          item: item,
-          onTap: () => _openDetail(item),
-        );
+        return RecommendItemCard(item: item, onTap: () => _openDetail(item));
       }, childCount: items.length),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
@@ -179,7 +175,10 @@ class RecommendCategoryListPage
     );
   }
 
-  Widget _buildListSliver(List<RecommendApiItem> items) {
+  Widget _buildListSliver(BuildContext context, List<RecommendApiItem> items) {
+    final dividerColor = Theme.of(
+      context,
+    ).colorScheme.outlineVariant.withValues(alpha: 0.42);
     return SliverList(
       delegate: SliverChildBuilderDelegate((context, index) {
         final isLast = index == items.length - 1;
@@ -189,15 +188,11 @@ class RecommendCategoryListPage
           children: [
             RecommendItemBaseCard(
               item: item,
-              child: _buildListRow(item),
+              child: _buildListRow(context, item),
             ),
             if (!isLast) ...[
               const SizedBox(height: 10),
-              Divider(
-                height: 1,
-                thickness: 1,
-                color: Colors.white.withValues(alpha: 0.08),
-              ),
+              Divider(height: 1, thickness: 1, color: dividerColor),
               const SizedBox(height: 10),
             ],
           ],
@@ -206,23 +201,22 @@ class RecommendCategoryListPage
     );
   }
 
-  Widget _buildListRow(RecommendApiItem item) {
+  Widget _buildListRow(BuildContext context, RecommendApiItem item) {
+    final colorScheme = Theme.of(context).colorScheme;
     final title = _bestTitle(item) ?? '';
     final year = _displayYear(item);
     final overview = item.overview?.trim();
     final type = item.type?.trim();
     final vote = item.vote_average;
     final metaChips = <Widget>[
-      if (type != null && type.isNotEmpty) _buildListMetaPill(type),
+      if (type != null && type.isNotEmpty) _buildListMetaPill(context, type),
       if (year.isNotEmpty)
         Text(
           year,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.72),
-            fontSize: 13,
-          ),
+          style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 13),
         ),
-      if (vote != null && vote > 0) _buildListMetaPill(vote.toStringAsFixed(1)),
+      if (vote != null && vote > 0)
+        _buildListMetaPill(context, vote.toStringAsFixed(1)),
     ];
     return Material(
       color: Colors.transparent,
@@ -248,8 +242,8 @@ class RecommendCategoryListPage
                       title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: colorScheme.onSurface,
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                         height: 1.25,
@@ -271,7 +265,7 @@ class RecommendCategoryListPage
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.58),
+                          color: colorScheme.onSurfaceVariant,
                           fontSize: 12,
                           height: 1.4,
                         ),
@@ -297,31 +291,40 @@ class RecommendCategoryListPage
         fit: BoxFit.cover,
       );
     }
-    return Container(
-      width: _listPosterWidth,
-      height: _listPosterHeight,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        gradient: const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF9FA8DA), Color(0xFF5C6BC0)],
-        ),
-      ),
+    return Builder(
+      builder: (context) {
+        final colorScheme = Theme.of(context).colorScheme;
+        return Container(
+          width: _listPosterWidth,
+          height: _listPosterHeight,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                colorScheme.surfaceContainerHighest,
+                colorScheme.primaryContainer,
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildListMetaPill(String text) {
+  Widget _buildListMetaPill(BuildContext context, String text) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: const Color(0xFF4C6FFF).withValues(alpha: 0.85),
+        color: colorScheme.primaryContainer.withValues(alpha: 0.78),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
         text,
-        style: const TextStyle(
-          color: Colors.white,
+        style: TextStyle(
+          color: colorScheme.onPrimaryContainer,
           fontSize: 11,
           fontWeight: FontWeight.w600,
         ),
@@ -342,15 +345,19 @@ class RecommendCategoryListPage
     required SearchResultViewMode viewMode,
     required bool isNarrowScreen,
   }) {
-    final themeColor = controller.appBarThemeColor ?? Colors.black;
-    final secondaryColor = controller.appBarSecondaryThemeColor ?? Colors.black;
+    final colorScheme = Theme.of(context).colorScheme;
+    final themeColor =
+        controller.appBarThemeColor ?? colorScheme.surfaceContainerHighest;
+    final secondaryColor =
+        controller.appBarSecondaryThemeColor ?? colorScheme.surfaceContainer;
+    final headerForeground = _readableOnColor(secondaryColor);
     final topItems = items.take(3).toList();
     return SliverAppBar(
       pinned: true,
       expandedHeight: 250,
       backgroundColor: Colors.transparent,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Colors.white),
+        icon: Icon(Icons.arrow_back, color: headerForeground),
         onPressed: Get.back,
       ),
       actions: [
@@ -362,7 +369,7 @@ class RecommendCategoryListPage
             viewMode == SearchResultViewMode.list
                 ? CupertinoIcons.square_grid_2x2
                 : CupertinoIcons.list_bullet,
-            color: Colors.white,
+            color: headerForeground,
           ),
         ),
       ],
@@ -375,7 +382,7 @@ class RecommendCategoryListPage
               colors: [
                 secondaryColor,
                 themeColor.withValues(alpha: 0.5),
-                bodyColor ?? Colors.black87,
+                bodyColor ?? colorScheme.surface,
               ],
               stops: const [0, 0.6, 1.0],
             ),
@@ -438,24 +445,6 @@ class RecommendCategoryListPage
     }
     return Stack(
       children: [if (children.length == 1) children[0] else ...children],
-    );
-  }
-
-  Widget _buildPlaceholderState(bool isLoading, String? error) {
-    if (isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    final message = error ?? '暂无数据';
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(message, style: const TextStyle(fontSize: 16)),
-        const SizedBox(height: 16),
-        FilledButton(
-          onPressed: () => controller.loadFirst(),
-          child: const Text('重新加载'),
-        ),
-      ],
     );
   }
 
@@ -537,5 +526,9 @@ class RecommendCategoryListPage
       return original.trim();
     }
     return null;
+  }
+
+  Color _readableOnColor(Color color) {
+    return color.computeLuminance() > 0.48 ? Colors.black87 : Colors.white;
   }
 }

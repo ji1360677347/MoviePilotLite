@@ -1016,6 +1016,30 @@ class MultifunctionPage extends GetView<MultifunctionController> {
   Widget _utilityCard(DashboardModuleViewModel module, {required int index}) {
     final title = _utilityTitle(module.title);
     final subtitle = module.primaryText.trim();
+    final softAccent = _softUtilityAccent(module.accent);
+    final iconBackground = _isDark
+        ? module.accent.withValues(alpha: 0.14)
+        : softAccent.withValues(alpha: 0.72);
+    final arrowBackground = _surfaceHighest.withValues(
+      alpha: _isDark ? 0.36 : 0.54,
+    );
+    final cardGradient = _isDark
+        ? LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              module.accent.withValues(alpha: index.isEven ? 0.11 : 0.08),
+              _surface,
+            ],
+          )
+        : LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              _surface,
+              softAccent.withValues(alpha: index.isEven ? 0.34 : 0.26),
+            ],
+          );
 
     return Semantics(
       button: true,
@@ -1030,18 +1054,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: module.accent.withValues(alpha: 0.18),
-                width: 0.8,
-              ),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  module.accent.withValues(alpha: index.isEven ? 0.11 : 0.08),
-                  _surface,
-                ],
-              ),
+              gradient: cardGradient,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1052,8 +1065,14 @@ class MultifunctionPage extends GetView<MultifunctionController> {
                       width: 38,
                       height: 38,
                       decoration: BoxDecoration(
-                        color: module.accent.withValues(alpha: 0.14),
-                        borderRadius: BorderRadius.circular(12),
+                        color: iconBackground,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: module.accent.withValues(
+                            alpha: _isDark ? 0.04 : 0.08,
+                          ),
+                          width: 0.5,
+                        ),
                       ),
                       child: Icon(module.icon, size: 21, color: module.accent),
                     ),
@@ -1062,9 +1081,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
                       width: 26,
                       height: 26,
                       decoration: BoxDecoration(
-                        color: _surfaceHighest.withValues(
-                          alpha: _isDark ? 0.36 : 0.82,
-                        ),
+                        color: arrowBackground,
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -1175,6 +1192,11 @@ class MultifunctionPage extends GetView<MultifunctionController> {
     if (title == '插件') return '插件';
     if (title == '用户管理') return '用户管理';
     return title;
+  }
+
+  Color _softUtilityAccent(Color accent) {
+    if (_isDark) return accent;
+    return Color.lerp(_surface, accent, 0.11) ?? accent.withValues(alpha: 0.11);
   }
 
   static String _shortDate(String date) {

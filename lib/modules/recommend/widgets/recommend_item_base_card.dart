@@ -48,9 +48,7 @@ class RecommendItemBaseCard extends GetView<SubscribeService> {
                         Icon(
                           CupertinoIcons.link,
                           size: 14,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurfaceVariant,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                         const SizedBox(width: 6),
                         Expanded(
@@ -79,7 +77,12 @@ class RecommendItemBaseCard extends GetView<SubscribeService> {
         return CupertinoContextMenu.builder(
           enableHapticFeedback: true,
           builder: (context, menuState) {
-            return child;
+            final openProgress =
+                ((menuState.value - CupertinoContextMenu.animationOpensAt) /
+                        (1 - CupertinoContextMenu.animationOpensAt))
+                    .clamp(0.0, 1.0);
+            final scale = 1 + openProgress * 0.12;
+            return Transform.scale(scale: scale, child: child);
           },
           actions: menuActions,
         );
