@@ -46,3 +46,13 @@ app.*.map.json
 
 # FVM Version Cache
 .fvm/
+
+# OHOS generated files
+/ohos/
+/ohos/.hvigor/
+/ohos/.idea/
+/ohos/node_modules/
+/ohos/oh_modules/
+/ohos/**/oh_modules/
+/ohos/**/build/
+/scripts/build/.last_build_id
