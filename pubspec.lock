@@ -903,14 +903,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "7.2.0"
-  modal_bottom_sheet:
-    dependency: "direct main"
-    description:
-      name: modal_bottom_sheet
-      sha256: eac66ef8cb0461bf069a38c5eb0fa728cee525a531a8304bd3f7b2185407c67e
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.0.0"
   octo_image:
     dependency: transitive
     description:
@@ -1381,7 +1373,7 @@ packages:
     dependency: transitive
     description:
       name: talker_logger
-      sha256: cea1b8283a28c2118a0b197057fc5beb5b0672c75e40a48725e5e452c0278ff3
+      sha256: "459205c3e571f97ecc6be6e1b1b7e6b97b853e78ea458894650be407596e3216"
       url: "https://pub.dev"
     source: hosted
     version: "5.1.17"

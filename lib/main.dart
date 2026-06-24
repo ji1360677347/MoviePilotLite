@@ -161,7 +161,9 @@ Future<void> main() async {
       ({required formMode}) =>
           ProxmoxVEBackupFormController(formMode: formMode),
     );
-
+  } catch (e) {
+    print('Error initializing app: $e');
+  }
   registerProxmoxVeBackupRenderer();
   registerAppLitePushRenderer();
   runApp(const MyApp());
