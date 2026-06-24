@@ -1,7 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:modal_bottom_sheet/modal_bottom_sheet.dart';
 import 'package:moviepilot_mobile/modules/dashboard/widgets/dashboard_widget_styles.dart';
 import 'package:moviepilot_mobile/modules/mediaserver/controllers/mediaserver_controller.dart';
 import 'package:moviepilot_mobile/modules/mediaserver/models/latest_media_model.dart';
@@ -16,12 +15,17 @@ class RecentlyAddedWidget extends StatelessWidget {
 
   static Future<void> showAllSheet(BuildContext context) {
     final mediaServerController = Get.find<MediaServerController>();
-    return showCupertinoModalBottomSheet<void>(
+    return showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (sheetContext) {
-        return Obx(
-          () => _RecentlyAddedSheet(
-            items: mediaServerController.latestMediaList.value,
+        return ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+          child: Obx(
+            () => _RecentlyAddedSheet(
+              items: mediaServerController.latestMediaList.value,
+            ),
           ),
         );
       },

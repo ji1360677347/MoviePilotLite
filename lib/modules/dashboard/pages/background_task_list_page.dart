@@ -4,7 +4,6 @@ import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:modal_bottom_sheet/modal_bottom_sheet.dart';
 import 'package:moviepilot_mobile/modules/dashboard/controllers/dashboard_controller.dart';
 import 'package:moviepilot_mobile/modules/dashboard/models/schedule_model.dart';
 import 'package:moviepilot_mobile/modules/dashboard/widgets/dashboard_widget_styles.dart';
@@ -464,44 +463,50 @@ class _BackgroundTaskListPageState extends State<BackgroundTaskListPage> {
 
   Future<void> _openFilterSheet(BuildContext context) {
     final controller = Get.find<DashboardController>();
-    return showCupertinoModalBottomSheet<void>(
+    return showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (sheetContext) {
-        return Obx(() {
-          final schedules = controller.scheduleData.value;
-          final providers = schedules.map(_providerName).toSet().toList()
-            ..sort();
-          final statuses = schedules.map(_statusText).toSet().toList()..sort();
+        return ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+          child: Obx(() {
+            final schedules = controller.scheduleData.value;
+            final providers = schedules.map(_providerName).toSet().toList()
+              ..sort();
+            final statuses = schedules.map(_statusText).toSet().toList()
+              ..sort();
 
-          return _TaskFilterSheet(
-            providers: providers,
-            statuses: statuses,
-            selectedProviders: _selectedProviders,
-            selectedStatuses: _selectedStatuses,
-            onToggleProvider: (value) {
-              setState(() {
-                _selectedProviders = {..._selectedProviders};
-                _selectedProviders.contains(value)
-                    ? _selectedProviders.remove(value)
-                    : _selectedProviders.add(value);
-              });
-            },
-            onToggleStatus: (value) {
-              setState(() {
-                _selectedStatuses = {..._selectedStatuses};
-                _selectedStatuses.contains(value)
-                    ? _selectedStatuses.remove(value)
-                    : _selectedStatuses.add(value);
-              });
-            },
-            onClear: () {
-              setState(() {
-                _selectedProviders = {};
-                _selectedStatuses = {};
-              });
-            },
-          );
-        });
+            return _TaskFilterSheet(
+              providers: providers,
+              statuses: statuses,
+              selectedProviders: _selectedProviders,
+              selectedStatuses: _selectedStatuses,
+              onToggleProvider: (value) {
+                setState(() {
+                  _selectedProviders = {..._selectedProviders};
+                  _selectedProviders.contains(value)
+                      ? _selectedProviders.remove(value)
+                      : _selectedProviders.add(value);
+                });
+              },
+              onToggleStatus: (value) {
+                setState(() {
+                  _selectedStatuses = {..._selectedStatuses};
+                  _selectedStatuses.contains(value)
+                      ? _selectedStatuses.remove(value)
+                      : _selectedStatuses.add(value);
+                });
+              },
+              onClear: () {
+                setState(() {
+                  _selectedProviders = {};
+                  _selectedStatuses = {};
+                });
+              },
+            );
+          }),
+        );
       },
     );
   }

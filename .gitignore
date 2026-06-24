@@ -32,6 +32,7 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+build/
 
 # Symbolication related
 app.*.symbols
@@ -56,3 +57,7 @@ app.*.map.json
 /ohos/**/oh_modules/
 /ohos/**/build/
 /scripts/build/.last_build_id
+#ohos
+oh_modules/
+node_modules/
+.hvigor

@@ -26,6 +26,7 @@ class MediaSeasonDetailPage extends StatefulWidget {
     required this.doubanId,
     required this.mediaId,
     required this.subscribeItem,
+    this.scrollController,
   });
   final String reqPath;
   final String subscribeMediaKey;
@@ -36,6 +37,7 @@ class MediaSeasonDetailPage extends StatefulWidget {
   final String doubanId;
   final String mediaId;
   final SubscribeItem? subscribeItem;
+  final ScrollController? scrollController;
   @override
   State<MediaSeasonDetailPage> createState() => _MediaSeasonDetailPageState();
 }
@@ -210,6 +212,7 @@ class _MediaSeasonDetailPageState extends State<MediaSeasonDetailPage> {
     return Scaffold(
       backgroundColor: Colors.black,
       body: CustomScrollView(
+        controller: widget.scrollController,
         slivers: [
           _buildImmersiveHeader(context, seasonTitle),
           SliverToBoxAdapter(child: _buildSeasonMeta(context)),

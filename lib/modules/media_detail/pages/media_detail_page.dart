@@ -1,7 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:modal_bottom_sheet/modal_bottom_sheet.dart';
 import 'package:moviepilot_mobile/gen/assets.gen.dart';
 import 'package:moviepilot_mobile/modules/media_detail/controllers/media_detail_controller.dart';
 import 'package:moviepilot_mobile/modules/media_detail/models/media_detail_model.dart';
@@ -966,18 +965,32 @@ class MediaDetailPage extends GetWidget<MediaDetailController> {
             detail,
             season.season_number ?? 0,
           );
-          showCupertinoModalBottomSheet(
+          showModalBottomSheet(
+            isScrollControlled: true,
+            useSafeArea: true,
+            isDismissible: true,
+            showDragHandle: false,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
             context: context,
-            builder: (context) => MediaSeasonDetailPage(
-              reqPath: reqPath,
-              subscribeMediaKey: controller.args.path,
-              tmdbId: detail.tmdb_id?.toString() ?? '',
-              seasonNumber: season.season_number ?? 0,
-              title: detail.title ?? '',
-              year: detail.year ?? '',
-              doubanId: detail.douban_id?.toString() ?? '',
-              mediaId: detail.media_id ?? '',
-              subscribeItem: subscribeItem,
+            builder: (context) => DraggableScrollableSheet(
+              expand: false,
+              initialChildSize: 0.92,
+              minChildSize: 0.36,
+              maxChildSize: 1,
+              builder: (context, scrollController) => MediaSeasonDetailPage(
+                scrollController: scrollController,
+                reqPath: reqPath,
+                subscribeMediaKey: controller.args.path,
+                tmdbId: detail.tmdb_id?.toString() ?? '',
+                seasonNumber: season.season_number ?? 0,
+                title: detail.title ?? '',
+                year: detail.year ?? '',
+                doubanId: detail.douban_id?.toString() ?? '',
+                mediaId: detail.media_id ?? '',
+                subscribeItem: subscribeItem,
+              ),
             ),
           );
         },
