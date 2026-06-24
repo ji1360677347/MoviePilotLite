@@ -374,13 +374,8 @@ class DashboardPage extends GetView<DashboardController> {
           if (_showAny(visible, {'媒体统计', '存储空间'}))
             _buildLibraryCapacitySection(context),
 
-          if (visible.contains('最近添加'))
-            _buildOpenSection(
-              title: '最近添加',
-              actionLabel: '查看全部',
-              child: const RecentlyAddedWidget(),
-              onTapMore: () => Get.toNamed('/media-organize'),
-            ),
+          if (_showAny(visible, {'最近添加', '我的媒体库', '继续观看'}))
+            _buildMediaBrowseSection(context, visible),
           if (visible.contains('最近入库'))
             _buildCardSection(
               accentColor: DashboardPalette.of(context).warningAccent,
@@ -393,21 +388,6 @@ class DashboardPage extends GetView<DashboardController> {
               child: const ScheduleWidget(),
               actionLabel: '查看全部',
               onTapMore: () => Get.toNamed('/background-task-list'),
-            ),
-          if (visible.contains('我的媒体库'))
-            _buildOpenSection(
-              title: '媒体库',
-              child: MyMediaLibraryWidget(
-                onTap: (library) {
-                  WebUtil.open(url: library.link);
-                },
-              ),
-            ),
-          if (visible.contains('继续观看'))
-            _buildOpenSection(
-              title: '继续观看',
-              // actionLabel: '查看全部',
-              child: const RecentlyPlayingWidget(),
             ),
           if (visible.contains('网络流量') && !visible.contains('实时速率'))
             _buildCardSection(
@@ -429,6 +409,166 @@ class DashboardPage extends GetView<DashboardController> {
 
   bool _showAny(Set<String> visible, Set<String> candidates) {
     return candidates.any(visible.contains);
+  }
+
+  Widget _buildMediaBrowseSection(BuildContext context, Set<String> visible) {
+    final palette = DashboardPalette.of(context);
+    final rails = <Widget>[];
+
+    if (visible.contains('继续观看')) {
+      rails.add(
+        _buildMediaRail(
+          title: '继续观看',
+          subtitle: '从上次进度继续',
+          icon: CupertinoIcons.play_circle_fill,
+          accentColor: palette.warningAccent,
+          child: const RecentlyPlayingWidget(),
+        ),
+      );
+    }
+    if (visible.contains('最近添加')) {
+      rails.add(
+        _buildMediaRail(
+          title: '最近添加',
+          subtitle: '新入库的海报墙',
+          icon: CupertinoIcons.sparkles,
+          accentColor: palette.primary,
+          actionLabel: '查看全部',
+          onTapMore: () => RecentlyAddedWidget.showAllSheet(context),
+          child: const RecentlyAddedWidget(),
+        ),
+      );
+    }
+    if (visible.contains('我的媒体库')) {
+      rails.add(
+        _buildMediaRail(
+          title: '媒体库',
+          subtitle: '按服务与类型浏览',
+          icon: CupertinoIcons.rectangle_stack_fill,
+          accentColor: palette.coolAccent,
+          child: MyMediaLibraryWidget(
+            onTap: (library) {
+              WebUtil.open(url: library.link);
+            },
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionTitle(
+            title: '媒体浏览',
+            action: DashboardInfoPill(
+              text: '媒体中心',
+              color: palette.primary,
+              icon: CupertinoIcons.play_rectangle_fill,
+            ),
+          ),
+          const SizedBox(height: 12),
+          for (var index = 0; index < rails.length; index++) ...[
+            rails[index],
+            if (index != rails.length - 1) const SizedBox(height: 16),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMediaRail({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color accentColor,
+    required Widget child,
+    String? actionLabel,
+    VoidCallback? onTapMore,
+  }) {
+    final palette = DashboardPalette.of(Get.context!);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          child: Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(
+                    alpha: palette.isDark ? 0.16 : 0.11,
+                  ),
+                  borderRadius: BorderRadius.circular(11),
+                  border: Border.all(
+                    color: accentColor.withValues(alpha: 0.22),
+                  ),
+                ),
+                child: Icon(icon, color: accentColor, size: 15),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w800,
+                        color: palette.titleText,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                        color: palette.mutedText,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (actionLabel != null)
+                GestureDetector(
+                  onTap: onTapMore,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: accentColor.withValues(
+                        alpha: palette.isDark ? 0.12 : 0.08,
+                      ),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: accentColor.withValues(alpha: 0.22),
+                      ),
+                    ),
+                    child: Text(
+                      actionLabel,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: accentColor,
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        child,
+      ],
+    );
   }
 
   Widget _buildServerStatusSection(BuildContext context, Set<String> visible) {
