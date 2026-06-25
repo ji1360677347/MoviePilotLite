@@ -19,6 +19,7 @@ import 'package:moviepilot_mobile/modules/search/pages/media_search_list_page.da
 import 'package:moviepilot_mobile/modules/search/pages/person_detail_page.dart';
 import 'package:moviepilot_mobile/modules/search/pages/person_search_result_page.dart';
 import 'package:moviepilot_mobile/modules/search/pages/search_media_result_page.dart';
+import 'package:moviepilot_mobile/modules/search/services/app_update_service.dart';
 import 'package:moviepilot_mobile/middlewares/route_permission_middleware.dart';
 import 'package:moviepilot_mobile/services/api_client.dart';
 import 'package:moviepilot_mobile/services/ios_shared_session_service.dart';
@@ -145,6 +146,8 @@ Future<void> main() async {
     Get.put(IosSharedSessionService(), permanent: true);
     Get.put(AppService());
     Get.put(ApiClient());
+    final updateService = Get.put(AppUpdateService(), permanent: true);
+    await updateService.cleanupExpiredApkCache(maxAge: Duration.zero);
     Get.put(MediaDetailService());
     Get.put(ImageUtil());
     // 注册 vue 模式插件适配器
@@ -162,7 +165,7 @@ Future<void> main() async {
           ProxmoxVEBackupFormController(formMode: formMode),
     );
   } catch (e) {
-    print('Error initializing app: $e');
+    debugPrint('Error initializing app: $e');
   }
   registerProxmoxVeBackupRenderer();
   registerAppLitePushRenderer();
