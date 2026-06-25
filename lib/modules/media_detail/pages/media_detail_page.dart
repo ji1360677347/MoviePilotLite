@@ -228,7 +228,7 @@ class MediaDetailPage extends GetWidget<MediaDetailController> {
                       : Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            _buildPoster(posterUrl, width: 126, height: 126),
+                            // _buildPoster(posterUrl, width: 126, height: 126),
                             const SizedBox(height: 16),
                             _buildHeaderInfo(context, detail),
                             const SizedBox(height: 14),
