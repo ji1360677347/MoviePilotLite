@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-import 'package:modal_bottom_sheet/modal_bottom_sheet.dart';
 import 'package:moviepilot_mobile/modules/download/controllers/download_controller.dart';
 import 'package:moviepilot_mobile/modules/download/widgets/download_sheet.dart';
 import 'package:moviepilot_mobile/modules/recognize/controllers/recognize_controller.dart';
@@ -522,9 +521,23 @@ class SearchResultTorrentItem extends StatelessWidget {
         initialSubtitle: initialSubtitle,
       ),
     );
-    await showCupertinoModalBottomSheet<void>(
+    await showModalBottomSheet<void>(
+      isScrollControlled: true,
+      useSafeArea: true,
+      isDismissible: true,
+      showDragHandle: false,
+      backgroundColor: Colors.transparent,
       context: context,
-      builder: (_) => const RecognizePage(),
+      builder: (_) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.92,
+        minChildSize: 0.36,
+        maxChildSize: 1,
+        builder: (context, scrollController) => ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          child: RecognizePage(scrollController: scrollController),
+        ),
+      ),
     );
     if (Get.isRegistered<RecognizeController>()) {
       Get.delete<RecognizeController>();

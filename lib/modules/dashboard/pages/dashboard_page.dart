@@ -1,11 +1,9 @@
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:modal_bottom_sheet/modal_bottom_sheet.dart';
 import 'package:moviepilot_mobile/gen/assets.gen.dart';
 import 'package:moviepilot_mobile/modules/dashboard/widgets/dashboard_widget_styles.dart';
 import 'package:moviepilot_mobile/modules/dashboard/widgets/cpu_widget.dart';
@@ -28,11 +26,10 @@ import 'package:moviepilot_mobile/modules/recognize/controllers/recognize_contro
 import 'package:moviepilot_mobile/modules/recognize/pages/recognize_page.dart';
 import 'package:moviepilot_mobile/modules/system_message/controllers/system_message_controller.dart';
 
-import 'package:moviepilot_mobile/modules/login/models/login_profile.dart';
 import 'package:moviepilot_mobile/services/app_service.dart';
-import 'package:moviepilot_mobile/services/realm_service.dart';
 import 'package:moviepilot_mobile/utils/open_url.dart';
 import 'package:moviepilot_mobile/utils/size_formatter.dart';
+import 'package:moviepilot_mobile/widgets/constrained_page_content.dart';
 
 import '../controllers/dashboard_controller.dart';
 
@@ -73,12 +70,9 @@ class DashboardPage extends GetView<DashboardController> {
                     },
                   ),
                   SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [_buildStitchLayout(context)],
-                      ),
+                    child: ConstrainedPageContent(
+                      padding: const EdgeInsets.only(top: 20),
+                      child: _buildStitchLayout(context),
                     ),
                   ),
                   SliverToBoxAdapter(
@@ -187,18 +181,16 @@ class DashboardPage extends GetView<DashboardController> {
   }
 
   String? _dashboardBarAvatar() {
-    if (kIsWeb) {
+    try {
       final app = Get.find<AppService>();
+      // Try appService in-memory profile first
       final u = app.userInfo?.avatar;
       if (u != null && u.isNotEmpty) return u;
-      return app.loginResponse?.avatar;
-    }
-    try {
-      final profiles = Get.find<RealmService>().realm.all<LoginProfile>();
-      if (profiles.isEmpty) return null;
-      final sorted = profiles.toList()
-        ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-      return sorted.first.avatar;
+      final lr = app.loginResponse?.avatar;
+      if (lr != null && lr.isNotEmpty) return lr;
+      // Fall back to stored profile cache
+      final profile = app.currentStoredProfile;
+      return profile?.avatar;
     } catch (_) {
       return null;
     }
@@ -374,13 +366,8 @@ class DashboardPage extends GetView<DashboardController> {
           if (_showAny(visible, {'媒体统计', '存储空间'}))
             _buildLibraryCapacitySection(context),
 
-          if (visible.contains('最近添加'))
-            _buildOpenSection(
-              title: '最近添加',
-              actionLabel: '查看全部',
-              child: const RecentlyAddedWidget(),
-              onTapMore: () => Get.toNamed('/media-organize'),
-            ),
+          if (_showAny(visible, {'最近添加', '我的媒体库', '继续观看'}))
+            _buildMediaBrowseSection(context, visible),
           if (visible.contains('最近入库'))
             _buildCardSection(
               accentColor: DashboardPalette.of(context).warningAccent,
@@ -393,21 +380,6 @@ class DashboardPage extends GetView<DashboardController> {
               child: const ScheduleWidget(),
               actionLabel: '查看全部',
               onTapMore: () => Get.toNamed('/background-task-list'),
-            ),
-          if (visible.contains('我的媒体库'))
-            _buildOpenSection(
-              title: '媒体库',
-              child: MyMediaLibraryWidget(
-                onTap: (library) {
-                  WebUtil.open(url: library.link);
-                },
-              ),
-            ),
-          if (visible.contains('继续观看'))
-            _buildOpenSection(
-              title: '继续观看',
-              // actionLabel: '查看全部',
-              child: const RecentlyPlayingWidget(),
             ),
           if (visible.contains('网络流量') && !visible.contains('实时速率'))
             _buildCardSection(
@@ -429,6 +401,168 @@ class DashboardPage extends GetView<DashboardController> {
 
   bool _showAny(Set<String> visible, Set<String> candidates) {
     return candidates.any(visible.contains);
+  }
+
+  Widget _buildMediaBrowseSection(BuildContext context, Set<String> visible) {
+    final palette = DashboardPalette.of(context);
+    final rails = <Widget>[];
+
+    if (visible.contains('继续观看')) {
+      rails.add(
+        _buildMediaRail(
+          title: '继续观看',
+          subtitle: '从上次进度继续',
+          icon: CupertinoIcons.play_circle_fill,
+          accentColor: palette.warningAccent,
+          actionLabel: '查看全部',
+          onTapMore: () => RecentlyPlayingWidget.showAllSheet(context),
+          child: const RecentlyPlayingWidget(),
+        ),
+      );
+    }
+    if (visible.contains('最近添加')) {
+      rails.add(
+        _buildMediaRail(
+          title: '最近添加',
+          subtitle: '新入库的海报墙',
+          icon: CupertinoIcons.sparkles,
+          accentColor: palette.primary,
+          actionLabel: '查看全部',
+          onTapMore: () => RecentlyAddedWidget.showAllSheet(context),
+          child: const RecentlyAddedWidget(),
+        ),
+      );
+    }
+    if (visible.contains('我的媒体库')) {
+      rails.add(
+        _buildMediaRail(
+          title: '媒体库',
+          subtitle: '按服务与类型浏览',
+          icon: CupertinoIcons.rectangle_stack_fill,
+          accentColor: palette.coolAccent,
+          child: MyMediaLibraryWidget(
+            onTap: (library) {
+              WebUtil.open(url: library.link);
+            },
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionTitle(
+            title: '媒体浏览',
+            action: DashboardInfoPill(
+              text: '媒体中心',
+              color: palette.primary,
+              icon: CupertinoIcons.play_rectangle_fill,
+            ),
+          ),
+          const SizedBox(height: 12),
+          for (var index = 0; index < rails.length; index++) ...[
+            rails[index],
+            if (index != rails.length - 1) const SizedBox(height: 16),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMediaRail({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color accentColor,
+    required Widget child,
+    String? actionLabel,
+    VoidCallback? onTapMore,
+  }) {
+    final palette = DashboardPalette.of(Get.context!);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          child: Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(
+                    alpha: palette.isDark ? 0.16 : 0.11,
+                  ),
+                  borderRadius: BorderRadius.circular(11),
+                  border: Border.all(
+                    color: accentColor.withValues(alpha: 0.22),
+                  ),
+                ),
+                child: Icon(icon, color: accentColor, size: 15),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w800,
+                        color: palette.titleText,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                        color: palette.mutedText,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (actionLabel != null)
+                GestureDetector(
+                  onTap: onTapMore,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: accentColor.withValues(
+                        alpha: palette.isDark ? 0.12 : 0.08,
+                      ),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: accentColor.withValues(alpha: 0.22),
+                      ),
+                    ),
+                    child: Text(
+                      actionLabel,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: accentColor,
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        child,
+      ],
+    );
   }
 
   Widget _buildServerStatusSection(BuildContext context, Set<String> visible) {
@@ -466,15 +600,18 @@ class DashboardPage extends GetView<DashboardController> {
             ),
           ),
           const SizedBox(height: 16),
-          Wrap(
-            spacing: 16,
-            runSpacing: 16,
-            children: cards.map((card) {
-              return SizedBox(
-                width: (MediaQuery.sizeOf(context).width - 56) / 2,
-                child: card,
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const spacing = 16.0;
+              final cardWidth = (constraints.maxWidth - spacing) / 2;
+              return Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                children: cards
+                    .map((card) => SizedBox(width: cardWidth, child: card))
+                    .toList(),
               );
-            }).toList(),
+            },
           ),
         ],
       ),
@@ -802,9 +939,23 @@ class DashboardPage extends GetView<DashboardController> {
       Get.delete<RecognizeController>();
     }
     Get.put(RecognizeController());
-    await showCupertinoModalBottomSheet<void>(
+    await showModalBottomSheet<void>(
+      isScrollControlled: true,
+      useSafeArea: true,
+      isDismissible: true,
+      showDragHandle: false,
+      backgroundColor: Colors.transparent,
       context: context,
-      builder: (_) => const RecognizePage(),
+      builder: (_) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.92,
+        minChildSize: 0.36,
+        maxChildSize: 1,
+        builder: (context, scrollController) => ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          child: RecognizePage(scrollController: scrollController),
+        ),
+      ),
     );
     if (Get.isRegistered<RecognizeController>()) {
       Get.delete<RecognizeController>();
@@ -817,9 +968,23 @@ class DashboardPage extends GetView<DashboardController> {
       Get.delete<NetworkTestController>();
     }
     Get.put(NetworkTestController());
-    await showCupertinoModalBottomSheet<void>(
+    await showModalBottomSheet<void>(
+      isScrollControlled: true,
+      useSafeArea: true,
+      isDismissible: true,
+      showDragHandle: false,
+      backgroundColor: Colors.transparent,
       context: context,
-      builder: (_) => const NetworkTestPage(),
+      builder: (_) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.92,
+        minChildSize: 0.36,
+        maxChildSize: 1,
+        builder: (context, scrollController) => ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          child: NetworkTestPage(scrollController: scrollController),
+        ),
+      ),
     );
     if (Get.isRegistered<NetworkTestController>()) {
       Get.delete<NetworkTestController>();
@@ -832,9 +997,20 @@ class DashboardPage extends GetView<DashboardController> {
       Get.delete<SystemHealthController>();
     }
     Get.put(SystemHealthController());
-    await showCupertinoModalBottomSheet<void>(
+    await showModalBottomSheet<void>(
+      isScrollControlled: true,
+      useSafeArea: true,
+      isDismissible: true,
+      showDragHandle: false,
+      backgroundColor: Colors.transparent,
       context: context,
-      builder: (_) => const SystemHealthPage(),
+      builder: (_) => const FractionallySizedBox(
+        heightFactor: 0.92,
+        child: ClipRRect(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          child: SystemHealthPage(),
+        ),
+      ),
     );
     if (Get.isRegistered<SystemHealthController>()) {
       Get.delete<SystemHealthController>();

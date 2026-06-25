@@ -19,6 +19,7 @@ import 'package:moviepilot_mobile/modules/search/pages/media_search_list_page.da
 import 'package:moviepilot_mobile/modules/search/pages/person_detail_page.dart';
 import 'package:moviepilot_mobile/modules/search/pages/person_search_result_page.dart';
 import 'package:moviepilot_mobile/modules/search/pages/search_media_result_page.dart';
+import 'package:moviepilot_mobile/modules/search/services/app_update_service.dart';
 import 'package:moviepilot_mobile/middlewares/route_permission_middleware.dart';
 import 'package:moviepilot_mobile/services/api_client.dart';
 import 'package:moviepilot_mobile/services/ios_shared_session_service.dart';
@@ -26,7 +27,7 @@ import 'package:moviepilot_mobile/services/ios_widget_navigation_service.dart';
 import 'package:moviepilot_mobile/services/jpush_service.dart';
 import 'package:moviepilot_mobile/l10n/app_localizations.dart';
 import 'package:moviepilot_mobile/services/app_service.dart';
-import 'package:moviepilot_mobile/services/realm_service.dart';
+import 'package:moviepilot_mobile/services/hive_service.dart';
 import 'package:moviepilot_mobile/utils/image_util.dart';
 import 'package:moviepilot_mobile/utils/web_view_screen.dart';
 import 'package:talker_flutter/talker_flutter.dart';
@@ -137,29 +138,35 @@ List<GetMiddleware> permissionGuards([String? permissionRoute]) => [
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  Get.put(AppLog());
-  await Get.put(IosWidgetNavigationService()).init();
-  await Get.put(JPushService()).init();
-  Get.put(AppService());
-  Get.put(RealmService(), permanent: true);
-  Get.put(IosSharedSessionService());
-  Get.put(ApiClient());
-  Get.put(MediaDetailService());
-  Get.put(ImageUtil());
-  // 注册 vue 模式插件适配器
-  PluginFormAdapterRegistry.register(
-    'TrashClean',
-    ({required formMode}) => TrashCleanFormController(formMode: formMode),
-  );
-  PluginFormAdapterRegistry.register(
-    'P115StrmHelper',
-    ({required formMode}) => P115StrmHelperFormController(formMode: formMode),
-  );
-  PluginFormAdapterRegistry.register(
-    'ProxmoxVEBackup',
-    ({required formMode}) => ProxmoxVEBackupFormController(formMode: formMode),
-  );
-
+  try {
+    Get.put(AppLog());
+    await Get.putAsync(() => HiveService().init(), permanent: true);
+    Get.put(IosWidgetNavigationService(), permanent: true);
+    Get.put(JPushService(), permanent: true);
+    Get.put(IosSharedSessionService(), permanent: true);
+    Get.put(AppService());
+    Get.put(ApiClient());
+    final updateService = Get.put(AppUpdateService(), permanent: true);
+    await updateService.cleanupExpiredApkCache(maxAge: Duration.zero);
+    Get.put(MediaDetailService());
+    Get.put(ImageUtil());
+    // 注册 vue 模式插件适配器
+    PluginFormAdapterRegistry.register(
+      'TrashClean',
+      ({required formMode}) => TrashCleanFormController(formMode: formMode),
+    );
+    PluginFormAdapterRegistry.register(
+      'P115StrmHelper',
+      ({required formMode}) => P115StrmHelperFormController(formMode: formMode),
+    );
+    PluginFormAdapterRegistry.register(
+      'ProxmoxVEBackup',
+      ({required formMode}) =>
+          ProxmoxVEBackupFormController(formMode: formMode),
+    );
+  } catch (e) {
+    debugPrint('Error initializing app: $e');
+  }
   registerProxmoxVeBackupRenderer();
   registerAppLitePushRenderer();
   runApp(const MyApp());

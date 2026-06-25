@@ -1,7 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:modal_bottom_sheet/modal_bottom_sheet.dart';
 import 'package:moviepilot_mobile/gen/assets.gen.dart';
 import 'package:moviepilot_mobile/modules/dashboard/controllers/dashboard_controller.dart';
 import 'package:moviepilot_mobile/modules/dashboard/pages/edit_dashboard_page.dart';
@@ -177,10 +176,11 @@ class AppSettingPage extends GetView<AppSettingController> {
           () => _buildNavigationTile(
             context,
             title: '当前版本',
-            subtitle: '已安装版本信息',
+            subtitle: '检查版本更新',
             icon: Icons.info_outline,
             iconColor: CupertinoColors.systemBlue,
-            additionalInfo: controller.version.value,
+            additionalInfo: controller.updateStatusText,
+            onTap: () => controller.handleVersionTap(context),
           ),
         ),
         _buildNavigationTile(
@@ -300,7 +300,8 @@ class AppSettingPage extends GetView<AppSettingController> {
                       child: _buildInfoColumn(
                         context,
                         label: '当前版本',
-                        value: controller.version.value,
+                        value: controller.updateStatusText,
+                        onTap: () => controller.handleVersionTap(context),
                       ),
                     ),
                     Container(
@@ -339,9 +340,10 @@ class AppSettingPage extends GetView<AppSettingController> {
     BuildContext context, {
     required String label,
     required String value,
+    VoidCallback? onTap,
   }) {
     final theme = Theme.of(context);
-    return Column(
+    final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
@@ -363,6 +365,12 @@ class AppSettingPage extends GetView<AppSettingController> {
           ),
         ),
       ],
+    );
+    if (onTap == null) return content;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: content,
     );
   }
 
@@ -493,7 +501,7 @@ class AppSettingPage extends GetView<AppSettingController> {
     if (!Get.isRegistered<DashboardController>()) {
       Get.put(DashboardController());
     }
-    await showCupertinoModalBottomSheet<void>(
+    await showModalBottomSheet<void>(
       context: context,
       builder: (_) => const EditDashboardPage(),
     );

@@ -11,6 +11,7 @@ import 'package:moviepilot_mobile/utils/http_path_builder_util.dart';
 import 'package:moviepilot_mobile/utils/image_util.dart';
 import 'package:moviepilot_mobile/utils/toast_util.dart';
 import 'package:moviepilot_mobile/widgets/cached_image.dart';
+import 'package:moviepilot_mobile/widgets/constrained_page_content.dart';
 import 'package:moviepilot_mobile/widgets/section_header.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
@@ -44,16 +45,20 @@ class SearchIndexPage extends GetView<SearchIndexController> {
           slivers: [
             _sliverAppBar(context),
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
-                child: _historyStyleSearchBar(context),
+              child: ConstrainedPageContent(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _historyStyleSearchBar(context),
+                    const SizedBox(height: 12),
+                    if (!isQuery)
+                      ..._buildIdleContent(context)
+                    else
+                      ..._buildSuggestionContent(context),
+                  ],
+                ),
               ),
             ),
-            const SliverToBoxAdapter(child: SizedBox(height: 12)),
-            if (!isQuery)
-              ..._buildIdleSlivers(context)
-            else
-              ..._buildSuggestionSlivers(context),
             SliverToBoxAdapter(
               child: SizedBox(height: _scrollBottomInset(context)),
             ),
@@ -347,21 +352,21 @@ class SearchIndexPage extends GetView<SearchIndexController> {
     );
   }
 
-  List<Widget> _buildIdleSlivers(BuildContext context) {
+  List<Widget> _buildIdleContent(BuildContext context) {
     return [
-      SliverToBoxAdapter(child: _idleSectionTitle(context, '为你推荐')),
-      SliverToBoxAdapter(child: _buildRecommendMediaPager(context)),
-      const SliverToBoxAdapter(child: SizedBox(height: 18)),
-      SliverToBoxAdapter(child: _idleSectionTitle(context, '浏览')),
-      SliverToBoxAdapter(child: _buildBrowseCategoriesGrid(context)),
-      const SliverToBoxAdapter(child: SizedBox(height: 18)),
+      _idleSectionTitle(context, '为你推荐'),
+      _buildRecommendMediaPager(context),
+      const SizedBox(height: 18),
+      _idleSectionTitle(context, '浏览'),
+      _buildBrowseCategoriesGrid(context),
+      const SizedBox(height: 18),
     ];
   }
 
   Widget _idleSectionTitle(BuildContext context, String title) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         title,
         style: theme.textTheme.titleMedium?.copyWith(
@@ -404,7 +409,7 @@ class SearchIndexPage extends GetView<SearchIndexController> {
       }
       if (items.isEmpty && loading) {
         return Padding(
-          padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+          padding: const EdgeInsets.only(top: 4),
           child: SizedBox(
             height: 232,
             child: Center(
@@ -418,7 +423,7 @@ class SearchIndexPage extends GetView<SearchIndexController> {
       }
       final pageCount = (items.length / 3).ceil().clamp(1, 9999);
       return Padding(
-        padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+        padding: const EdgeInsets.only(top: 4),
         child: SizedBox(
           height: 232,
           child: Skeletonizer(
@@ -536,7 +541,7 @@ class SearchIndexPage extends GetView<SearchIndexController> {
       final categories = rec.allVisibleSubCategories;
       if (categories.isEmpty) return const SizedBox.shrink();
       return Padding(
-        padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+        padding: const EdgeInsets.only(top: 4),
         child: LayoutBuilder(
           builder: (context, constraints) {
             const spacing = 10.0;
@@ -631,23 +636,16 @@ class SearchIndexPage extends GetView<SearchIndexController> {
     return null;
   }
 
-  List<Widget> _buildSuggestionSlivers(BuildContext context) {
+  List<Widget> _buildSuggestionContent(BuildContext context) {
     final mediaSuggestions = controller.mediaSuggestionItems;
     final siteSuggestions = controller.siteSuggestionItems;
     final historyItems = controller.localHistorySuggestionItems;
-    final bottomPad = 16.0;
+    const bottomPad = 16.0;
 
     final out = <Widget>[];
 
     void addSection(Widget section) {
-      out.add(
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(16, 0, 16, bottomPad),
-            child: section,
-          ),
-        ),
-      );
+      out.add(Padding(padding: const EdgeInsets.only(bottom: bottomPad), child: section));
     }
 
     if (mediaSuggestions.isNotEmpty) {

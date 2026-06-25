@@ -35,6 +35,7 @@ class SubscribeItemCard extends StatelessWidget {
   final Function(SubscribeItemCardType type)? onMoreTap;
 
   static const double _cardRadius = 22;
+  static const double _gridCardRadius = 16;
   static const double _listCardHeight = 220;
   static const double _posterWidth = 84;
   static const double _posterHeight = 124;
@@ -155,101 +156,74 @@ class SubscribeItemCard extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(_cardRadius),
+        borderRadius: BorderRadius.circular(_gridCardRadius),
         onTap: onTap,
         child: Container(
-          decoration: _cardDecoration(context),
+          decoration: _cardDecoration(context, radius: _gridCardRadius),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(_cardRadius),
-            child: Column(
+            borderRadius: BorderRadius.circular(_gridCardRadius),
+            child: Stack(
+              fit: StackFit.expand,
               children: [
-                Expanded(
-                  flex: 7,
-                  child: Stack(
-                    fit: StackFit.expand,
+                _buildGridPoster(),
+                Positioned.fill(child: _buildGridGradientOverlay()),
+                Positioned(
+                  left: 10,
+                  top: 10,
+                  right: 8,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildBackdrop(),
-                      Positioned.fill(
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.black.withValues(alpha: 0.2),
-                                Colors.transparent,
-                                Colors.black.withValues(alpha: 0.58),
-                              ],
-                              stops: const [0, 0.45, 1],
-                            ),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        left: 12,
-                        top: 12,
+                      Flexible(
                         child: _buildMetaPill(
                           label: _stateLabel,
                           color: _stateColor,
                         ),
                       ),
-                      Positioned(
-                        right: 10,
-                        top: 10,
-                        child: _buildMoreButton(context),
-                      ),
+                      const SizedBox(width: 6),
+                      _buildMoreButton(context, compact: true),
                     ],
                   ),
                 ),
-                Expanded(
-                  flex: 5,
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Color(0xFF0F1723), Color(0xFF131E2B)],
+                Positioned(
+                  left: 10,
+                  right: 10,
+                  bottom: 10,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _titleWithSeason,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          height: 1.2,
+                        ),
                       ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+                      if (_gridSubtitle.isNotEmpty) ...[
+                        const SizedBox(height: 4),
                         Text(
-                          _titleWithSeason,
-                          maxLines: 2,
+                          _gridSubtitle,
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
+                          style: TextStyle(
+                            fontSize: 11,
                             height: 1.2,
+                            color: Colors.white.withValues(alpha: 0.72),
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        if (_subtitle.isNotEmpty)
-                          Text(
-                            _subtitle,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 11,
-                              height: 1.35,
-                              color: Colors.white.withValues(alpha: 0.74),
-                            ),
-                          ),
-                        const Spacer(),
-                        _buildFooterMetrics(
-                          compact: true,
-                          timeAtTrailing: false,
-                        ),
-                        if (_hasProgressBar) ...[
-                          const SizedBox(height: 10),
-                          _buildProgressSection(compact: true),
-                        ],
                       ],
-                    ),
+                      const SizedBox(height: 8),
+                      _buildGridFooterMetrics(),
+                      if (_hasProgressBar) ...[
+                        const SizedBox(height: 8),
+                        _buildProgressSection(compact: true),
+                      ],
+                    ],
                   ),
                 ),
               ],
@@ -260,14 +234,78 @@ class SubscribeItemCard extends StatelessWidget {
     );
   }
 
-  BoxDecoration _cardDecoration(BuildContext context) {
+  Widget _buildGridPoster() {
+    var url = item.poster;
+    if (url == null || url.isEmpty) url = item.backdrop;
+    if (url != null && url.isNotEmpty) {
+      url = ImageUtil.convertCacheImageUrl(url);
+      return CachedImage(imageUrl: url, fit: BoxFit.cover);
+    }
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF30435D), Color(0xFF192436)],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGridGradientOverlay() {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.black.withValues(alpha: 0.28),
+            Colors.black.withValues(alpha: 0.08),
+            Colors.black.withValues(alpha: 0.82),
+          ],
+          stops: const [0, 0.42, 1],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGridFooterMetrics() {
+    final secondary = Colors.white.withValues(alpha: 0.72);
+    final parts = <String>[
+      if ((item.username ?? '').isNotEmpty) item.username!,
+      if (isTv && _hasEpisodeInfo) _episodeProgress,
+      SubscribeController.formatRelativeTime(item.lastUpdate ?? item.date),
+    ];
+    return Text(
+      parts.join(' · '),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontSize: 10.5,
+        fontWeight: FontWeight.w600,
+        color: secondary,
+        height: 1.2,
+      ),
+    );
+  }
+
+  String get _gridSubtitle {
+    final type = item.type?.trim();
+    if (type != null && type.isNotEmpty) return type;
+    final year = item.year?.trim();
+    if (year != null && year.isNotEmpty) return year;
+    return '';
+  }
+
+  BoxDecoration _cardDecoration(BuildContext context, {double? radius}) {
+    final r = radius ?? _cardRadius;
     return BoxDecoration(
-      borderRadius: BorderRadius.circular(_cardRadius),
+      borderRadius: BorderRadius.circular(r),
       boxShadow: [
         BoxShadow(
           color: Colors.black.withValues(alpha: 0.12),
-          blurRadius: 26,
-          offset: const Offset(0, 14),
+          blurRadius: radius == _gridCardRadius ? 16 : 26,
+          offset: Offset(0, radius == _gridCardRadius ? 8 : 14),
         ),
       ],
       border: Border.all(
@@ -459,9 +497,10 @@ class SubscribeItemCard extends StatelessWidget {
     );
   }
 
-  Widget _buildMoreButton(BuildContext context) {
+  Widget _buildMoreButton(BuildContext context, {bool compact = false}) {
     final isPaused = item.state?.toUpperCase() == 'S';
     final isRunning = item.state?.toUpperCase() == 'R';
+    final size = compact ? 34.0 : 30.0;
     final items = [
       SubscribeItemCardType.edit,
       SubscribeItemCardType.search,
@@ -504,14 +543,14 @@ class SubscribeItemCard extends StatelessWidget {
           )
           .toList(),
       child: Container(
-        width: 30,
-        height: 30,
+        width: size,
+        height: size,
         decoration: BoxDecoration(
           color: Colors.black.withValues(alpha: 0.32),
           borderRadius: BorderRadius.circular(999),
           border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
         ),
-        child: const Icon(Icons.more_horiz, size: 16, color: Colors.white),
+        child: Icon(Icons.more_horiz, size: compact ? 18 : 16, color: Colors.white),
       ),
     );
   }

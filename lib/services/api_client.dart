@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
@@ -13,7 +12,7 @@ import 'package:moviepilot_mobile/utils/dio_adapter_config_stub.dart'
     if (dart.library.io) 'package:moviepilot_mobile/utils/dio_adapter_config_io.dart'
     if (dart.library.js_interop) 'package:moviepilot_mobile/utils/dio_adapter_config_web.dart';
 import 'package:moviepilot_mobile/services/ios_shared_session_service.dart';
-import 'package:moviepilot_mobile/services/realm_service.dart';
+import 'package:moviepilot_mobile/services/hive_service.dart';
 import 'package:moviepilot_mobile/utils/toast_util.dart';
 import 'package:moviepilot_mobile/modules/login/models/login_profile.dart';
 import 'package:get/get.dart' as g;
@@ -45,7 +44,7 @@ class ApiHttpException implements Exception {
 class ApiClient extends g.GetxController {
   final _appService = g.Get.find<AppService>();
   final _iosSharedSessionService = g.Get.find<IosSharedSessionService>();
-  final _realmService = g.Get.find<RealmService>();
+  final _hiveService = g.Get.find<HiveService>();
   final _log = g.Get.find<AppLog>();
   late final Dio _dio;
   late final CookieJar _cookieJar;
@@ -496,6 +495,7 @@ class ApiClient extends g.GetxController {
     String? token,
     int? timeout,
     Map<String, dynamic>? headers,
+    bool skipUnauthorizedHandling = false,
   }) async {
     await _ensureReady();
     final authToken = token ?? this.token;
@@ -511,13 +511,16 @@ class ApiClient extends g.GetxController {
         // 允许所有状态码，让调用者自己处理错误
         return true;
       },
+      extra: {if (skipUnauthorizedHandling) 'skipUnauthorizedHandling': true},
     );
     final response = await _dio.get<T>(
       path,
       queryParameters: queryParameters,
       options: options,
     );
-    _handleUnauthorized(response.statusCode);
+    if (!skipUnauthorizedHandling) {
+      _handleUnauthorized(response.statusCode);
+    }
     return response;
   }
 
@@ -626,13 +629,12 @@ class ApiClient extends g.GetxController {
       } catch (_) {}
       if (!kIsWeb) {
         try {
-          final profiles = _realmService.realm.all<LoginProfile>().toList();
+          final profiles = _hiveService.loginProfileBox.values.toList();
           if (profiles.isNotEmpty) {
             profiles.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
             final latest = profiles.first;
-            _realmService.realm.write(() {
-              latest.accessToken = '';
-            });
+            latest.accessToken = '';
+            _hiveService.loginProfileBox.put(latest.id, latest);
           }
         } catch (_) {}
       }
