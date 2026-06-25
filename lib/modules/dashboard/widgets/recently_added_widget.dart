@@ -548,8 +548,9 @@ class _GlassPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      constraints: BoxConstraints(minWidth: compact ? 54 : 58),
       padding: EdgeInsets.symmetric(
-        horizontal: compact ? 7 : 8,
+        horizontal: compact ? 8 : 9,
         vertical: compact ? 3 : 4,
       ),
       decoration: BoxDecoration(
@@ -567,12 +568,13 @@ class _GlassPill extends StatelessWidget {
           Flexible(
             child: Text(
               text,
+              textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: compact ? 8 : 9,
+                fontSize: compact ? 9 : 9.5,
                 fontWeight: FontWeight.w700,
-                letterSpacing: 0.6,
+                letterSpacing: 0,
                 color: Colors.white,
               ),
             ),

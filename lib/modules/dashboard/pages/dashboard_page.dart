@@ -416,6 +416,8 @@ class DashboardPage extends GetView<DashboardController> {
           subtitle: '从上次进度继续',
           icon: CupertinoIcons.play_circle_fill,
           accentColor: palette.warningAccent,
+          actionLabel: '查看全部',
+          onTapMore: () => RecentlyPlayingWidget.showAllSheet(context),
           child: const RecentlyPlayingWidget(),
         ),
       );
