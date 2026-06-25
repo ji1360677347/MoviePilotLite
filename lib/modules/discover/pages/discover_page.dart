@@ -14,6 +14,7 @@ import 'package:moviepilot_mobile/utils/http_path_builder_util.dart';
 import 'package:moviepilot_mobile/utils/image_util.dart';
 import 'package:moviepilot_mobile/utils/toast_util.dart';
 import 'package:moviepilot_mobile/widgets/cached_image.dart';
+import 'package:moviepilot_mobile/widgets/constrained_page_content.dart';
 
 class DiscoverPage extends GetView<DiscoverController> {
   const DiscoverPage({super.key, this.scrollController});
@@ -23,6 +24,7 @@ class DiscoverPage extends GetView<DiscoverController> {
   static const double _gridSpacing = 12;
   static const double _gridPadding = 16;
   static const double _cardAspectRatio = 0.62;
+  static const double _wideBreakpoint = ConstrainedPageContent.wideBreakpoint;
   static const Color _cinemaBlack = Color(0xFF050506);
   static const Color _surfaceSoft = Color(0xFF1D1D21);
   static const Color _netflixRed = Color(0xFFE50914);
@@ -61,11 +63,7 @@ class DiscoverPage extends GetView<DiscoverController> {
                   onRefresh: () async =>
                       controller.loadCurrent(forceRefresh: true),
                 ),
-                SliverToBoxAdapter(child: Obx(() => _buildHero(context))),
-                SliverToBoxAdapter(
-                  child: Obx(() => _buildFilterSummary(context)),
-                ),
-                SliverToBoxAdapter(child: Obx(() => _buildSection(context))),
+                SliverToBoxAdapter(child: Obx(() => _buildPageContent(context))),
                 SliverToBoxAdapter(
                   child: SizedBox(height: _bottomSpacer(context)),
                 ),
@@ -79,6 +77,46 @@ class DiscoverPage extends GetView<DiscoverController> {
 
   double _bottomSpacer(BuildContext context) {
     return 104;
+  }
+
+  bool _isWideScreen(BuildContext context) {
+    return MediaQuery.sizeOf(context).width > _wideBreakpoint;
+  }
+
+  GridLayout _discoverGridLayout(double width) {
+    final int crossAxisCount;
+    if (width >= 900) {
+      crossAxisCount = 5;
+    } else if (width >= 720) {
+      crossAxisCount = 4;
+    } else if (width >= 520) {
+      crossAxisCount = 3;
+    } else {
+      crossAxisCount = 2;
+    }
+    final available =
+        width - (_gridPadding * 2) - (_gridSpacing * (crossAxisCount - 1));
+    return GridLayout(
+      crossAxisCount: crossAxisCount,
+      cardWidth: available / crossAxisCount,
+    );
+  }
+
+  Widget _buildPageContent(BuildContext context) {
+    final isWide = _isWideScreen(context);
+    final top = MediaQuery.paddingOf(context).top;
+
+    return ConstrainedPageContent(
+      padding: EdgeInsets.only(top: top + 68),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildHero(context, isWide: isWide),
+          _buildFilterSummary(context, isWide: isWide),
+          _buildSection(context),
+        ],
+      ),
+    );
   }
 
   AppBar _buildNavigationBar(BuildContext context) {
@@ -165,12 +203,11 @@ class DiscoverPage extends GetView<DiscoverController> {
     );
   }
 
-  Widget _buildHero(BuildContext context) {
+  Widget _buildHero(BuildContext context, {bool isWide = false}) {
     final items = controller.currentItems();
     final isLoading = controller.isLoading();
     final hero = items.isNotEmpty ? items.first : null;
     final imageUrl = _imageUrl(hero, preferBackdrop: true);
-    final top = MediaQuery.paddingOf(context).top;
     final title = hero == null
         ? 'Cinematic Discovery'
         : _bestTitle(hero) ?? 'Untitled';
@@ -181,13 +218,14 @@ class DiscoverPage extends GetView<DiscoverController> {
         ? hero!.overview!.trim()
         : '从 ${source.label} 中发现下一部值得停留的作品';
     final meta = _compactHeroMeta(hero, source);
+    final heroHeight = isWide ? 340.0 : 310.0;
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(16, top + 68, 16, 12),
+      padding: const EdgeInsets.only(bottom: 12),
       child: GestureDetector(
         onTap: hero == null ? null : () => _openDetail(hero),
         child: Container(
-          height: 310,
+          height: heroHeight,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(30),
             border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
@@ -205,108 +243,146 @@ class DiscoverPage extends GetView<DiscoverController> {
             ],
           ),
           clipBehavior: Clip.antiAlias,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              if (imageUrl.isNotEmpty)
-                CachedImage(
-                  imageUrl: imageUrl,
-                  fit: BoxFit.cover,
-                  placeholder: const _HeroPlaceholder(),
-                  errorWidget: const _HeroPlaceholder(),
-                )
-              else
-                const _HeroPlaceholder(),
-              const DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Color(0x22000000),
-                      Color(0x66000000),
-                      Color(0xF2050506),
-                    ],
-                    stops: [0.12, 0.48, 1],
-                  ),
-                ),
-              ),
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    center: const Alignment(-0.95, -0.85),
-                    radius: 1.05,
-                    colors: [
-                      _netflixRed.withValues(alpha: 0.16),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-              ),
-              Positioned(
-                left: 18,
-                right: 18,
-                bottom: 20,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.headlineMedium
-                          ?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                            height: 0.96,
-                            letterSpacing: -1.2,
-                          ),
-                    ),
-                    if (meta.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        meta,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.7),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 10),
-                    Text(
-                      subtitle,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.78),
-                        fontSize: 13,
-                        height: 1.35,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: _PrimaryActionButton(
-                        enabled: hero != null,
-                        onTap: hero == null ? null : () => _openDetail(hero),
-                        compact: true,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          child: _buildHeroBody(
+            context,
+            hero: hero,
+            imageUrl: imageUrl,
+            title: title,
+            subtitle: subtitle,
+            meta: meta,
+            isWide: isWide,
           ),
         ),
       ),
     );
   }
 
-  Widget _buildFilterSummary(BuildContext context) {
+  Widget _buildHeroBody(
+    BuildContext context, {
+    required RecommendApiItem? hero,
+    required String imageUrl,
+    required String title,
+    required String subtitle,
+    required String meta,
+    required bool isWide,
+  }) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (imageUrl.isNotEmpty)
+          CachedImage(
+            imageUrl: imageUrl,
+            fit: BoxFit.cover,
+            placeholder: const _HeroPlaceholder(),
+            errorWidget: const _HeroPlaceholder(),
+          )
+        else
+          const _HeroPlaceholder(),
+        const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0x22000000),
+                Color(0x66000000),
+                Color(0xF2050506),
+              ],
+              stops: [0.12, 0.48, 1],
+            ),
+          ),
+        ),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              center: Alignment(-0.95, -0.85),
+              radius: 1.05,
+              colors: [
+                _netflixRed.withValues(alpha: 0.16),
+                Colors.transparent,
+              ],
+            ),
+          ),
+        ),
+        Positioned(
+          left: isWide ? 28 : 18,
+          right: isWide ? 28 : 18,
+          bottom: isWide ? 24 : 20,
+          child: _buildHeroCopy(
+            context,
+            hero: hero,
+            title: title,
+            subtitle: subtitle,
+            meta: meta,
+            isWide: isWide,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeroCopy(
+    BuildContext context, {
+    required RecommendApiItem? hero,
+    required String title,
+    required String subtitle,
+    required String meta,
+    required bool isWide,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          title,
+          maxLines: isWide ? 2 : 2,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.w900,
+            height: 0.96,
+            letterSpacing: -1.2,
+          ),
+        ),
+        if (meta.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            meta,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.7),
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+        const SizedBox(height: 10),
+        Text(
+          subtitle,
+          maxLines: isWide ? 3 : 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.78),
+            fontSize: 13,
+            height: 1.35,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: _PrimaryActionButton(
+            enabled: hero != null,
+            onTap: hero == null ? null : () => _openDetail(hero),
+            compact: true,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFilterSummary(BuildContext context, {bool isWide = false}) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
@@ -315,7 +391,7 @@ class DiscoverPage extends GetView<DiscoverController> {
     final remaining = parts.length - visibleParts.length;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      padding: const EdgeInsets.only(bottom: 12),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
         child: BackdropFilter(
@@ -335,39 +411,38 @@ class DiscoverPage extends GetView<DiscoverController> {
                 ),
               ),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [_netflixRed, Color(0xFFFF6B35)],
-                      ),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Icon(
-                      Icons.local_movies_rounded,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
+                  _buildFilterLeadingIcon(),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      physics: const BouncingScrollPhysics(),
-                      child: Row(
-                        children: [
-                          for (final part in visibleParts)
-                            Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: _buildSummaryChip(context, part),
+                    child: isWide
+                        ? Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              for (final part in visibleParts)
+                                _buildSummaryChip(context, part),
+                              if (remaining > 0)
+                                _buildSummaryChip(context, '+$remaining'),
+                            ],
+                          )
+                        : SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            physics: const BouncingScrollPhysics(),
+                            child: Row(
+                              children: [
+                                for (final part in visibleParts)
+                                  Padding(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: _buildSummaryChip(context, part),
+                                  ),
+                                if (remaining > 0)
+                                  _buildSummaryChip(context, '+$remaining'),
+                              ],
                             ),
-                          if (remaining > 0)
-                            _buildSummaryChip(context, '+$remaining'),
-                        ],
-                      ),
-                    ),
+                          ),
                   ),
                   const SizedBox(width: 8),
                   Icon(
@@ -379,6 +454,24 @@ class DiscoverPage extends GetView<DiscoverController> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildFilterLeadingIcon() {
+    return Container(
+      width: 38,
+      height: 38,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [_netflixRed, Color(0xFFFF6B35)],
+        ),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: const Icon(
+        Icons.local_movies_rounded,
+        color: Colors.white,
+        size: 20,
       ),
     );
   }
@@ -415,7 +508,7 @@ class DiscoverPage extends GetView<DiscoverController> {
     required String subtitle,
   }) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 18, 16, 14),
+      padding: const EdgeInsets.fromLTRB(2, 18, 0, 14),
       child: Row(
         children: [
           Container(
@@ -459,49 +552,52 @@ class DiscoverPage extends GetView<DiscoverController> {
     );
   }
 
-  Widget _buildItemsGrid(BuildContext context, List<RecommendApiItem> items) {
-    final layout = gridLayout(
-      context,
-      gridSpacing: _gridSpacing,
-      gridPadding: _gridPadding,
-    );
-    return GridView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: _gridPadding),
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: items.length,
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: layout.crossAxisCount,
-        crossAxisSpacing: _gridSpacing,
-        mainAxisSpacing: _gridSpacing,
-        childAspectRatio: _cardAspectRatio,
-      ),
-      itemBuilder: (context, index) {
-        final item = items[index];
-        return DiscoverMediaCard(item: item, onTap: () => _openDetail(item));
+  Widget _buildItemsGrid(
+    BuildContext context,
+    List<RecommendApiItem> items,
+  ) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final layout = _discoverGridLayout(constraints.maxWidth);
+        return GridView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: _gridPadding),
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: items.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: layout.crossAxisCount,
+            crossAxisSpacing: _gridSpacing,
+            mainAxisSpacing: _gridSpacing,
+            childAspectRatio: _cardAspectRatio,
+          ),
+          itemBuilder: (context, index) {
+            final item = items[index];
+            return DiscoverMediaCard(item: item, onTap: () => _openDetail(item));
+          },
+        );
       },
     );
   }
 
   Widget _buildLoadingGrid(BuildContext context) {
-    final layout = gridLayout(
-      context,
-      gridSpacing: _gridSpacing,
-      gridPadding: _gridPadding,
-    );
-    final placeholderCount = layout.crossAxisCount * 3;
-    return GridView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: _gridPadding),
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: placeholderCount,
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: layout.crossAxisCount,
-        crossAxisSpacing: _gridSpacing,
-        mainAxisSpacing: _gridSpacing,
-        childAspectRatio: _cardAspectRatio,
-      ),
-      itemBuilder: (context, index) => const _DiscoverCardSkeleton(),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final layout = _discoverGridLayout(constraints.maxWidth);
+        final placeholderCount = layout.crossAxisCount * 3;
+        return GridView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: _gridPadding),
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: placeholderCount,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: layout.crossAxisCount,
+            crossAxisSpacing: _gridSpacing,
+            mainAxisSpacing: _gridSpacing,
+            childAspectRatio: _cardAspectRatio,
+          ),
+          itemBuilder: (context, index) => const _DiscoverCardSkeleton(),
+        );
+      },
     );
   }
 
@@ -510,7 +606,7 @@ class DiscoverPage extends GetView<DiscoverController> {
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      padding: const EdgeInsets.fromLTRB(_gridPadding, 8, _gridPadding, 0),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 34),

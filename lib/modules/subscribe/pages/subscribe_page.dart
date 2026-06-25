@@ -12,17 +12,24 @@ import 'package:moviepilot_mobile/modules/subscribe/widgets/subscribe_popular_it
 import 'package:moviepilot_mobile/services/app_service.dart';
 import 'package:moviepilot_mobile/utils/http_path_builder_util.dart';
 import 'package:moviepilot_mobile/utils/toast_util.dart';
+import 'package:moviepilot_mobile/widgets/constrained_page_content.dart';
 
 class SubscribePage extends GetView<SubscribeController> {
   const SubscribePage({super.key, this.scrollController});
 
   final ScrollController? scrollController;
 
-  static const double _horizontalPadding = 16;
   static const double _cardSpacing = 12;
   static const double _floatingBarHeight = 52;
-  static const double _recommendationCardWidth = 140;
-  static const double _recommendationCardHeight = 212;
+  static const double _narrowRecommendationCardWidth = 140;
+  static const double _narrowRecommendationCardHeight = 212;
+  static const double _gridChildAspectRatio = 0.84;
+
+  double _subscribeGridAspectRatio(int crossAxisCount) {
+    if (crossAxisCount >= 4) return 0.86;
+    if (crossAxisCount >= 3) return 0.84;
+    return _gridChildAspectRatio;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -122,30 +129,30 @@ class SubscribePage extends GetView<SubscribeController> {
         Expanded(child: _buildFakeSearchBar(context)),
       ],
     );
-    final pill = Container(
+    final bar = Container(
       height: _floatingBarHeight,
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(999)),
-      child: child,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        color: theme.colorScheme.surface.withValues(alpha: 0.2),
+        border: Border.all(
+          color: theme.colorScheme.outline.withValues(alpha: 0.1),
+          width: 0.5,
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(999),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 90, sigmaY: 90),
+          child: child,
+        ),
+      ),
     );
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(999),
-          color: theme.colorScheme.surface.withValues(alpha: 0.2),
-          border: Border.all(
-            color: theme.colorScheme.outline.withValues(alpha: 0.1),
-            width: 0.5,
-          ),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(999),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 90, sigmaY: 90),
-            child: pill,
-          ),
-        ),
+    return SizedBox(
+      width: MediaQuery.sizeOf(context).width,
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: _pageContentSideInset(context)),
+        child: bar,
       ),
     );
   }
@@ -317,14 +324,9 @@ class SubscribePage extends GetView<SubscribeController> {
           ),
         );
       }
-      return SliverPadding(
-        padding: const EdgeInsets.fromLTRB(
-          _horizontalPadding,
-          12,
-          _horizontalPadding,
-          0,
-        ),
-        sliver: SliverMainAxisGroup(
+      return _wrapConstrainedSliver(
+        context,
+        SliverMainAxisGroup(
           slivers: [
             if (controller.shouldShowRecommendationSection) ...[
               SliverToBoxAdapter(
@@ -339,7 +341,7 @@ class SubscribePage extends GetView<SubscribeController> {
                   controller.recommendationItems,
                 ),
               ),
-              SliverToBoxAdapter(child: SizedBox(height: 20)),
+              const SliverToBoxAdapter(child: SizedBox(height: 20)),
             ],
 
             if (controller.canShowCollectionTabs)
@@ -375,6 +377,53 @@ class SubscribePage extends GetView<SubscribeController> {
         ),
       );
     });
+  }
+
+  Widget _wrapConstrainedSliver(BuildContext context, Widget sliver) {
+    final side = _pageContentSideInset(context);
+
+    return SliverPadding(
+      padding: EdgeInsets.fromLTRB(side, 12, side, 0),
+      sliver: sliver,
+    );
+  }
+
+  double _pageContentWidth(BuildContext context) {
+    final isWide = ConstrainedPageContent.isWideScreen(context);
+    final horizontal = isWide ? 24.0 : 16.0;
+    final available = MediaQuery.sizeOf(context).width - horizontal * 2;
+    return isWide
+        ? available.clamp(0.0, ConstrainedPageContent.maxWidth)
+        : available;
+  }
+
+  double _pageContentSideInset(BuildContext context) {
+    final isWide = ConstrainedPageContent.isWideScreen(context);
+    final horizontal = isWide ? 24.0 : 16.0;
+    if (!isWide) return horizontal;
+
+    final available = MediaQuery.sizeOf(context).width - horizontal * 2;
+    final contentWidth = available.clamp(0.0, ConstrainedPageContent.maxWidth);
+    return horizontal + (available - contentWidth) / 2;
+  }
+
+  int _subscribeGridCrossAxisCount(double width) {
+    if (width >= 900) return 4;
+    if (width >= 720) return 3;
+    return 2;
+  }
+
+  ({double width, double height}) _recommendationCardSize(BuildContext context) {
+    if (!ConstrainedPageContent.isWideScreen(context)) {
+      return (
+        width: _narrowRecommendationCardWidth,
+        height: _narrowRecommendationCardHeight,
+      );
+    }
+    final contentWidth = _pageContentWidth(context);
+    final width = ((contentWidth - _cardSpacing * 4) / 5).clamp(156.0, 176.0);
+    final height = width * (_narrowRecommendationCardHeight / _narrowRecommendationCardWidth);
+    return (width: width, height: height);
   }
 
   Widget _buildCollectionHeader(BuildContext context) {
@@ -537,6 +586,29 @@ class SubscribePage extends GetView<SubscribeController> {
     BuildContext context,
     List<SubscribeItem> items,
   ) {
+    final isWide = ConstrainedPageContent.isWideScreen(context);
+    if (isWide) {
+      final crossAxisCount = _subscribeGridCrossAxisCount(
+        _pageContentWidth(context),
+      );
+      return SliverGrid(
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: crossAxisCount,
+          mainAxisSpacing: _cardSpacing,
+          crossAxisSpacing: _cardSpacing,
+          childAspectRatio: _subscribeGridAspectRatio(crossAxisCount),
+        ),
+        delegate: SliverChildBuilderDelegate(
+          (context, index) => _buildSubscribeItemCard(
+            context,
+            items[index],
+            SubscribeItemCardLayout.grid,
+          ),
+          childCount: items.length,
+        ),
+      );
+    }
+
     return SliverList(
       delegate: SliverChildBuilderDelegate((context, index) {
         final item = items[index];
@@ -544,42 +616,54 @@ class SubscribePage extends GetView<SubscribeController> {
           padding: EdgeInsets.only(
             bottom: index < items.length - 1 ? _cardSpacing : 0,
           ),
-          child: SubscribeItemCard(
-            item: item,
-            isTv: controller.isTv,
-            layout: SubscribeItemCardLayout.list,
-            onTap: () => _openEditSheet(context, item),
-            onMoreTap: (type) {
-              switch (type) {
-                case SubscribeItemCardType.edit:
-                  _openEditSheet(context, item);
-                  break;
-                case SubscribeItemCardType.detail:
-                  _mediaDetail(context, item);
-                  break;
-                case SubscribeItemCardType.pause:
-                  _pauseSubscribe(context, item);
-                  break;
-                case SubscribeItemCardType.resume:
-                  _resumeSubscribe(context, item);
-                  break;
-                case SubscribeItemCardType.reset:
-                  _resetSubscribeState(context, item);
-                  break;
-                case SubscribeItemCardType.shared:
-                  _shareSubscribe(context, item);
-                  break;
-                case SubscribeItemCardType.delete:
-                  _deleteSubscribe(context, item);
-                  break;
-                case SubscribeItemCardType.search:
-                  _searchSubscribe(context, item);
-                  break;
-              }
-            },
+          child: _buildSubscribeItemCard(
+            context,
+            item,
+            SubscribeItemCardLayout.list,
           ),
         );
       }, childCount: items.length),
+    );
+  }
+
+  Widget _buildSubscribeItemCard(
+    BuildContext context,
+    SubscribeItem item,
+    SubscribeItemCardLayout layout,
+  ) {
+    return SubscribeItemCard(
+      item: item,
+      isTv: controller.isTv,
+      layout: layout,
+      onTap: () => _openEditSheet(context, item),
+      onMoreTap: (type) {
+        switch (type) {
+          case SubscribeItemCardType.edit:
+            _openEditSheet(context, item);
+            break;
+          case SubscribeItemCardType.detail:
+            _mediaDetail(context, item);
+            break;
+          case SubscribeItemCardType.pause:
+            _pauseSubscribe(context, item);
+            break;
+          case SubscribeItemCardType.resume:
+            _resumeSubscribe(context, item);
+            break;
+          case SubscribeItemCardType.reset:
+            _resetSubscribeState(context, item);
+            break;
+          case SubscribeItemCardType.shared:
+            _shareSubscribe(context, item);
+            break;
+          case SubscribeItemCardType.delete:
+            _deleteSubscribe(context, item);
+            break;
+          case SubscribeItemCardType.search:
+            _searchSubscribe(context, item);
+            break;
+        }
+      },
     );
   }
 
@@ -617,8 +701,9 @@ class SubscribePage extends GetView<SubscribeController> {
     BuildContext context,
     List<RecommendApiItem> items,
   ) {
+    final size = _recommendationCardSize(context);
     return SizedBox(
-      height: _recommendationCardHeight,
+      height: size.height,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: EdgeInsets.zero,
@@ -627,7 +712,7 @@ class SubscribePage extends GetView<SubscribeController> {
         itemBuilder: (context, index) {
           final item = items[index];
           return SizedBox(
-            width: _recommendationCardWidth,
+            width: size.width,
             child: SubscribePopularItemCard(
               item: item,
               onTap: () => _openRecommendationDetail(item),

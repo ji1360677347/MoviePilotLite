@@ -29,6 +29,7 @@ import 'package:moviepilot_mobile/modules/system_message/controllers/system_mess
 import 'package:moviepilot_mobile/services/app_service.dart';
 import 'package:moviepilot_mobile/utils/open_url.dart';
 import 'package:moviepilot_mobile/utils/size_formatter.dart';
+import 'package:moviepilot_mobile/widgets/constrained_page_content.dart';
 
 import '../controllers/dashboard_controller.dart';
 
@@ -69,12 +70,9 @@ class DashboardPage extends GetView<DashboardController> {
                     },
                   ),
                   SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [_buildStitchLayout(context)],
-                      ),
+                    child: ConstrainedPageContent(
+                      padding: const EdgeInsets.only(top: 20),
+                      child: _buildStitchLayout(context),
                     ),
                   ),
                   SliverToBoxAdapter(
@@ -602,15 +600,18 @@ class DashboardPage extends GetView<DashboardController> {
             ),
           ),
           const SizedBox(height: 16),
-          Wrap(
-            spacing: 16,
-            runSpacing: 16,
-            children: cards.map((card) {
-              return SizedBox(
-                width: (MediaQuery.sizeOf(context).width - 56) / 2,
-                child: card,
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const spacing = 16.0;
+              final cardWidth = (constraints.maxWidth - spacing) / 2;
+              return Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                children: cards
+                    .map((card) => SizedBox(width: cardWidth, child: card))
+                    .toList(),
               );
-            }).toList(),
+            },
           ),
         ],
       ),
