@@ -14,6 +14,8 @@ PODS:
   - mobile_scanner (7.0.0):
     - Flutter
     - FlutterMacOS
+  - native_glass_navbar (0.0.1):
+    - Flutter
   - package_info_plus (0.4.5):
     - Flutter
   - path_provider_foundation (0.0.1):
@@ -39,6 +41,7 @@ DEPENDENCIES:
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
   - jpush_flutter (from `.symlinks/plugins/jpush_flutter/ios`)
   - mobile_scanner (from `.symlinks/plugins/mobile_scanner/darwin`)
+  - native_glass_navbar (from `.symlinks/plugins/native_glass_navbar/ios`)
   - package_info_plus (from `.symlinks/plugins/package_info_plus/ios`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
   - share_plus (from `.symlinks/plugins/share_plus/ios`)
@@ -63,6 +66,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/jpush_flutter/ios"
   mobile_scanner:
     :path: ".symlinks/plugins/mobile_scanner/darwin"
+  native_glass_navbar:
+    :path: ".symlinks/plugins/native_glass_navbar/ios"
   package_info_plus:
     :path: ".symlinks/plugins/package_info_plus/ios"
   path_provider_foundation:
@@ -86,6 +91,7 @@ SPEC CHECKSUMS:
   JPush: 17d6da90e9354860ab7ef9f104e0cd4331ecec95
   jpush_flutter: 7a240725df5c4d1d432d4420cce7cf6c99b0b416
   mobile_scanner: 9157936403f5a0644ca3779a38ff8404c5434a93
+  native_glass_navbar: ca05c3855b2bcce8b117a6db54f51e63e149f032
   package_info_plus: af8e2ca6888548050f16fa2f1938db7b5a5df499
   path_provider_foundation: bb55f6dbba17d0dccd6737fe6f7f34fbd0376880
   share_plus: 50da8cb520a8f0f65671c6c6a99b3617ed10a58a
