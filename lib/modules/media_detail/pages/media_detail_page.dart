@@ -215,30 +215,27 @@ class MediaDetailPage extends GetWidget<MediaDetailController> {
             ),
             Align(
               alignment: Alignment.bottomCenter,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  _pageHorizontalPadding,
-                  0,
-                  _pageHorizontalPadding,
-                  22,
+              child: _buildHeaderContentFrame(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 22),
+                  child: isWide
+                      ? _buildWideHeaderContent(
+                          context,
+                          posterUrl: posterUrl,
+                          detail: detail,
+                          isLoading: isLoading,
+                        )
+                      : Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _buildPoster(posterUrl, width: 126, height: 126),
+                            const SizedBox(height: 16),
+                            _buildHeaderInfo(context, detail),
+                            const SizedBox(height: 14),
+                            _buildActionButtons(context, detail, isLoading),
+                          ],
+                        ),
                 ),
-                child: isWide
-                    ? _buildWideHeaderContent(
-                        context,
-                        posterUrl: posterUrl,
-                        detail: detail,
-                        isLoading: isLoading,
-                      )
-                    : Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _buildPoster(posterUrl, width: 126, height: 126),
-                          const SizedBox(height: 16),
-                          _buildHeaderInfo(context, detail),
-                          const SizedBox(height: 14),
-                          _buildActionButtons(context, detail, isLoading),
-                        ],
-                      ),
               ),
             ),
           ],
@@ -285,30 +282,65 @@ class MediaDetailPage extends GetWidget<MediaDetailController> {
     );
   }
 
+  Widget _buildHeaderContentFrame({required Widget child}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: _pageHorizontalPadding),
+      child: Center(
+        heightFactor: 1,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: _contentMaxWidth),
+          child: child,
+        ),
+      ),
+    );
+  }
+
   Widget _buildWideHeaderContent(
     BuildContext context, {
     required String? posterUrl,
     required MediaDetail? detail,
     required bool isLoading,
   }) {
+    final showInlineActions = posterUrl != null;
     return SizedBox(
-      height: 200,
-      width: 500,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildPoster(posterUrl, width: 100, height: 100),
-              const SizedBox(width: 22),
-              _buildHeaderInfo(context, detail, alignStart: true),
-            ],
-          ),
-          const SizedBox(height: 20),
-          _buildActionButtons(context, detail, isLoading),
-        ],
+      height: 224,
+      width: double.infinity,
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: showInlineActions
+            ? Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  _buildPoster(posterUrl, width: 128, height: 192),
+                  const SizedBox(width: 24),
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildHeaderInfo(context, detail, alignStart: true),
+                        const SizedBox(height: 14),
+                        _buildActionButtons(context, detail, isLoading),
+                      ],
+                    ),
+                  ),
+                ],
+              )
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildPoster(posterUrl, width: 100, height: 100),
+                      const SizedBox(width: 22),
+                      _buildHeaderInfo(context, detail, alignStart: true),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  _buildActionButtons(context, detail, isLoading),
+                ],
+              ),
       ),
     );
   }
@@ -336,7 +368,7 @@ class MediaDetailPage extends GetWidget<MediaDetailController> {
       width: w,
       height: h,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(32),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: Colors.white.withValues(alpha: 0.35),
           width: 1.2,
@@ -1416,14 +1448,12 @@ class MediaDetailPage extends GetWidget<MediaDetailController> {
     }
 
     return SizedBox(
-      height: 176,
+      height: 248,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: EdgeInsets.zero,
-        itemBuilder: (context, index) {
-          final item = items[index];
-          return _buildRelatedCard(context, item);
-        },
+        itemBuilder: (context, index) =>
+            _buildRelatedCard(context, items[index]),
         separatorBuilder: (_, __) => const SizedBox(width: 12),
         itemCount: items.length,
       ),
@@ -1432,7 +1462,7 @@ class MediaDetailPage extends GetWidget<MediaDetailController> {
 
   Widget _buildRelatedPlaceholder() {
     return SizedBox(
-      height: 176,
+      height: 248,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: EdgeInsets.zero,
@@ -1446,28 +1476,23 @@ class MediaDetailPage extends GetWidget<MediaDetailController> {
   Widget _buildRelatedCard(BuildContext context, RecommendApiItem item) {
     final title = _bestTitle(item) ?? '未知标题';
     final year = _relatedYear(item);
-    final overview = item.overview?.trim() ?? '';
     final backdropUrl = _resolveImageUrl(item.backdrop_path);
     final posterUrl = _resolveImageUrl(item.poster_path);
-    final imageUrl = backdropUrl ?? posterUrl;
+    final imageUrl = posterUrl ?? backdropUrl;
     final score = item.vote_average;
 
     return GestureDetector(
       onTap: () => _openRelatedDetail(item),
       child: SizedBox(
-        width: 268,
+        width: 135,
+        height: 240,
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(18),
           child: Stack(
             fit: StackFit.expand,
             children: [
               if (imageUrl != null)
-                CachedImage(
-                  imageUrl: imageUrl,
-                  fit: BoxFit.cover,
-                  width: 268,
-                  height: 176,
-                )
+                CachedImage(imageUrl: imageUrl, fit: BoxFit.cover)
               else
                 _buildRelatedImageFallback(),
               DecoratedBox(
@@ -1476,95 +1501,56 @@ class MediaDetailPage extends GetWidget<MediaDetailController> {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Colors.black.withValues(alpha: 0.05),
-                      Colors.black.withValues(alpha: 0.30),
-                      Colors.black.withValues(alpha: 0.86),
+                      Colors.black.withValues(alpha: 0.04),
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.82),
                     ],
-                    stops: const [0.0, 0.42, 1.0],
+                    stops: const [0.0, 0.46, 1.0],
                   ),
                 ),
               ),
-              Positioned(
-                left: 12,
-                right: 12,
-                top: 12,
-                child: Row(
-                  children: [
-                    if (item.type != null && item.type!.isNotEmpty)
-                      _buildRelatedBadge(item.type!),
-                    const Spacer(),
-                    if (score != null && score > 0)
-                      _buildRelatedBadge(
-                        score.toStringAsFixed(1),
-                        icon: CupertinoIcons.star_fill,
-                        color: const Color(0xFFFFD66B),
-                      ),
-                  ],
+              if (score != null && score > 0)
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: _buildRelatedBadge(
+                    score.toStringAsFixed(1),
+                    icon: CupertinoIcons.star_fill,
+                    color: const Color(0xFFFFD66B),
+                  ),
                 ),
-              ),
               Positioned(
-                left: 12,
-                right: 12,
-                bottom: 12,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                left: 11,
+                right: 11,
+                bottom: 11,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (posterUrl != null) ...[
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: CachedImage(
-                          imageUrl: posterUrl,
-                          fit: BoxFit.cover,
-                          width: 48,
-                          height: 68,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                    ],
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          if (year.isNotEmpty) ...[
-                            const SizedBox(height: 3),
-                            Text(
-                              year,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.70),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                          if (overview.isNotEmpty) ...[
-                            const SizedBox(height: 5),
-                            Text(
-                              overview,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.76),
-                                fontSize: 12,
-                                height: 1.25,
-                              ),
-                            ),
-                          ],
-                        ],
+                    Text(
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        height: 1.12,
                       ),
                     ),
+                    if (year.isNotEmpty) ...[
+                      const SizedBox(height: 5),
+                      Text(
+                        year,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.70),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -1577,9 +1563,10 @@ class MediaDetailPage extends GetWidget<MediaDetailController> {
 
   Widget _buildRelatedCardPlaceholder() {
     return SizedBox(
-      width: 268,
+      width: 135,
+      height: 240,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(18),
         child: Container(color: Colors.white.withValues(alpha: 0.10)),
       ),
     );
