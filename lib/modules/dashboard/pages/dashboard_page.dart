@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -27,7 +26,6 @@ import 'package:moviepilot_mobile/modules/recognize/controllers/recognize_contro
 import 'package:moviepilot_mobile/modules/recognize/pages/recognize_page.dart';
 import 'package:moviepilot_mobile/modules/system_message/controllers/system_message_controller.dart';
 
-import 'package:moviepilot_mobile/modules/login/models/login_profile.dart';
 import 'package:moviepilot_mobile/services/app_service.dart';
 import 'package:moviepilot_mobile/utils/open_url.dart';
 import 'package:moviepilot_mobile/utils/size_formatter.dart';
@@ -939,8 +937,22 @@ class DashboardPage extends GetView<DashboardController> {
     }
     Get.put(RecognizeController());
     await showModalBottomSheet<void>(
+      isScrollControlled: true,
+      useSafeArea: true,
+      isDismissible: true,
+      showDragHandle: false,
+      backgroundColor: Colors.transparent,
       context: context,
-      builder: (_) => const RecognizePage(),
+      builder: (_) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.92,
+        minChildSize: 0.36,
+        maxChildSize: 1,
+        builder: (context, scrollController) => ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          child: RecognizePage(scrollController: scrollController),
+        ),
+      ),
     );
     if (Get.isRegistered<RecognizeController>()) {
       Get.delete<RecognizeController>();
@@ -954,8 +966,22 @@ class DashboardPage extends GetView<DashboardController> {
     }
     Get.put(NetworkTestController());
     await showModalBottomSheet<void>(
+      isScrollControlled: true,
+      useSafeArea: true,
+      isDismissible: true,
+      showDragHandle: false,
+      backgroundColor: Colors.transparent,
       context: context,
-      builder: (_) => const NetworkTestPage(),
+      builder: (_) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.92,
+        minChildSize: 0.36,
+        maxChildSize: 1,
+        builder: (context, scrollController) => ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          child: NetworkTestPage(scrollController: scrollController),
+        ),
+      ),
     );
     if (Get.isRegistered<NetworkTestController>()) {
       Get.delete<NetworkTestController>();
@@ -969,8 +995,19 @@ class DashboardPage extends GetView<DashboardController> {
     }
     Get.put(SystemHealthController());
     await showModalBottomSheet<void>(
+      isScrollControlled: true,
+      useSafeArea: true,
+      isDismissible: true,
+      showDragHandle: false,
+      backgroundColor: Colors.transparent,
       context: context,
-      builder: (_) => const SystemHealthPage(),
+      builder: (_) => const FractionallySizedBox(
+        heightFactor: 0.92,
+        child: ClipRRect(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          child: SystemHealthPage(),
+        ),
+      ),
     );
     if (Get.isRegistered<SystemHealthController>()) {
       Get.delete<SystemHealthController>();
