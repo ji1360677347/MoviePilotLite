@@ -23,6 +23,7 @@ dependencies:
   flutter_cache_manager: ^3.4.1
   flutter_svg: ^2.0.10+1
   flutter_markdown: ^0.7.7+1
+  flutter_markdown_plus: ^1.0.7
   talker: ^5.1.13
   talker_flutter: ^5.1.13
   talker_dio_logger: ^5.1.13

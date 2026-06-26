@@ -103,10 +103,10 @@ If needed, you can further use the `web_scraper.py` file to scrape the web page 
 
 ## Done: 下载 startDownload — API detail 为 List 时 ToastUtil.error 类型错误（_downloadApiErrorMessage）
 
-## Current Task: GitHub Issue #74 子用户权限
+## Current Task: Session 本地化缓存
 
-[X] 拆分资源搜索(search) vs TMDB/豆瓣目录搜索(media-search-list)
-[X] 订阅写操作统一校验 subscribe 权限
-[X] 系统消息仅超级管理员可访问/轮询
-
-Previous: Dashboard 页面编辑功能（暂缓）
+[X] AgentLocalCache (SharedPreferences)
+[X] models toJson
+[X] Controller 内存+磁盘缓存、切换 session 先展示本地、API 空保留本地
+[X] start 事件 session key 迁移
+[X] 测试

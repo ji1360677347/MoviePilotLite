@@ -1,12 +1,10 @@
-import 'dart:typed_data';
+import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
-import 'package:get/get.dart';
-import 'package:moviepilot_mobile/services/api_client.dart';
 import 'package:moviepilot_mobile/utils/image_cache_manager.dart';
 import 'package:moviepilot_mobile/utils/image_request_headers.dart';
 
@@ -72,17 +70,19 @@ class CachedImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final manager = cacheManager ?? AppImageCacheManager.instance;
     if (kIsWeb) {
       return CachedNetworkImage(
         imageUrl: imageUrl,
         width: width,
         height: height,
         fit: fit,
-        cacheManager: cacheManager ?? AppImageCacheManager.instance,
+        cacheManager: manager,
         memCacheWidth: memCacheWidth,
         memCacheHeight: memCacheHeight,
         fadeInDuration: fadeInDuration,
         fadeOutDuration: fadeOutDuration,
+        errorListener: (_) {},
         errorWidget: (context, url, error) {
           return errorWidget ?? _buildDefaultErrorWidget(error);
         },
@@ -101,11 +101,12 @@ class CachedImage extends StatelessWidget {
       width: width,
       height: height,
       fit: fit,
-      cacheManager: cacheManager ?? AppImageCacheManager.instance,
+      cacheManager: manager,
       memCacheWidth: memCacheWidth,
       memCacheHeight: memCacheHeight,
       fadeInDuration: fadeInDuration,
       fadeOutDuration: fadeOutDuration,
+      errorListener: (_) => _evictBrokenImage(manager, cacheKey),
       errorWidget: (context, url, error) {
         return errorWidget ?? _buildDefaultErrorWidget(error);
       },
@@ -119,6 +120,11 @@ class CachedImage extends StatelessWidget {
     }
 
     return imageWidget;
+  }
+
+  void _evictBrokenImage(CacheManager manager, String cacheKey) {
+    if (cacheKey.isEmpty) return;
+    unawaited(manager.removeFile(cacheKey).catchError((_) {}));
   }
 
   /// 构建进度指示器（iOS 风格）
