@@ -55,7 +55,7 @@ class ParsedReleaseVersion {
 
   static ParsedReleaseVersion fromText(String text) {
     final match = RegExp(
-      r'v?(\d+(?:\.\d+){0,3})(?:[+\-](\d+))?',
+      r'v?(\d+(?:\.\d+){0,3})(?:\+(\d+))?',
       caseSensitive: false,
     ).firstMatch(text);
     if (match == null) {
