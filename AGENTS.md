@@ -1,6 +1,7 @@
 # Agent 公约
 
 ## Flutter 页面结构
+- 涉及 Flutter/Dart 页面、组件、布局、状态、路由、构建或分析的任务，默认优先使用 `/flutter skill`；除非用户明确指定其他 skill 或任务与 Flutter 无关。
 - 页面根布局使用 `Scaffold`，顶栏使用 `appBar`（默认 `AppBar`；若需 iOS 导航栏外观，可将 `CupertinoNavigationBar` 等实现 `PreferredSizeWidget` 的组件赋给 `appBar`），主内容一律放在 `body`。
 - 新增页面不要用 `CupertinoPageScaffold` 作为整页根；与上述结构不一致的存量页可在改动时顺带收敛。
 

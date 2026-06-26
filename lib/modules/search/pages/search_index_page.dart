@@ -6,13 +6,11 @@ import 'package:moviepilot_mobile/modules/recommend/controllers/recommend_contro
 import 'package:moviepilot_mobile/modules/recommend/models/recommend_api_item.dart';
 import 'package:moviepilot_mobile/modules/recommend/widgets/recommend_category_item_card.dart';
 import 'package:moviepilot_mobile/services/app_service.dart';
-import 'package:moviepilot_mobile/theme/section.dart';
 import 'package:moviepilot_mobile/utils/http_path_builder_util.dart';
 import 'package:moviepilot_mobile/utils/image_util.dart';
 import 'package:moviepilot_mobile/utils/toast_util.dart';
 import 'package:moviepilot_mobile/widgets/cached_image.dart';
 import 'package:moviepilot_mobile/widgets/constrained_page_content.dart';
-import 'package:moviepilot_mobile/widgets/section_header.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
 import '../controllers/search_index_controller.dart';
@@ -172,183 +170,158 @@ class SearchIndexPage extends GetView<SearchIndexController> {
     const barH = 52.0;
     const radius = 26.0;
     final textFontSize = theme.textTheme.bodyMedium?.fontSize ?? 14.0;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(radius),
-          child: Container(
-            height: barH,
-            decoration: BoxDecoration(
-              color: colorScheme.surface.withValues(
-                alpha: theme.brightness == Brightness.dark ? 0.62 : 0.94,
-              ),
-              borderRadius: BorderRadius.circular(radius),
-              border: Border.all(
-                color: controller.focusNode.hasFocus
-                    ? colorScheme.primary.withValues(alpha: 0.45)
-                    : colorScheme.outlineVariant.withValues(alpha: 0.72),
-                width: controller.focusNode.hasFocus ? 1.2 : 1,
-              ),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  child: CupertinoTextField(
-                    controller: controller.textController,
-                    focusNode: controller.focusNode,
-                    decoration: const BoxDecoration(color: Colors.transparent),
-                    placeholder: '搜索媒体 / 订阅 / 站点资源',
-                    placeholderStyle: TextStyle(
-                      color: colorScheme.onSurfaceVariant.withValues(
-                        alpha: 0.78,
-                      ),
-                      fontSize: textFontSize,
-                      fontWeight: FontWeight.w400,
+    return RawAutocomplete<SearchInputPick>(
+      textEditingController: controller.textController,
+      focusNode: controller.focusNode,
+      displayStringForOption: (option) => option.keyword,
+      optionsBuilder: (textEditingValue) =>
+          controller.historyInputSuggestionsFor(textEditingValue.text),
+      onSelected: controller.applyHistorySuggestion,
+      fieldViewBuilder:
+          (context, textEditingController, focusNode, onFieldSubmitted) {
+            return Obx(() {
+              final hasFocus = controller.hasSearchFocus.value;
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(radius),
+                child: Container(
+                  height: barH,
+                  decoration: BoxDecoration(
+                    color: colorScheme.surface.withValues(
+                      alpha: theme.brightness == Brightness.dark ? 0.62 : 0.94,
                     ),
-                    style: TextStyle(
-                      color: colorScheme.onSurface,
-                      fontSize: textFontSize,
-                      fontWeight: FontWeight.w400,
+                    borderRadius: BorderRadius.circular(radius),
+                    border: Border.all(
+                      color: hasFocus
+                          ? colorScheme.primary.withValues(alpha: 0.45)
+                          : colorScheme.outlineVariant.withValues(alpha: 0.72),
+                      width: hasFocus ? 1.2 : 1,
                     ),
-                    prefix: Padding(
-                      padding: const EdgeInsetsDirectional.only(
-                        start: 12,
-                        end: 6,
-                      ),
-                      child: Icon(
-                        CupertinoIcons.search,
-                        size: 18,
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    prefixMode: OverlayVisibilityMode.always,
-                    suffix: Obx(() {
-                      if (controller.keyword.value.isEmpty) {
-                        return const SizedBox.shrink();
-                      }
-                      return Padding(
-                        padding: const EdgeInsetsDirectional.only(end: 8),
-                        child: Semantics(
-                          button: true,
-                          label: '清除搜索内容',
-                          child: CupertinoButton(
-                            minimumSize: const Size.square(32),
-                            padding: EdgeInsets.zero,
-                            onPressed: controller.textController.clear,
-                            child: Container(
-                              width: 24,
-                              height: 24,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: colorScheme.onSurface.withValues(
-                                  alpha: theme.brightness == Brightness.dark
-                                      ? 0.12
-                                      : 0.08,
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: CupertinoTextField(
+                          controller: textEditingController,
+                          focusNode: focusNode,
+                          decoration: const BoxDecoration(
+                            color: Colors.transparent,
+                          ),
+                          placeholder: '搜索媒体 / 订阅 / 站点资源',
+                          placeholderStyle: TextStyle(
+                            color: colorScheme.onSurfaceVariant.withValues(
+                              alpha: 0.78,
+                            ),
+                            fontSize: textFontSize,
+                            fontWeight: FontWeight.w400,
+                          ),
+                          style: TextStyle(
+                            color: colorScheme.onSurface,
+                            fontSize: textFontSize,
+                            fontWeight: FontWeight.w400,
+                          ),
+                          prefix: Padding(
+                            padding: const EdgeInsetsDirectional.only(
+                              start: 12,
+                              end: 6,
+                            ),
+                            child: Icon(
+                              CupertinoIcons.search,
+                              size: 18,
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          prefixMode: OverlayVisibilityMode.always,
+                          suffix: Obx(() {
+                            if (controller.keyword.value.isEmpty) {
+                              return const SizedBox.shrink();
+                            }
+                            return Padding(
+                              padding: const EdgeInsetsDirectional.only(end: 8),
+                              child: Semantics(
+                                button: true,
+                                label: '清除搜索内容',
+                                child: CupertinoButton(
+                                  minimumSize: const Size.square(32),
+                                  padding: EdgeInsets.zero,
+                                  onPressed: textEditingController.clear,
+                                  child: Container(
+                                    width: 24,
+                                    height: 24,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: colorScheme.onSurface.withValues(
+                                        alpha:
+                                            theme.brightness == Brightness.dark
+                                            ? 0.12
+                                            : 0.08,
+                                      ),
+                                    ),
+                                    child: Icon(
+                                      CupertinoIcons.xmark,
+                                      size: 12,
+                                      color: colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
                                 ),
                               ),
+                            );
+                          }),
+                          suffixMode: OverlayVisibilityMode.always,
+                          padding: const EdgeInsetsDirectional.only(
+                            top: 10,
+                            bottom: 10,
+                            end: 12,
+                          ),
+                          cursorColor: colorScheme.primary,
+                          onChanged: (value) =>
+                              controller.keyword.value = value,
+                          onSubmitted: controller.submit,
+                        ),
+                      ),
+                      VerticalDivider(
+                        width: 1,
+                        thickness: 1,
+                        indent: 12,
+                        endIndent: 12,
+                        color: colorScheme.outlineVariant.withValues(
+                          alpha: 0.72,
+                        ),
+                      ),
+                      Obx(() {
+                        final enabled =
+                            Get.find<AppService>().showSearchButton.value;
+                        if (!enabled) return const SizedBox.shrink();
+
+                        return InkWell(
+                          onTap: () => controller.submit(),
+                          child: SizedBox(
+                            width: 48,
+                            height: barH,
+                            child: Center(
                               child: Icon(
-                                CupertinoIcons.xmark,
-                                size: 12,
-                                color: colorScheme.onSurfaceVariant,
+                                Icons.search_rounded,
+                                size: 22,
+                                color: colorScheme.primary.withValues(
+                                  alpha: 0.95,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      );
-                    }),
-                    suffixMode: OverlayVisibilityMode.always,
-                    padding: const EdgeInsetsDirectional.only(
-                      top: 10,
-                      bottom: 10,
-                      end: 12,
-                    ),
-                    cursorColor: colorScheme.primary,
-                    onChanged: (value) => controller.keyword.value = value,
-                    onSubmitted: controller.submit,
+                        );
+                      }),
+                    ],
                   ),
                 ),
-                VerticalDivider(
-                  width: 1,
-                  thickness: 1,
-                  indent: 12,
-                  endIndent: 12,
-                  color: colorScheme.outlineVariant.withValues(alpha: 0.72),
-                ),
-                Obx(() {
-                  final enabled = Get.find<AppService>().showSearchButton.value;
-                  if (!enabled) return const SizedBox.shrink();
-
-                  return InkWell(
-                    onTap: () => controller.submit(),
-                    child: SizedBox(
-                      width: 48,
-                      height: barH,
-                      child: Center(
-                        child: Icon(
-                          Icons.search_rounded,
-                          size: 22,
-                          color: colorScheme.primary.withValues(alpha: 0.95),
-                        ),
-                      ),
-                    ),
-                  );
-                }),
-              ],
-            ),
-          ),
-        ),
-        Obx(() {
-          if (!controller.hasSearchFocus.value) {
-            return const SizedBox.shrink();
-          }
-          final suggestions = controller.historyInputSuggestions;
-          if (suggestions.isEmpty) return const SizedBox.shrink();
-          return Padding(
-            padding: const EdgeInsets.only(top: 10),
-            child: Material(
-              color: colorScheme.surface,
-              borderRadius: BorderRadius.circular(20),
-              elevation: 8,
-              shadowColor: Colors.black.withValues(alpha: 0.2),
-              child: ListView.separated(
-                padding: EdgeInsets.zero,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: suggestions.length,
-                separatorBuilder: (_, __) => Divider(
-                  height: 1,
-                  thickness: 1,
-                  color: colorScheme.outline.withValues(alpha: 0.08),
-                ),
-                itemBuilder: (context, index) {
-                  final e = suggestions[index];
-                  return InkWell(
-                    onTap: () => controller.submit(e.keyword),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 12,
-                      ),
-                      child: Text(
-                        e.keyword,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w300,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          );
-        }),
-      ],
+              );
+            });
+          },
+      optionsViewBuilder: (context, onSelected, options) {
+        return _SearchInputOptionsView(
+          options: options.toList(growable: false),
+          onSelected: onSelected,
+        );
+      },
     );
   }
 
@@ -640,148 +613,458 @@ class SearchIndexPage extends GetView<SearchIndexController> {
     final mediaSuggestions = controller.mediaSuggestionItems;
     final siteSuggestions = controller.siteSuggestionItems;
     final historyItems = controller.localHistorySuggestionItems;
-    const bottomPad = 16.0;
-
-    final out = <Widget>[];
-
-    void addSection(Widget section) {
-      out.add(Padding(padding: const EdgeInsets.only(bottom: bottomPad), child: section));
-    }
+    final groups = <_SearchSuggestionGroup>[];
 
     if (mediaSuggestions.isNotEmpty) {
-      addSection(
-        Section(
-          color: Theme.of(context).colorScheme.surface,
-          header: SectionHeader(title: '媒体推荐'),
-          child: _buildSuggestionSection(
-            context,
-            title: '媒体推荐',
-            items: mediaSuggestions,
-          ),
+      groups.add(
+        _SearchSuggestionGroup(
+          title: '媒体推荐',
+          subtitle: '片名、合集、演员、分享与订阅',
+          icon: CupertinoIcons.film,
+          color: const Color(0xFF2563EB),
+          items: mediaSuggestions,
         ),
       );
     }
     if (siteSuggestions.isNotEmpty) {
-      addSection(
-        Section(
-          color: Theme.of(context).colorScheme.surface,
-          header: SectionHeader(title: '站点资源'),
-          child: _buildSuggestionSection(
-            context,
-            title: '站点资源',
-            items: siteSuggestions,
-          ),
+      groups.add(
+        _SearchSuggestionGroup(
+          title: '站点资源',
+          subtitle: '跨站点检索资源结果',
+          icon: CupertinoIcons.globe,
+          color: const Color(0xFF0EA5E9),
+          items: siteSuggestions,
         ),
       );
     }
     if (historyItems.isNotEmpty) {
-      addSection(
-        Section(
-          color: Theme.of(context).colorScheme.surface,
-          header: SectionHeader(title: '整理历史'),
-          child: _buildSuggestionSection(
-            context,
-            title: '整理历史',
-            items: historyItems,
-          ),
+      groups.add(
+        _SearchSuggestionGroup(
+          title: '整理历史',
+          subtitle: '从本地记录继续整理',
+          icon: CupertinoIcons.clock,
+          color: const Color(0xFF7C3AED),
+          items: historyItems,
         ),
       );
     }
 
-    return out;
+    if (groups.isEmpty) return [const SizedBox(height: 12)];
+
+    return [
+      _buildSearchMethodPanel(context, groups),
+      const SizedBox(height: 8),
+    ];
   }
 
   double _scrollBottomInset(BuildContext context) {
     return MediaQuery.viewPaddingOf(context).bottom + _scrollBottomGap;
   }
 
-  Widget _buildSuggestionSection(
+  Widget _buildSearchMethodPanel(
+    BuildContext context,
+    List<_SearchSuggestionGroup> groups,
+  ) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final keyword = controller.keyword.value.trim();
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colorScheme.surface.withValues(alpha: isDark ? 0.72 : 0.98),
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(
+            alpha: isDark ? 0.34 : 0.70,
+          ),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.06),
+            blurRadius: 22,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < groups.length; i++) ...[
+            if (i > 0) const SizedBox(height: 16),
+            _buildSearchMethodGroup(context, group: groups[i]),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchMethodGroup(
     BuildContext context, {
-    required String title,
-    required List<SearchSuggestionItem> items,
+    required _SearchSuggestionGroup group,
   }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (items.isEmpty)
-          const _EmptyState(title: '暂无内容', subtitle: '尝试输入其他关键字')
-        else
-          ...List.generate(items.length * 2 - 1, (index) {
-            if (index.isOdd) {
-              return Divider(
-                height: 0.5,
-                thickness: 0.5,
-                color: Theme.of(
-                  context,
-                ).colorScheme.outlineVariant.withValues(alpha: 0.7),
-              );
-            }
-            final item = items[index ~/ 2];
-            return _SuggestionTile(
-              item: item,
-              onTap: () {
-                controller.fillKeyword(item.keyword, focus: false);
-                controller.openMediaSearch(item.keyword, suggestion: item);
-              },
+        Row(
+          children: [
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: group.color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(group.icon, size: 15, color: group.color),
+            ),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    group.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                  Text(
+                    group.subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              '${group.items.length}',
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            const spacing = 10.0;
+            final useTwoColumn =
+                constraints.maxWidth >= 560 && group.items.length > 1;
+            final itemWidth = useTwoColumn
+                ? (constraints.maxWidth - spacing) / 2
+                : constraints.maxWidth;
+            return Wrap(
+              spacing: spacing,
+              runSpacing: spacing,
+              children: [
+                for (final item in group.items)
+                  SizedBox(
+                    width: itemWidth,
+                    child: _SuggestionTile(
+                      item: item,
+                      icon: _suggestionIcon(item.category),
+                      accentColor: group.color,
+                      compact: useTwoColumn,
+                      onTap: () {
+                        controller.fillKeyword(item.keyword, focus: false);
+                        controller.openMediaSearch(
+                          item.keyword,
+                          suggestion: item,
+                        );
+                      },
+                    ),
+                  ),
+              ],
             );
-          }),
+          },
+        ),
       ],
+    );
+  }
+
+  IconData _suggestionIcon(SearchSuggestionCategory category) {
+    switch (category) {
+      case SearchSuggestionCategory.mediaTitle:
+        return CupertinoIcons.search;
+      case SearchSuggestionCategory.mediaCollection:
+        return CupertinoIcons.square_stack_3d_up;
+      case SearchSuggestionCategory.actor:
+        return CupertinoIcons.person_2;
+      case SearchSuggestionCategory.share:
+        return CupertinoIcons.arrowshape_turn_up_right;
+      case SearchSuggestionCategory.history:
+        return CupertinoIcons.clock;
+      case SearchSuggestionCategory.subscription:
+        return CupertinoIcons.heart;
+      case SearchSuggestionCategory.site:
+        return CupertinoIcons.globe;
+    }
+  }
+}
+
+class _SearchSuggestionGroup {
+  const _SearchSuggestionGroup({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+    required this.items,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+  final List<SearchSuggestionItem> items;
+}
+
+class _SearchInputOptionsView extends StatelessWidget {
+  const _SearchInputOptionsView({
+    required this.options,
+    required this.onSelected,
+  });
+
+  final List<SearchInputPick> options;
+  final AutocompleteOnSelected<SearchInputPick> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final size = MediaQuery.sizeOf(context);
+    final horizontal = size.width > ConstrainedPageContent.wideBreakpoint
+        ? 24.0
+        : 16.0;
+    final maxWidth = size.width > ConstrainedPageContent.wideBreakpoint
+        ? ConstrainedPageContent.maxWidth
+        : size.width - horizontal * 2;
+    final width = (size.width - horizontal * 2).clamp(0.0, maxWidth);
+
+    return Align(
+      alignment: Alignment.topLeft,
+      child: Padding(
+        padding: const EdgeInsets.only(top: 10),
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            width: width,
+            constraints: const BoxConstraints(maxHeight: 320),
+            decoration: BoxDecoration(
+              color: colorScheme.surface.withValues(alpha: isDark ? 0.96 : 1),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: colorScheme.outlineVariant.withValues(
+                  alpha: isDark ? 0.26 : 0.70,
+                ),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.14),
+                  blurRadius: 24,
+                  offset: const Offset(0, 14),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(22),
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                shrinkWrap: true,
+                itemCount: options.length,
+                separatorBuilder: (_, __) => Divider(
+                  height: 1,
+                  thickness: 1,
+                  indent: 52,
+                  color: colorScheme.outline.withValues(alpha: 0.08),
+                ),
+                itemBuilder: (context, index) {
+                  final option = options[index];
+                  final highlighted =
+                      AutocompleteHighlightedOption.of(context) == index;
+                  return _SearchInputOptionTile(
+                    option: option,
+                    highlighted: highlighted,
+                    onTap: () => onSelected(option),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
 
-class _SuggestionTile extends StatelessWidget {
-  const _SuggestionTile({required this.item, required this.onTap});
+class _SearchInputOptionTile extends StatelessWidget {
+  const _SearchInputOptionTile({
+    required this.option,
+    required this.highlighted,
+    required this.onTap,
+  });
 
-  final SearchSuggestionItem item;
+  final SearchInputPick option;
+  final bool highlighted;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final titleStyle = theme.textTheme.bodyMedium!;
-    final highlightStyle = titleStyle.copyWith(
-      color: theme.colorScheme.primary,
-      fontWeight: FontWeight.w600,
-    );
+    final colorScheme = theme.colorScheme;
+    final isHistory = option.sourceEntry != null;
     return InkWell(
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Container(
+        color: highlighted
+            ? colorScheme.primary.withValues(alpha: 0.08)
+            : Colors.transparent,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+        child: Row(
+          children: [
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: colorScheme.primary.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(11),
+              ),
+              child: Icon(
+                isHistory ? CupertinoIcons.clock : CupertinoIcons.search,
+                size: 15,
+                color: colorScheme.primary,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                option.keyword,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(
+              CupertinoIcons.arrow_up_left,
+              size: 14,
+              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.78),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SuggestionTile extends StatelessWidget {
+  const _SuggestionTile({
+    required this.item,
+    required this.icon,
+    required this.accentColor,
+    required this.onTap,
+    this.compact = false,
+  });
+
+  final SearchSuggestionItem item;
+  final IconData icon;
+  final Color accentColor;
+  final VoidCallback onTap;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final titleStyle = theme.textTheme.bodyMedium!;
+    final highlightStyle = titleStyle.copyWith(
+      color: accentColor,
+      fontWeight: FontWeight.w800,
+    );
+    return InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: onTap,
+      child: Container(
+        constraints: BoxConstraints(minHeight: compact ? 86 : 78),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest.withValues(
+            alpha: isDark ? 0.30 : 0.46,
+          ),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: colorScheme.outlineVariant.withValues(
+              alpha: isDark ? 0.20 : 0.62,
+            ),
+          ),
+        ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const SizedBox(width: 12),
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: accentColor.withValues(alpha: isDark ? 0.18 : 0.12),
+                borderRadius: BorderRadius.circular(13),
+              ),
+              child: Icon(icon, size: 18, color: accentColor),
+            ),
+            const SizedBox(width: 11),
             Expanded(
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  RichText(
-                    text: TextSpan(
+                  Text.rich(
+                    TextSpan(
                       children: _highlightSpans(
                         item.title,
                         item.keyword,
-                        titleStyle,
+                        titleStyle.copyWith(
+                          color: colorScheme.onSurface,
+                          fontWeight: FontWeight.w700,
+                        ),
                         highlightStyle,
                       ),
                     ),
+                    maxLines: compact ? 1 : 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   if (item.subtitle != null) ...[
                     const SizedBox(height: 4),
                     Text(
                       item.subtitle!,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+                        color: colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w500,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ],
               ),
             ),
+            const SizedBox(width: 8),
             Icon(
               CupertinoIcons.chevron_right,
               size: 16,
-              color: theme.colorScheme.outline,
+              color: colorScheme.outline,
             ),
           ],
         ),
@@ -821,40 +1104,5 @@ class _SuggestionTile extends StatelessWidget {
       spans.add(TextSpan(text: text.substring(start), style: base));
     }
     return spans;
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.title, required this.subtitle});
-
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return SizedBox(
-      width: double.infinity,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: theme.colorScheme.onSurface,
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            subtitle,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.6),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
