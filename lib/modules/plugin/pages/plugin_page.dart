@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -12,6 +10,7 @@ import 'package:moviepilot_mobile/modules/plugin/widgets/plugin_center_widgets.d
 import 'package:moviepilot_mobile/utils/image_util.dart';
 import 'package:moviepilot_mobile/utils/open_url.dart';
 import 'package:moviepilot_mobile/utils/toast_util.dart';
+import 'package:moviepilot_mobile/widgets/glass_search_floating_bar.dart';
 
 class PluginPage extends GetView<PluginController> {
   const PluginPage({super.key});
@@ -20,10 +19,11 @@ class PluginPage extends GetView<PluginController> {
   static const double _itemWidth = 250;
   static const double _horizontalPadding = 16;
   static const double _gridSpacing = 12;
-  static const double _floatingBarHeight = 52;
 
   double _bottomInset(BuildContext context) {
-    return _floatingBarHeight + 24 + MediaQuery.paddingOf(context).bottom;
+    return GlassSearchFloatingBar.height +
+        24 +
+        MediaQuery.paddingOf(context).bottom;
   }
 
   @override
@@ -83,7 +83,13 @@ class PluginPage extends GetView<PluginController> {
         ],
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: _buildFloatingBar(context),
+      floatingActionButton: Obx(
+        () => GlassSearchFloatingBar(
+          keyword: controller.keyword.value,
+          onKeywordSubmitted: controller.updateKeyword,
+          searchPlaceholder: '搜索已安装插件名称、描述、作者…',
+        ),
+      ),
       body: RefreshIndicator(
         onRefresh: controller.load,
         child: Stack(
@@ -117,123 +123,6 @@ class PluginPage extends GetView<PluginController> {
         icon: Icons.extension_rounded,
       );
     });
-  }
-
-  Widget _buildFloatingBar(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: cs.outline.withValues(alpha: 0.1),
-            width: 0.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 20,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(999),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 90, sigmaY: 90),
-            child: Container(
-              height: _floatingBarHeight,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              color: cs.surface.withValues(alpha: 0.55),
-              alignment: Alignment.center,
-              child: _buildFakeSearchBar(context),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFakeSearchBar(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return GestureDetector(
-      onTap: () => _openKeywordSheet(context),
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        height: 36,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(999),
-          color: cs.onSurface.withValues(alpha: 0.06),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              CupertinoIcons.search,
-              size: 18,
-              color: cs.onSurface.withValues(alpha: 0.55),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Obx(
-                () => Text(
-                  controller.keyword.value.isEmpty
-                      ? '搜索已安装插件名称、描述、作者…'
-                      : controller.keyword.value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: controller.keyword.value.isEmpty
-                        ? cs.onSurface.withValues(alpha: 0.45)
-                        : cs.onSurface.withValues(alpha: 0.88),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _openKeywordSheet(BuildContext context) async {
-    final textController = TextEditingController(
-      text: controller.keyword.value,
-    );
-    final submitted = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        final bottom = MediaQuery.viewInsetsOf(ctx).bottom;
-        return Padding(
-          padding: EdgeInsets.only(bottom: bottom),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-            decoration: BoxDecoration(
-              color: CupertinoDynamicColor.resolve(
-                CupertinoColors.systemBackground,
-                ctx,
-              ),
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(18),
-              ),
-            ),
-            child: CupertinoSearchTextField(
-              controller: textController,
-              autofocus: true,
-              placeholder: '搜索已安装插件名称、描述、作者…',
-              onSubmitted: (v) => Navigator.of(ctx).pop(v),
-            ),
-          ),
-        );
-      },
-    );
-    textController.dispose();
-    if (submitted == null) return;
-    controller.updateKeyword(submitted);
   }
 
   Future<void> _openRepoInstallSheet(BuildContext context) {
