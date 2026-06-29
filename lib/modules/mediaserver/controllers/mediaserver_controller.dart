@@ -395,6 +395,22 @@ class MediaServerController extends GetxController {
     await loadLatestMediaList(enabledServers.first.name);
   }
 
+  /// 刷新正在播放的媒体
+  Future<void> refreshPlayingMedia() async {
+    final enabledServers = mediaServers.value.where((server) => server.enabled);
+    if (mediaServers.value.isEmpty) {
+      talker.warning('没有可用的媒体服务器');
+      playingMedia.value = null;
+      return;
+    }
+    if (enabledServers.isEmpty) {
+      talker.warning('没有启用的媒体服务器');
+      playingMedia.value = null;
+      return;
+    }
+    await loadPlayingMedia(enabledServers.first.name);
+  }
+
   /// 加载正在播放的媒体
   Future<void> loadPlayingMedia(String serverName) async {
     try {

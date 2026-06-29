@@ -11,10 +11,10 @@ import 'package:moviepilot_mobile/widgets/cached_image.dart';
 class RecentlyAddedWidget extends StatelessWidget {
   const RecentlyAddedWidget({super.key});
 
-  static const int _previewLimit = 10;
+  static const int _previewLimit = 9;
+  static const double _narrowBreakpoint = 600;
 
   static Future<void> showAllSheet(BuildContext context) {
-    final mediaServerController = Get.find<MediaServerController>();
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -22,11 +22,7 @@ class RecentlyAddedWidget extends StatelessWidget {
       builder: (sheetContext) {
         return ClipRRect(
           borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
-          child: Obx(
-            () => _RecentlyAddedSheet(
-              items: mediaServerController.latestMediaList.value,
-            ),
-          ),
+          child: const _RecentlyAddedSheet(),
         );
       },
     );
@@ -49,7 +45,7 @@ class RecentlyAddedWidget extends StatelessWidget {
           final width = constraints.maxWidth;
           final mediaItems = latestMediaList.value;
           final previewItems = mediaItems.take(_previewLimit).toList();
-          final grid = width < 600
+          final grid = width < _narrowBreakpoint
               ? _buildCompactGrid(width, previewItems)
               : _buildWideGrid(width, previewItems);
           if (mediaItems.length <= _previewLimit) return grid;
@@ -81,9 +77,11 @@ class RecentlyAddedWidget extends StatelessWidget {
   Widget _buildCompactGrid(double width, List<LatestMedia> mediaItems) {
     const gap = 8.0;
     const horizontalPadding = 6.0;
-    final itemWidth = (width - horizontalPadding * 2 - gap) / 2;
+    const columnCount = 3;
+    final itemWidth =
+        (width - horizontalPadding * 2 - gap * (columnCount - 1)) / columnCount;
     final itemHeight = itemWidth * 1.32;
-    final rowCount = (mediaItems.length / 2).ceil();
+    final rowCount = (mediaItems.length / columnCount).ceil();
     final totalHeight = rowCount * itemHeight + (rowCount - 1) * gap;
 
     return Padding(
@@ -99,16 +97,17 @@ class RecentlyAddedWidget extends StatelessWidget {
                   children: [
                     for (
                       var columnIndex = 0;
-                      columnIndex < 2;
+                      columnIndex < columnCount;
                       columnIndex++
                     ) ...[
                       Expanded(
                         child: _CompactGridSlot(
                           items: mediaItems,
-                          index: rowIndex * 2 + columnIndex,
+                          index: rowIndex * columnCount + columnIndex,
                         ),
                       ),
-                      if (columnIndex == 0) const SizedBox(width: gap),
+                      if (columnIndex != columnCount - 1)
+                        const SizedBox(width: gap),
                     ],
                   ],
                 ),
@@ -218,14 +217,30 @@ class _CompactGridSlot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (index >= items.length) return const SizedBox.shrink();
-    return _PosterCard(media: items[index]);
+    return _PosterCard(media: items[index], compact: true);
   }
 }
 
-class _RecentlyAddedSheet extends StatelessWidget {
-  const _RecentlyAddedSheet({required this.items});
+class _RecentlyAddedSheet extends StatefulWidget {
+  const _RecentlyAddedSheet();
 
-  final List<LatestMedia> items;
+  @override
+  State<_RecentlyAddedSheet> createState() => _RecentlyAddedSheetState();
+}
+
+class _RecentlyAddedSheetState extends State<_RecentlyAddedSheet> {
+  bool _isRefreshing = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _refresh());
+  }
+
+  Future<void> _refresh() async {
+    await Get.find<MediaServerController>().refreshLatestMediaList();
+    if (mounted) setState(() => _isRefreshing = false);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -238,92 +253,129 @@ class _RecentlyAddedSheet extends StatelessWidget {
         top: false,
         child: SizedBox(
           height: MediaQuery.sizeOf(context).height * 0.86,
-          child: Column(
-            children: [
-              const SizedBox(height: 10),
-              Container(
-                width: 42,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: palette.divider,
-                  borderRadius: BorderRadius.circular(999),
+          child: Obx(() {
+            final items =
+                Get.find<MediaServerController>().latestMediaList.value;
+            return Column(
+              children: [
+                const SizedBox(height: 10),
+                Container(
+                  width: 42,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: palette.divider,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 18, 16, 14),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '全部新增',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                              color: palette.titleText,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 18, 16, 14),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '全部新增',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                color: palette.titleText,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${items.length} 个媒体项目',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: palette.mutedText,
+                            const SizedBox(height: 4),
+                            Text(
+                              _isRefreshing && items.isEmpty
+                                  ? '正在加载...'
+                                  : '${items.length} 个媒体项目',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: palette.mutedText,
+                              ),
                             ),
+                          ],
+                        ),
+                      ),
+                      if (_isRefreshing)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: CupertinoActivityIndicator(
+                            color: palette.primary,
                           ),
-                        ],
+                        ),
+                      CupertinoButton(
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(36, 36),
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: Icon(
+                          CupertinoIcons.xmark_circle_fill,
+                          color: palette.mutedText,
+                          size: 24,
+                        ),
                       ),
-                    ),
-                    CupertinoButton(
-                      padding: EdgeInsets.zero,
-                      minimumSize: const Size(36, 36),
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: Icon(
-                        CupertinoIcons.xmark_circle_fill,
-                        color: palette.mutedText,
-                        size: 24,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    const gap = 12.0;
-                    final rawColumnCount =
-                        ((constraints.maxWidth + gap) / (150 + gap)).floor();
-                    final columnCount = rawColumnCount < 2
-                        ? 2
-                        : rawColumnCount > 6
-                        ? 6
-                        : rawColumnCount;
-                    final itemWidth =
-                        (constraints.maxWidth - 32 - gap * (columnCount - 1)) /
-                        columnCount;
-                    final itemHeight = itemWidth * 1.34;
+                Expanded(
+                  child: _isRefreshing && items.isEmpty
+                      ? Center(
+                          child: CupertinoActivityIndicator(
+                            color: palette.primary,
+                          ),
+                        )
+                      : items.isEmpty
+                      ? const _EmptyState(
+                          icon: CupertinoIcons.film,
+                          title: '暂无最近添加内容',
+                        )
+                      : LayoutBuilder(
+                          builder: (context, constraints) {
+                            const gap = 12.0;
+                            const horizontalPadding = 16.0;
+                            final isNarrow =
+                                constraints.maxWidth <
+                                RecentlyAddedWidget._narrowBreakpoint;
+                            final columnCount = isNarrow
+                                ? 3
+                                : (((constraints.maxWidth + gap) / (150 + gap))
+                                          .floor())
+                                      .clamp(2, 6);
+                            final itemWidth =
+                                (constraints.maxWidth -
+                                    horizontalPadding * 2 -
+                                    gap * (columnCount - 1)) /
+                                columnCount;
+                            final itemHeight = itemWidth * 1.34;
 
-                    return GridView.builder(
-                      padding: EdgeInsets.fromLTRB(16, 0, 16, bottomInset + 18),
-                      itemCount: items.length,
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: columnCount,
-                        mainAxisSpacing: gap,
-                        crossAxisSpacing: gap,
-                        mainAxisExtent: itemHeight,
-                      ),
-                      itemBuilder: (context, index) {
-                        return _PosterCard(media: items[index]);
-                      },
-                    );
-                  },
+                            return GridView.builder(
+                              padding: EdgeInsets.fromLTRB(
+                                horizontalPadding,
+                                0,
+                                horizontalPadding,
+                                bottomInset + 18,
+                              ),
+                              itemCount: items.length,
+                              gridDelegate:
+                                  SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: columnCount,
+                                    mainAxisSpacing: gap,
+                                    crossAxisSpacing: gap,
+                                    mainAxisExtent: itemHeight,
+                                  ),
+                              itemBuilder: (context, index) {
+                                return _PosterCard(
+                                  media: items[index],
+                                  compact: isNarrow,
+                                );
+                              },
+                            );
+                          },
+                        ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            );
+          }),
         ),
       ),
     );

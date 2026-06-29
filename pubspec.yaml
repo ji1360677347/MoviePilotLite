@@ -46,6 +46,7 @@ dependencies:
   altman_totp:
     path: ./altman_totp
   lottie: ^3.3.3
+  flutter_floating_bottom_bar: ^2.0.2
   native_glass_navbar: ^1.0.2
 dev_dependencies:
   flutter_test:

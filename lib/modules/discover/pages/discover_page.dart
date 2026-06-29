@@ -21,9 +21,9 @@ class DiscoverPage extends GetView<DiscoverController> {
 
   final ScrollController? scrollController;
 
-  static const double _gridSpacing = 12;
-  static const double _gridPadding = 16;
-  static const double _cardAspectRatio = 0.62;
+  static const double _gridSpacing = 6;
+  static const double _gridPadding = 0;
+  static const double _cardAspectRatio = 0.72;
   static const double _wideBreakpoint = ConstrainedPageContent.wideBreakpoint;
   static const Color _cinemaBlack = Color(0xFF050506);
   static const Color _surfaceSoft = Color(0xFF1D1D21);
@@ -63,7 +63,9 @@ class DiscoverPage extends GetView<DiscoverController> {
                   onRefresh: () async =>
                       controller.loadCurrent(forceRefresh: true),
                 ),
-                SliverToBoxAdapter(child: Obx(() => _buildPageContent(context))),
+                SliverToBoxAdapter(
+                  child: Obx(() => _buildPageContent(context)),
+                ),
                 SliverToBoxAdapter(
                   child: SizedBox(height: _bottomSpacer(context)),
                 ),
@@ -283,11 +285,7 @@ class DiscoverPage extends GetView<DiscoverController> {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                Color(0x22000000),
-                Color(0x66000000),
-                Color(0xF2050506),
-              ],
+              colors: [Color(0x22000000), Color(0x66000000), Color(0xF2050506)],
               stops: [0.12, 0.48, 1],
             ),
           ),
@@ -297,10 +295,7 @@ class DiscoverPage extends GetView<DiscoverController> {
             gradient: RadialGradient(
               center: Alignment(-0.95, -0.85),
               radius: 1.05,
-              colors: [
-                _netflixRed.withValues(alpha: 0.16),
-                Colors.transparent,
-              ],
+              colors: [_netflixRed.withValues(alpha: 0.16), Colors.transparent],
             ),
           ),
         ),
@@ -411,7 +406,8 @@ class DiscoverPage extends GetView<DiscoverController> {
                 ),
               ),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   _buildFilterLeadingIcon(),
                   const SizedBox(width: 12),
@@ -552,10 +548,7 @@ class DiscoverPage extends GetView<DiscoverController> {
     );
   }
 
-  Widget _buildItemsGrid(
-    BuildContext context,
-    List<RecommendApiItem> items,
-  ) {
+  Widget _buildItemsGrid(BuildContext context, List<RecommendApiItem> items) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final layout = _discoverGridLayout(constraints.maxWidth);
@@ -572,7 +565,10 @@ class DiscoverPage extends GetView<DiscoverController> {
           ),
           itemBuilder: (context, index) {
             final item = items[index];
-            return DiscoverMediaCard(item: item, onTap: () => _openDetail(item));
+            return DiscoverMediaCard(
+              item: item,
+              onTap: () => _openDetail(item),
+            );
           },
         );
       },
