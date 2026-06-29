@@ -30,7 +30,8 @@ void main() {
     );
 
     expect(find.byType(MarkdownBody), findsWidgets);
-    expect(find.byType(Table), findsNothing);
+    expect(find.byType(Table), findsWidgets);
+    expect(_horizontalTableScrollers(), findsWidgets);
     expect(find.text('片名'), findsOneWidget);
     expect(find.text('河西走廊'), findsOneWidget);
   });
@@ -70,7 +71,8 @@ void main() {
     expect(find.text('TMDB 高分剧集'), findsOneWidget);
     expect(find.text('世界的主人'), findsOneWidget);
     expect(find.text('★ 9.0'), findsOneWidget);
-    expect(find.byType(Table), findsNothing);
+    expect(find.byType(Table), findsWidgets);
+    expect(_horizontalTableScrollers(), findsWidgets);
   });
 
   testWidgets('normalizes heading table boundary for streamed markdown', (
@@ -102,7 +104,8 @@ void main() {
     expect(find.text('片名'), findsOneWidget);
     expect(find.text('我住在凡尔赛的日子'), findsOneWidget);
     expect(find.text('------'), findsNothing);
-    expect(find.byType(Table), findsNothing);
+    expect(find.byType(Table), findsWidgets);
+    expect(_horizontalTableScrollers(), findsWidgets);
   });
 
   testWidgets('renders pipe tables without outer pipes', (tester) async {
@@ -132,7 +135,8 @@ void main() {
 
     expect(find.text('星际穿越', findRichText: true), findsOneWidget);
     expect(find.text('千与千寻', findRichText: true), findsOneWidget);
-    expect(find.byType(Table), findsNothing);
+    expect(find.byType(Table), findsWidgets);
+    expect(_horizontalTableScrollers(), findsWidgets);
   });
 
   testWidgets('normalizes compressed table rows from streamed text', (
@@ -167,7 +171,8 @@ void main() {
     expect(find.text('阿甘正传', findRichText: true), findsOneWidget);
     expect(find.text('绘梦婚礼', findRichText: true), findsOneWidget);
     expect(find.textContaining('------'), findsNothing);
-    expect(find.byType(Table), findsNothing);
+    expect(find.byType(Table), findsWidgets);
+    expect(_horizontalTableScrollers(), findsWidgets);
   });
 
   testWidgets('renders multi section table response while streaming', (
@@ -220,7 +225,8 @@ void main() {
     expect(find.textContaining('新片高分'), findsOneWidget);
     expect(find.text('★ 9.7', findRichText: true), findsOneWidget);
     expect(find.text('------'), findsNothing);
-    expect(find.byType(Table), findsNothing);
+    expect(find.byType(Table), findsWidgets);
+    expect(_horizontalTableScrollers(), findsWidgets);
   });
 
   testWidgets('renders completed multi section table response', (tester) async {
@@ -298,6 +304,14 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('------'), findsNothing);
-    expect(find.byType(Table), findsNothing);
+    expect(find.byType(Table), findsWidgets);
+    expect(_horizontalTableScrollers(), findsWidgets);
+  });
+}
+
+Finder _horizontalTableScrollers() {
+  return find.byWidgetPredicate((widget) {
+    return widget is SingleChildScrollView &&
+        widget.scrollDirection == Axis.horizontal;
   });
 }

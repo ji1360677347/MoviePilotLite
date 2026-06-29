@@ -145,9 +145,9 @@ class DiscoverPage extends GetView<DiscoverController> {
         'Discover',
         style: TextStyle(
           color: colorScheme.onSurface,
-          fontSize: 24,
-          fontWeight: FontWeight.w800,
-          letterSpacing: -0.4,
+          fontSize: 22,
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.3,
         ),
       ),
       centerTitle: false,
@@ -335,9 +335,9 @@ class DiscoverPage extends GetView<DiscoverController> {
           overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
             color: Colors.white,
-            fontWeight: FontWeight.w900,
-            height: 0.96,
-            letterSpacing: -1.2,
+            fontWeight: FontWeight.w700,
+            height: 1.02,
+            letterSpacing: -0.6,
           ),
         ),
         if (meta.isNotEmpty) ...[
@@ -349,7 +349,7 @@ class DiscoverPage extends GetView<DiscoverController> {
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.7),
               fontSize: 12,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -528,8 +528,8 @@ class DiscoverPage extends GetView<DiscoverController> {
                   title,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     color: Theme.of(context).colorScheme.onSurface,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.3,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.2,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -639,8 +639,8 @@ class DiscoverPage extends GetView<DiscoverController> {
               '片场暂时安静',
               style: TextStyle(
                 color: colorScheme.onSurface,
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 8),
@@ -716,7 +716,7 @@ class DiscoverPage extends GetView<DiscoverController> {
         style: TextStyle(
           color: colorScheme.onSurface,
           fontSize: 12,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w500,
         ),
       ),
     );
@@ -834,7 +834,7 @@ class _GlassButton extends StatelessWidget {
                     style: TextStyle(
                       color: colorScheme.onSurface,
                       fontSize: 13,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
@@ -891,12 +891,12 @@ class _PrimaryActionButton extends StatelessWidget {
                 size: compact ? 22 : 24,
               ),
               const SizedBox(width: 5),
-              const Text(
+              Text(
                 '查看详情',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 14,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],

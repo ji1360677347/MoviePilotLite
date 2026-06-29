@@ -24,19 +24,20 @@ class AgentMessageBubble extends StatelessWidget {
         final listWidth = constraints.maxWidth.isFinite
             ? constraints.maxWidth
             : MediaQuery.sizeOf(context).width - 32;
-        final sideInset = isUser ? 52.0 : 52.0;
+        final oppositeInset = listWidth < 420 ? 12.0 : 20.0;
         final avatarWidth = isUser ? 0.0 : 38.0;
-        final bubbleMaxWidth = (listWidth - sideInset - avatarWidth).clamp(
-          120.0,
-          760.0,
+        final bubbleMaxLimit = isUser ? 680.0 : 840.0;
+        final bubbleMaxWidth = (listWidth - oppositeInset - avatarWidth).clamp(
+          160.0,
+          bubbleMaxLimit,
         );
 
         return SizedBox(
           width: listWidth,
           child: Padding(
             padding: EdgeInsets.only(
-              left: isUser ? sideInset : 0,
-              right: isUser ? 0 : sideInset,
+              left: isUser ? oppositeInset : 0,
+              right: isUser ? 0 : oppositeInset,
               bottom: 14,
             ),
             child: Row(
@@ -550,6 +551,17 @@ class _AgentMarkdownTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final title = table.title?.trim();
+    final columnCount = _tableColumnCount(table);
+    final header = _normalizedTableRow(table.header, columnCount);
+    final rows = table.rows
+        .map((row) => _normalizedTableRow(row, columnCount))
+        .toList(growable: false);
+    final cellStyle = _agentMarkdownCellStyle(styleSheet, colorScheme);
+    final primaryCellStyle = _agentMarkdownCellStyle(
+      styleSheet,
+      colorScheme,
+      isPrimary: true,
+    );
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Column(
@@ -594,134 +606,105 @@ class _AgentMarkdownTable extends StatelessWidget {
             ),
             const SizedBox(height: 8),
           ],
-          for (var rowIndex = 0; rowIndex < table.rows.length; rowIndex++)
-            _AgentMarkdownTableRowCard(
-              header: table.header,
-              row: table.rows[rowIndex],
-              styleSheet: styleSheet,
-              colorScheme: colorScheme,
-              isLast: rowIndex == table.rows.length - 1,
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AgentMarkdownTableRowCard extends StatelessWidget {
-  const _AgentMarkdownTableRowCard({
-    required this.header,
-    required this.row,
-    required this.styleSheet,
-    required this.colorScheme,
-    required this.isLast,
-  });
-
-  final List<String> header;
-  final List<String> row;
-  final MarkdownStyleSheet styleSheet;
-  final ColorScheme colorScheme;
-  final bool isLast;
-
-  @override
-  Widget build(BuildContext context) {
-    final title = row.isEmpty ? '' : row.first;
-    final metaValues = row.length <= 1 ? <String>[] : row.skip(1).toList();
-    return Container(
-      margin: EdgeInsets.only(bottom: isLast ? 0 : 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.34),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.44),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (title.trim().isNotEmpty) ...[
-            _AgentMarkdownTableLabel(
-              label: _tableHeaderAt(header, 0),
-              colorScheme: colorScheme,
-            ),
-            const SizedBox(height: 3),
-            _AgentMarkdownCell(
-              markdown: title,
-              styleSheet: _agentMarkdownCellStyle(
-                styleSheet,
-                colorScheme,
-                isPrimary: true,
-              ),
-            ),
-          ],
-          if (metaValues.isNotEmpty) ...[
-            const SizedBox(height: 9),
-            Wrap(
-              spacing: 7,
-              runSpacing: 7,
-              children: [
-                for (var index = 0; index < metaValues.length; index++)
-                  _AgentMarkdownTableChip(
-                    label: _tableHeaderAt(header, index + 1),
-                    value: metaValues[index],
-                    styleSheet: _agentMarkdownCellStyle(
-                      styleSheet,
-                      colorScheme,
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final minWidth = constraints.maxWidth.isFinite
+                  ? constraints.maxWidth
+                  : 0.0;
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHighest.withValues(
+                      alpha: 0.30,
                     ),
-                    colorScheme: colorScheme,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: colorScheme.outlineVariant.withValues(alpha: 0.46),
+                    ),
                   ),
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _AgentMarkdownTableChip extends StatelessWidget {
-  const _AgentMarkdownTableChip({
-    required this.label,
-    required this.value,
-    required this.styleSheet,
-    required this.colorScheme,
-  });
-
-  final String label;
-  final String value;
-  final MarkdownStyleSheet styleSheet;
-  final ColorScheme colorScheme;
-
-  @override
-  Widget build(BuildContext context) {
-    if (value.trim().isEmpty) return const SizedBox.shrink();
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 220),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-      decoration: BoxDecoration(
-        color: colorScheme.surface.withValues(alpha: 0.48),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.34),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (label.isNotEmpty) ...[
-            Padding(
-              padding: const EdgeInsets.only(top: 1),
-              child: _AgentMarkdownTableLabel(
-                label: label,
-                colorScheme: colorScheme,
-              ),
-            ),
-            const SizedBox(width: 5),
-          ],
-          Flexible(
-            child: _AgentMarkdownCell(markdown: value, styleSheet: styleSheet),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    primary: false,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(minWidth: minWidth),
+                      child: Table(
+                        defaultColumnWidth: const IntrinsicColumnWidth(),
+                        border: TableBorder(
+                          horizontalInside: BorderSide(
+                            color: colorScheme.outlineVariant.withValues(
+                              alpha: 0.40,
+                            ),
+                            width: 0.8,
+                          ),
+                          verticalInside: BorderSide(
+                            color: colorScheme.outlineVariant.withValues(
+                              alpha: 0.34,
+                            ),
+                            width: 0.8,
+                          ),
+                        ),
+                        defaultVerticalAlignment:
+                            TableCellVerticalAlignment.middle,
+                        children: [
+                          TableRow(
+                            decoration: BoxDecoration(
+                              color: colorScheme.primaryContainer.withValues(
+                                alpha: 0.24,
+                              ),
+                            ),
+                            children: [
+                              for (
+                                var index = 0;
+                                index < header.length;
+                                index++
+                              )
+                                _AgentMarkdownTableCell(
+                                  markdown: header[index],
+                                  styleSheet: cellStyle,
+                                  colorScheme: colorScheme,
+                                  isHeader: true,
+                                  isPrimary: index == 0,
+                                ),
+                            ],
+                          ),
+                          for (
+                            var rowIndex = 0;
+                            rowIndex < rows.length;
+                            rowIndex++
+                          )
+                            TableRow(
+                              decoration: BoxDecoration(
+                                color: rowIndex.isEven
+                                    ? colorScheme.surface.withValues(
+                                        alpha: 0.30,
+                                      )
+                                    : colorScheme.surfaceContainerHighest
+                                          .withValues(alpha: 0.18),
+                              ),
+                              children: [
+                                for (
+                                  var index = 0;
+                                  index < rows[rowIndex].length;
+                                  index++
+                                )
+                                  _AgentMarkdownTableCell(
+                                    markdown: rows[rowIndex][index],
+                                    styleSheet: index == 0
+                                        ? primaryCellStyle
+                                        : cellStyle,
+                                    colorScheme: colorScheme,
+                                    isPrimary: index == 0,
+                                  ),
+                              ],
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -729,26 +712,62 @@ class _AgentMarkdownTableChip extends StatelessWidget {
   }
 }
 
-class _AgentMarkdownTableLabel extends StatelessWidget {
-  const _AgentMarkdownTableLabel({
-    required this.label,
+int _tableColumnCount(_AgentMarkdownTableData table) {
+  var count = table.header.length;
+  for (final row in table.rows) {
+    if (row.length > count) count = row.length;
+  }
+  return count;
+}
+
+List<String> _normalizedTableRow(List<String> row, int length) {
+  return List<String>.generate(
+    length,
+    (index) => index < row.length ? row[index] : '',
+    growable: false,
+  );
+}
+
+class _AgentMarkdownTableCell extends StatelessWidget {
+  const _AgentMarkdownTableCell({
+    required this.markdown,
+    required this.styleSheet,
     required this.colorScheme,
+    this.isHeader = false,
+    this.isPrimary = false,
   });
 
-  final String label;
+  final String markdown;
+  final MarkdownStyleSheet styleSheet;
   final ColorScheme colorScheme;
+  final bool isHeader;
+  final bool isPrimary;
 
   @override
   Widget build(BuildContext context) {
-    if (label.isEmpty) return const SizedBox.shrink();
-    return Text(
-      label,
-      style: TextStyle(
-        color: colorScheme.onSurfaceVariant,
-        fontSize: 11,
-        fontWeight: FontWeight.w800,
-        height: 1.15,
-        letterSpacing: 0,
+    return Container(
+      constraints: BoxConstraints(
+        minWidth: isPrimary ? 126 : 82,
+        maxWidth: isPrimary ? 240 : 172,
+      ),
+      padding: EdgeInsets.symmetric(
+        horizontal: isHeader ? 10 : 9,
+        vertical: isHeader ? 9 : 8,
+      ),
+      child: _AgentMarkdownCell(
+        markdown: markdown,
+        styleSheet: isHeader
+            ? styleSheet.copyWith(
+                p: styleSheet.p?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w900,
+                ),
+                strong: styleSheet.strong?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w900,
+                ),
+              )
+            : styleSheet,
       ),
     );
   }
@@ -794,11 +813,6 @@ MarkdownStyleSheet _agentMarkdownCellStyle(
     strong: style?.copyWith(fontWeight: FontWeight.w900),
     tablePadding: EdgeInsets.zero,
   );
-}
-
-String _tableHeaderAt(List<String> header, int index) {
-  if (index >= header.length) return '';
-  return header[index].trim();
 }
 
 class _ToolEvents extends StatelessWidget {
