@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-06-29
+- 新增通用 Lottie 加载组件 `AppLoading` / `AppLoadingIndicator`，媒体搜索页搜索过程改用 `loading.json` 动画，替换原自定义粒子 loading。
+- 新增玻璃胶囊搜索条 `GlassSearchFloatingBar`，统一订阅页、已安装插件页、插件市场页的底部筛选/搜索/排序浮条样式，修复深浅色主题下底色与文字颜色不一致问题。
+- AI 助手全局悬浮入口改版：接入 Lottie 小宠物动画、极光光环与玻璃容器，长按菜单改为标准 `CupertinoContextMenuAction`，修复菜单弹出布局异常。
+- 探索页 Discover 卡片与区块标题字重、字距收敛，整体视觉更轻。
+- Agent 对话气泡布局优化：按用户/助手与屏宽自适应最大宽度与内边距。
+- 插件详情改为可拖拽高度的 Bottom Sheet 展示，插件市场列表点击统一走 `showPluginInfoSheet`。
+
 ## 2026-06-25
 - 新增 Android APK 热更新能力：应用设置页“当前版本”支持检查远程发布版本、下载 APK、查看下载进度并调起系统安装器。
 - Android 更新检查改为仅识别 `release-v版本-日期` 格式的 Release，避免误将 HarmonyOS/OHOS 发布识别为安卓版本。
