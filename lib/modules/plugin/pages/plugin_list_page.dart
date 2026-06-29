@@ -521,7 +521,7 @@ class PluginListPage extends GetView<PluginListController> {
         : '';
     return GestureDetector(
       onTap: () {
-        Get.bottomSheet(PluginInfoSheet(item: item));
+        showPluginInfoSheet(context, item);
       },
       child: PluginItemCard(
         item: item,
