@@ -103,10 +103,7 @@ If needed, you can further use the `web_scraper.py` file to scrape the web page 
 
 ## Done: 下载 startDownload — API detail 为 List 时 ToastUtil.error 类型错误（_downloadApiErrorMessage）
 
-## Current Task: Session 本地化缓存
+## Current Task: CHANGELOG 下载器页面优化
 
-[X] AgentLocalCache (SharedPreferences)
-[X] models toJson
-[X] Controller 内存+磁盘缓存、切换 session 先展示本地、API 空保留本地
-[X] start 事件 session key 迁移
-[X] 测试
+[X] CHANGELOG 2026-06-29 下载器条目
+[X] main.dart 改用 downloader_shell_page 入口，移除 torrent_list_page 冗余 import

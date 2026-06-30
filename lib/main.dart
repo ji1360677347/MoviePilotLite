@@ -1,4 +1,5 @@
 import 'package:altman_downloader_control/controller/downloader_config.dart';
+import 'package:altman_downloader_control/page/downloader_shell_page.dart';
 import 'package:moviepilot_mobile/utils/downloader_controller_adaptor.dart';
 import 'package:altman_totp/page/totp_manage_page.dart';
 import 'package:get/get.dart';
@@ -134,7 +135,6 @@ import 'modules/workflow/controllers/workflow_controller.dart';
 import 'modules/workflow/pages/workflow_page.dart';
 import 'modules/file_manager/controllers/file_manager_browser_controller.dart';
 import 'modules/file_manager/pages/file_manager_browser_page.dart';
-import 'package:altman_downloader_control/page/torrent_list_page.dart';
 
 List<GetMiddleware> permissionGuards([String? permissionRoute]) => [
   RoutePermissionMiddleware(permissionRoute: permissionRoute),

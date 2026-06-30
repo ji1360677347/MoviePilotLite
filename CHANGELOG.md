@@ -7,6 +7,9 @@
 - 探索页 Discover 卡片与区块标题字重、字距收敛，整体视觉更轻。
 - Agent 对话气泡布局优化：按用户/助手与屏宽自适应最大宽度与内边距。
 - 插件详情改为可拖拽高度的 Bottom Sheet 展示，插件市场列表点击统一走 `showPluginInfoSheet`。
+- 下载器详情页改为底部 Tab Shell：种子列表、qBittorrent RSS、客户端信息分 Tab 展示；多选批量操作时自动隐藏 TabBar。
+- 种子列表新增实时搜索与多选模式，筛选/排序与列表项交互重构；新建下载改为可拖拽 Bottom Sheet，资料页与 RSS 列表布局同步优化。
+- 升级 `altman_downloader_control` 依赖，适配 `DownloaderShellPage` 路由入口。
 
 ## 2026-06-25
 - 新增 Android APK 热更新能力：应用设置页“当前版本”支持检查远程发布版本、下载 APK、查看下载进度并调起系统安装器。
