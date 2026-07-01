@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_floating_bottom_bar/flutter_floating_bottom_bar.dart';
 import 'package:get/get.dart';
 import 'package:native_glass_navbar/native_glass_navbar.dart';
 import 'package:moviepilot_mobile/modules/dashboard/controllers/dashboard_controller.dart';
@@ -34,9 +35,24 @@ class _IndexState extends State<Index> {
   bool _initialIndexApplied = false;
   bool _restoreSuppressed = false;
   ScrollController? _activeScrollController;
+  late final Future<bool> _supportsNativeGlassNavBar;
 
   final dashboardController = Get.put(DashboardController());
   List<String> get _labels => ['仪表盘', '推荐', '探索', '更多', '搜索'];
+  List<IconData> get _icons => [
+    Icons.home_outlined,
+    Icons.movie_outlined,
+    Icons.explore_outlined,
+    Icons.grid_view_outlined,
+    Icons.search_rounded,
+  ];
+  List<IconData> get _selectedIcons => [
+    Icons.home_rounded,
+    Icons.movie_rounded,
+    Icons.explore_rounded,
+    Icons.grid_view_rounded,
+    Icons.search_rounded,
+  ];
 
   List<NativeGlassNavBarItem> get _nativeTabs => [
     NativeGlassNavBarItem(label: _labels[0], symbol: 'house.fill'),
@@ -49,6 +65,7 @@ class _IndexState extends State<Index> {
   @override
   void initState() {
     super.initState();
+    _supportsNativeGlassNavBar = LiquidGlassHelper.isLiquidGlassSupported();
     _tabScrollControllers = List.generate(
       kIndexMaxTab + 1,
       (_) => ScrollController(),
@@ -201,39 +218,54 @@ class _IndexState extends State<Index> {
     );
   }
 
-  Widget _buildFallbackBottomBar() {
-    final tint = Theme.of(context).primaryColor;
-    return NavigationBar(
-      selectedIndex: _selectedIndex,
-      indicatorColor: tint.withValues(alpha: 0.18),
-      onDestinationSelected: _onTabTap,
-      destinations: [
-        NavigationDestination(
-          icon: const Icon(Icons.home_outlined),
-          selectedIcon: const Icon(Icons.home_rounded),
-          label: _labels[0],
+  Widget _buildFloatingBottomBar(Widget body) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final barWidth = (MediaQuery.sizeOf(context).width - 32).clamp(0.0, 460.0);
+
+    return BottomBar(
+      body: body,
+      showIcon: false,
+      layout: BottomBarLayout(
+        width: barWidth,
+        offset: 16,
+        borderRadius: BorderRadius.circular(28),
+        clip: Clip.none,
+        fit: StackFit.expand,
+      ),
+      scrollBehavior: const BottomBarScrollBehavior(hideOnScroll: false),
+      theme: BottomBarThemeData(
+        barDecoration: BoxDecoration(
+          color: colorScheme.surface.withValues(alpha: 0.92),
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.42),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: colorScheme.shadow.withValues(alpha: 0.16),
+              blurRadius: 24,
+              offset: const Offset(0, 10),
+            ),
+          ],
         ),
-        NavigationDestination(
-          icon: const Icon(Icons.movie_outlined),
-          selectedIcon: const Icon(Icons.movie_rounded),
-          label: _labels[1],
+      ),
+      child: SizedBox(
+        height: 58,
+        child: Row(
+          children: [
+            for (var index = 0; index <= kIndexMaxTab; index++)
+              Expanded(
+                child: _FloatingTabItem(
+                  label: _labels[index],
+                  icon: _icons[index],
+                  selectedIcon: _selectedIcons[index],
+                  selected: _selectedIndex == index,
+                  onTap: () => _onTabTap(index),
+                ),
+              ),
+          ],
         ),
-        NavigationDestination(
-          icon: const Icon(Icons.explore_outlined),
-          selectedIcon: const Icon(Icons.explore_rounded),
-          label: _labels[2],
-        ),
-        NavigationDestination(
-          icon: const Icon(Icons.grid_view_outlined),
-          selectedIcon: const Icon(Icons.grid_view_rounded),
-          label: _labels[3],
-        ),
-        NavigationDestination(
-          icon: const Icon(Icons.search_rounded),
-          selectedIcon: const Icon(Icons.search_rounded),
-          label: _labels[4],
-        ),
-      ],
+      ),
     );
   }
 
@@ -250,15 +282,82 @@ class _IndexState extends State<Index> {
       });
     }
 
-    return Scaffold(
-      extendBody: true,
-      body: _buildTabBody(coercedIndex),
-      bottomNavigationBar: NativeGlassNavBar(
-        tabs: _nativeTabs,
-        currentIndex: _selectedIndex,
-        tintColor: Theme.of(context).primaryColor,
-        onTap: _onTabTap,
-        fallback: _buildFallbackBottomBar(),
+    return FutureBuilder<bool>(
+      future: _supportsNativeGlassNavBar,
+      builder: (context, snapshot) {
+        final tabBody = _buildTabBody(coercedIndex);
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Scaffold(extendBody: true, body: tabBody);
+        }
+
+        final useNativeGlass = snapshot.data == true;
+
+        return Scaffold(
+          extendBody: true,
+          body: useNativeGlass ? tabBody : _buildFloatingBottomBar(tabBody),
+          bottomNavigationBar: useNativeGlass
+              ? NativeGlassNavBar(
+                  tabs: _nativeTabs,
+                  currentIndex: _selectedIndex,
+                  tintColor: Theme.of(context).primaryColor,
+                  onTap: _onTabTap,
+                )
+              : null,
+        );
+      },
+    );
+  }
+}
+
+class _FloatingTabItem extends StatelessWidget {
+  const _FloatingTabItem({
+    required this.label,
+    required this.icon,
+    required this.selectedIcon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final IconData selectedIcon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final color = selected
+        ? colorScheme.primary
+        : colorScheme.onSurfaceVariant.withValues(alpha: 0.72);
+
+    return Tooltip(
+      message: label,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(selected ? selectedIcon : icon, color: color, size: 22),
+              const SizedBox(height: 2),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: color,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:altman_totp/page/totp_manage_page.dart';
@@ -161,6 +162,7 @@ class LoginPage extends GetView<LoginController> {
     void Function(String)? onSubmitted,
     TextInputAction? textInputAction,
     Widget? suffix,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     final hasWallpapers = controller.wallpapers.isNotEmpty;
     final textColor = hasWallpapers ? CupertinoColors.white : null;
@@ -188,6 +190,7 @@ class LoginPage extends GetView<LoginController> {
       enableSuggestions: enableSuggestions,
       textInputAction: textInputAction,
       onSubmitted: onSubmitted,
+      inputFormatters: inputFormatters,
       prefix: prefix != null
           ? Padding(
               padding: const EdgeInsets.only(left: 12),
@@ -322,6 +325,7 @@ class LoginPage extends GetView<LoginController> {
             autocorrect: false,
             enableSuggestions: false,
             textInputAction: TextInputAction.done,
+            inputFormatters: [FilteringTextInputFormatter.deny(RegExp(r'\s'))],
             onSubmitted: (_) => controller.goToNextStep(),
           ),
           const SizedBox(height: 16),

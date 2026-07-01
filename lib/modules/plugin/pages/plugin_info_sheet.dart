@@ -15,9 +15,40 @@ import 'package:moviepilot_mobile/widgets/section_header.dart';
 
 import '../controllers/plugin_controller.dart';
 
+Future<void> showPluginInfoSheet(BuildContext context, PluginItem item) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    isDismissible: true,
+    showDragHandle: false,
+    backgroundColor: Colors.transparent,
+    builder: (context) {
+      return DraggableScrollableSheet(
+        initialChildSize: 0.92,
+        minChildSize: 0.36,
+        maxChildSize: 1,
+        expand: false,
+        builder: (context, scrollController) {
+          return ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            child: PluginInfoSheet(
+              item: item,
+              scrollController: scrollController,
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
 class PluginInfoSheet extends StatefulWidget {
-  const PluginInfoSheet({super.key, required this.item});
+  const PluginInfoSheet({super.key, required this.item, this.scrollController});
+
   final PluginItem item;
+  final ScrollController? scrollController;
+
   @override
   State<PluginInfoSheet> createState() => _PluginInfoSheetState();
 }
@@ -49,127 +80,141 @@ class _PluginInfoSheetState extends State<PluginInfoSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final iconUrl =
         widget.item.pluginIcon != null && widget.item.pluginIcon!.isNotEmpty
         ? ImageUtil.convertPluginIconUrl(widget.item.pluginIcon!)
         : '';
     return Material(
+      color: colorScheme.surface,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
         child: Column(
           children: [
-            SectionHeader(
-              title: widget.item.pluginName,
-              trailing: IconButton(
-                icon: Icon(
-                  Icons.close,
-                  color: Theme.of(context).colorScheme.primary,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: SectionHeader(
+                title: widget.item.pluginName,
+                trailing: IconButton(
+                  icon: Icon(Icons.close, color: colorScheme.primary),
+                  onPressed: () {
+                    Get.back();
+                  },
                 ),
-                onPressed: () {
-                  Get.back();
-                },
               ),
             ),
-            CachedImage(
-              imageUrl: iconUrl,
-              width: 80,
-              height: 80,
-              fit: BoxFit.cover,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              widget.item.pluginDesc ?? '',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 16),
-            Section(
-              child: Column(
+            Expanded(
+              child: ListView(
+                controller: widget.scrollController,
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
                 children: [
-                  Row(
-                    children: [
-                      Icon(Icons.person),
-                      const SizedBox(width: 8),
-                      Text('作者: ${widget.item.pluginAuthor}'),
-                    ],
+                  Center(
+                    child: CachedImage(
+                      imageUrl: iconUrl,
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                    ),
                   ),
                   const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Icon(Icons.code),
-                      const SizedBox(width: 8),
-                      Text('版本: ${widget.item.pluginVersion}'),
-                    ],
+                  Text(
+                    widget.item.pluginDesc ?? '',
+                    style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Icon(Icons.download),
-                      const SizedBox(width: 8),
-                      Text('下载量: ${widget.item.installCount}'),
-                    ],
+                  Section(
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.person),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text('作者: ${widget.item.pluginAuthor}'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            const Icon(Icons.code),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text('版本: ${widget.item.pluginVersion}'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            const Icon(Icons.download),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text('下载量: ${widget.item.installCount}'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Obx(
-                  () => Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () async {
-                        if (!Get.find<AppService>().canManage) {
-                          ToastUtil.info('当前帐号无管理权限');
-                          return;
-                        }
-                        if (isInstalling.value ==
-                                PluginInfoSheetState.installing ||
-                            isInstalling.value ==
-                                PluginInfoSheetState.installed) {
-                          return;
-                        }
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              child: Obx(
+                () => SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      if (!Get.find<AppService>().canManage) {
+                        ToastUtil.info('当前帐号无管理权限');
+                        return;
+                      }
+                      if (isInstalling.value ==
+                              PluginInfoSheetState.installing ||
+                          isInstalling.value ==
+                              PluginInfoSheetState.installed) {
+                        return;
+                      }
 
-                        isInstalling.value = PluginInfoSheetState.installing;
-                        final result = await controller.installPlugin(
-                          widget.item,
-                        );
-                        if (mounted && result.success) {
-                          ToastUtil.success('安装成功');
-                          isInstalling.value = PluginInfoSheetState.installed;
-                          controller.load(force: true);
-                          pluginListController?.load(force: true);
-                        } else {
-                          isInstalling.value = PluginInfoSheetState.normal;
-                          ToastUtil.error(result.message ?? '安装失败');
-                        }
-                      },
-                      icon: Icon(Icons.install_desktop, size: 18),
-                      label:
+                      isInstalling.value = PluginInfoSheetState.installing;
+                      final result = await controller.installPlugin(
+                        widget.item,
+                      );
+                      if (mounted && result.success) {
+                        ToastUtil.success('安装成功');
+                        isInstalling.value = PluginInfoSheetState.installed;
+                        controller.load(force: true);
+                        pluginListController?.load(force: true);
+                      } else {
+                        isInstalling.value = PluginInfoSheetState.normal;
+                        ToastUtil.error(result.message ?? '安装失败');
+                      }
+                    },
+                    icon: const Icon(Icons.install_desktop, size: 18),
+                    label: isInstalling.value == PluginInfoSheetState.installing
+                        ? const CupertinoActivityIndicator()
+                        : Text(_buildInstallButtonLabel(isInstalling.value)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
                           isInstalling.value == PluginInfoSheetState.installing
-                          ? const CupertinoActivityIndicator()
-                          : Text(_buildInstallButtonLabel(isInstalling.value)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            isInstalling.value ==
-                                PluginInfoSheetState.installing
-                            ? Theme.of(
-                                context,
-                              ).colorScheme.primary.withValues(alpha: 0.5)
-                            : Theme.of(context).colorScheme.primary,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 10,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                          ? colorScheme.primary.withValues(alpha: 0.5)
+                          : colorScheme.primary,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
           ],
         ),
@@ -545,7 +590,7 @@ class _SpecifiedPluginInstallSheetState
   }
 
   Future<void> _openPluginDetail(PluginItem item) async {
-    await Get.bottomSheet(PluginInfoSheet(item: item));
+    await showPluginInfoSheet(context, item);
     await _controller.load(force: true);
     if (!mounted) return;
     setState(() {

@@ -72,7 +72,11 @@ class SearchIndexController extends GetxController {
   }
 
   List<SearchInputPick> get historyInputSuggestions {
-    final q = keyword.value.trim().toLowerCase();
+    return historyInputSuggestionsFor(keyword.value);
+  }
+
+  List<SearchInputPick> historyInputSuggestionsFor(String query) {
+    final q = query.trim().toLowerCase();
     final hintSvc = Get.find<SearchKeywordHintsService>();
     hintSvc.hints.length;
     final hintStrings = hintSvc.hints;

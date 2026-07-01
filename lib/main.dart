@@ -1,4 +1,5 @@
 import 'package:altman_downloader_control/controller/downloader_config.dart';
+import 'package:altman_downloader_control/page/downloader_shell_page.dart';
 import 'package:moviepilot_mobile/utils/downloader_controller_adaptor.dart';
 import 'package:altman_totp/page/totp_manage_page.dart';
 import 'package:get/get.dart';
@@ -30,9 +31,13 @@ import 'package:moviepilot_mobile/services/app_service.dart';
 import 'package:moviepilot_mobile/services/hive_service.dart';
 import 'package:moviepilot_mobile/utils/image_util.dart';
 import 'package:moviepilot_mobile/utils/web_view_screen.dart';
+import 'package:moviepilot_mobile/widgets/agent_floating_entry.dart';
 import 'package:talker_flutter/talker_flutter.dart';
 
 import 'bindings/app_binding.dart';
+import 'modules/agent/controllers/agent_controller.dart';
+import 'modules/agent/pages/agent_chat_page.dart';
+import 'modules/agent/repositories/agent_repository.dart';
 import 'modules/dashboard/controllers/dashboard_controller.dart';
 import 'modules/dashboard/pages/dashboard_page.dart';
 import 'modules/dashboard/pages/background_task_list_page.dart';
@@ -130,7 +135,6 @@ import 'modules/workflow/controllers/workflow_controller.dart';
 import 'modules/workflow/pages/workflow_page.dart';
 import 'modules/file_manager/controllers/file_manager_browser_controller.dart';
 import 'modules/file_manager/pages/file_manager_browser_page.dart';
-import 'package:altman_downloader_control/page/torrent_list_page.dart';
 
 List<GetMiddleware> permissionGuards([String? permissionRoute]) => [
   RoutePermissionMiddleware(permissionRoute: permissionRoute),
@@ -195,6 +199,7 @@ class MyApp extends StatelessWidget {
         navigatorObservers: [
           // 添加Talker路由观察器
           routeObserver,
+          AgentFloatingRouteObserver(),
         ],
         getPages: [
           GetPage(
@@ -215,6 +220,18 @@ class MyApp extends StatelessWidget {
             page: () => const DashboardPage(),
             binding: BindingsBuilder(() {
               Get.lazyPut(() => DashboardController());
+            }),
+          ),
+          GetPage(
+            name: '/agent',
+            page: () => const AgentChatPage(),
+            binding: BindingsBuilder(() {
+              if (!Get.isRegistered<AgentRepository>()) {
+                Get.lazyPut(() => AgentRepository(), fenix: true);
+              }
+              if (!Get.isRegistered<AgentController>()) {
+                Get.put(AgentController(), permanent: true);
+              }
             }),
           ),
           GetPage(
@@ -876,7 +893,13 @@ class MyApp extends StatelessWidget {
         ],
         // 配置错误处理
         builder: (context, child) {
-          return TalkerWrapper(talker: talker.talker, child: child!);
+          return TalkerWrapper(
+            talker: talker.talker,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [child!, const AgentFloatingEntry()],
+            ),
+          );
         },
       );
     });

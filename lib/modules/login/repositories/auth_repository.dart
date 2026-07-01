@@ -2,10 +2,8 @@ import 'dart:convert';
 import 'dart:async';
 
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:get/get.dart' hide Response;
 import 'package:hive_ce/hive.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:moviepilot_mobile/applog/app_log.dart';
 import 'package:moviepilot_mobile/modules/profile/models/user_info.dart';
 import 'package:moviepilot_mobile/modules/profile/models/user_global_config.dart';
@@ -15,7 +13,6 @@ import 'package:moviepilot_mobile/services/app_service.dart';
 import 'package:moviepilot_mobile/services/ios_shared_session_service.dart';
 import '../../../services/api_client.dart';
 import '../../../services/hive_service.dart';
-import '../../../utils/prefs_keys.dart';
 import '../models/login_profile.dart';
 import '../models/login_response.dart';
 
@@ -158,6 +155,10 @@ class AuthRepository extends GetxService {
       unawaited(_warmSiteWidgetData());
 
       _talker.info('开始获取用户全局配置: $normalizedServer');
+      await getUserGlobalConfig(
+        server: normalizedServer,
+        accessToken: profile.accessToken,
+      );
       return true;
       // final response = await _api.get<Map<String, dynamic>>(
       //   '/api/v1/system/global/user',
@@ -223,6 +224,9 @@ class AuthRepository extends GetxService {
         return null;
       }
 
+      if (data['success'] == true) {
+        _appService.applyUserGlobalConfig(data['data']);
+      }
       final configResponse = UserGlobalConfigResponse.fromJson(data);
       if (!configResponse.success) {
         _talker.warning(

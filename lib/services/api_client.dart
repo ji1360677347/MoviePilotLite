@@ -14,7 +14,6 @@ import 'package:moviepilot_mobile/utils/dio_adapter_config_stub.dart'
 import 'package:moviepilot_mobile/services/ios_shared_session_service.dart';
 import 'package:moviepilot_mobile/services/hive_service.dart';
 import 'package:moviepilot_mobile/utils/toast_util.dart';
-import 'package:moviepilot_mobile/modules/login/models/login_profile.dart';
 import 'package:get/get.dart' as g;
 
 enum RequestMethod { get, post, put, delete }
@@ -592,6 +591,51 @@ class ApiClient extends g.GetxController {
       return const Stream<String>.empty();
     }
     // 将底层字节流转换为按行分隔的 UTF8 字符串流
+    final byteStream = body.stream.map((chunk) => chunk as List<int>);
+    return byteStream.transform(utf8.decoder).transform(const LineSplitter());
+  }
+
+  /// SSE / 流式 POST，请求 `text/event-stream` 并返回按行解码后的字符串流。
+  Future<Stream<String>> streamPostLines(
+    String path, {
+    Object? data,
+    String? token,
+    int? timeout,
+    Map<String, dynamic>? headers,
+  }) async {
+    await _ensureReady();
+    final authToken = token ?? this.token;
+    _log.info(
+      'API流式POST请求: $path, token: ${authToken != null ? '***' : 'null'}',
+    );
+    final response = await _dio.post<ResponseBody>(
+      path,
+      data: data,
+      options: Options(
+        responseType: ResponseType.stream,
+        sendTimeout: const Duration(seconds: 30),
+        receiveTimeout: timeout == null ? null : Duration(seconds: timeout),
+        headers: {
+          'accept': 'text/event-stream',
+          'content-type': 'application/json',
+          if (authToken != null) 'authorization': 'Bearer $authToken',
+          ...?headers,
+        },
+        validateStatus: (status) => true,
+      ),
+    );
+    final status = response.statusCode ?? 0;
+    if (status == 401 || status == 403) {
+      _handleUnauthorized(status);
+      throw ApiAuthException(status, response.statusMessage);
+    }
+    if (status >= 400) {
+      throw ApiHttpException(status, response.statusMessage);
+    }
+    final body = response.data;
+    if (body == null) {
+      return const Stream<String>.empty();
+    }
     final byteStream = body.stream.map((chunk) => chunk as List<int>);
     return byteStream.transform(utf8.decoder).transform(const LineSplitter());
   }

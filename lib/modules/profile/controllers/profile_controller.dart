@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:moviepilot_mobile/applog/app_log.dart';
+import 'package:moviepilot_mobile/modules/agent/controllers/agent_controller.dart';
 import 'package:moviepilot_mobile/modules/login/models/login_profile.dart';
 import 'package:moviepilot_mobile/modules/login/controllers/login_controller.dart';
 import 'package:moviepilot_mobile/modules/login/repositories/auth_repository.dart';
@@ -87,6 +87,9 @@ class ProfileController extends GetxController {
     // 停止消息轮询并清理 controller
     if (Get.isRegistered<SystemMessageController>()) {
       Get.find<SystemMessageController>().clearForLogout();
+    }
+    if (Get.isRegistered<AgentController>()) {
+      await Get.find<AgentController>().clearForLogout();
     }
 
     // 清空内存中的登录信息

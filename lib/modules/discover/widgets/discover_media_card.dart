@@ -161,7 +161,7 @@ class DiscoverCardSurface extends StatelessWidget {
                   style: TextStyle(
                     color: ratingColor,
                     fontSize: 11,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
@@ -181,8 +181,8 @@ class DiscoverCardSurface extends StatelessWidget {
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    height: 1.08,
+                    fontWeight: FontWeight.w600,
+                    height: 1.12,
                   ),
                 ),
                 if (year.isNotEmpty || (type ?? '').isNotEmpty) ...[
@@ -197,7 +197,7 @@ class DiscoverCardSurface extends StatelessWidget {
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.62),
                       fontSize: 11,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],

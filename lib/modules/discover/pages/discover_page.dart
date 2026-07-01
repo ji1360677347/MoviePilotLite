@@ -21,9 +21,9 @@ class DiscoverPage extends GetView<DiscoverController> {
 
   final ScrollController? scrollController;
 
-  static const double _gridSpacing = 12;
-  static const double _gridPadding = 16;
-  static const double _cardAspectRatio = 0.62;
+  static const double _gridSpacing = 6;
+  static const double _gridPadding = 0;
+  static const double _cardAspectRatio = 0.72;
   static const double _wideBreakpoint = ConstrainedPageContent.wideBreakpoint;
   static const Color _cinemaBlack = Color(0xFF050506);
   static const Color _surfaceSoft = Color(0xFF1D1D21);
@@ -63,7 +63,9 @@ class DiscoverPage extends GetView<DiscoverController> {
                   onRefresh: () async =>
                       controller.loadCurrent(forceRefresh: true),
                 ),
-                SliverToBoxAdapter(child: Obx(() => _buildPageContent(context))),
+                SliverToBoxAdapter(
+                  child: Obx(() => _buildPageContent(context)),
+                ),
                 SliverToBoxAdapter(
                   child: SizedBox(height: _bottomSpacer(context)),
                 ),
@@ -143,9 +145,9 @@ class DiscoverPage extends GetView<DiscoverController> {
         'Discover',
         style: TextStyle(
           color: colorScheme.onSurface,
-          fontSize: 24,
-          fontWeight: FontWeight.w800,
-          letterSpacing: -0.4,
+          fontSize: 22,
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.3,
         ),
       ),
       centerTitle: false,
@@ -283,11 +285,7 @@ class DiscoverPage extends GetView<DiscoverController> {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                Color(0x22000000),
-                Color(0x66000000),
-                Color(0xF2050506),
-              ],
+              colors: [Color(0x22000000), Color(0x66000000), Color(0xF2050506)],
               stops: [0.12, 0.48, 1],
             ),
           ),
@@ -297,10 +295,7 @@ class DiscoverPage extends GetView<DiscoverController> {
             gradient: RadialGradient(
               center: Alignment(-0.95, -0.85),
               radius: 1.05,
-              colors: [
-                _netflixRed.withValues(alpha: 0.16),
-                Colors.transparent,
-              ],
+              colors: [_netflixRed.withValues(alpha: 0.16), Colors.transparent],
             ),
           ),
         ),
@@ -340,9 +335,9 @@ class DiscoverPage extends GetView<DiscoverController> {
           overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
             color: Colors.white,
-            fontWeight: FontWeight.w900,
-            height: 0.96,
-            letterSpacing: -1.2,
+            fontWeight: FontWeight.w700,
+            height: 1.02,
+            letterSpacing: -0.6,
           ),
         ),
         if (meta.isNotEmpty) ...[
@@ -354,7 +349,7 @@ class DiscoverPage extends GetView<DiscoverController> {
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.7),
               fontSize: 12,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -411,7 +406,8 @@ class DiscoverPage extends GetView<DiscoverController> {
                 ),
               ),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   _buildFilterLeadingIcon(),
                   const SizedBox(width: 12),
@@ -532,8 +528,8 @@ class DiscoverPage extends GetView<DiscoverController> {
                   title,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     color: Theme.of(context).colorScheme.onSurface,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.3,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.2,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -552,10 +548,7 @@ class DiscoverPage extends GetView<DiscoverController> {
     );
   }
 
-  Widget _buildItemsGrid(
-    BuildContext context,
-    List<RecommendApiItem> items,
-  ) {
+  Widget _buildItemsGrid(BuildContext context, List<RecommendApiItem> items) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final layout = _discoverGridLayout(constraints.maxWidth);
@@ -572,7 +565,10 @@ class DiscoverPage extends GetView<DiscoverController> {
           ),
           itemBuilder: (context, index) {
             final item = items[index];
-            return DiscoverMediaCard(item: item, onTap: () => _openDetail(item));
+            return DiscoverMediaCard(
+              item: item,
+              onTap: () => _openDetail(item),
+            );
           },
         );
       },
@@ -643,8 +639,8 @@ class DiscoverPage extends GetView<DiscoverController> {
               '片场暂时安静',
               style: TextStyle(
                 color: colorScheme.onSurface,
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 8),
@@ -720,7 +716,7 @@ class DiscoverPage extends GetView<DiscoverController> {
         style: TextStyle(
           color: colorScheme.onSurface,
           fontSize: 12,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w500,
         ),
       ),
     );
@@ -838,7 +834,7 @@ class _GlassButton extends StatelessWidget {
                     style: TextStyle(
                       color: colorScheme.onSurface,
                       fontSize: 13,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
@@ -895,12 +891,12 @@ class _PrimaryActionButton extends StatelessWidget {
                 size: compact ? 22 : 24,
               ),
               const SizedBox(width: 5),
-              const Text(
+              Text(
                 '查看详情',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 14,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],

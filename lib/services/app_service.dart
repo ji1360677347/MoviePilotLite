@@ -25,6 +25,12 @@ class AppService extends GetxService {
   final enableSpecialDownload = false.obs;
   final useExternalBrowser = false.obs;
   final enableFetchMediaserverLibraryStatus = false.obs;
+  final aiAgentEnabled = false.obs;
+  final aiAgentHideEntry = true.obs;
+  final llmSupportAudioInput = false.obs;
+  final llmSupportAudioOutput = false.obs;
+  final aiRecommendEnabled = false.obs;
+  final agentCacheScopeKey = ''.obs;
 
   // 背景图设置
   final backgroundImageBytes = Rxn<Uint8List>();
@@ -321,9 +327,8 @@ class AppService extends GetxService {
   }) {
     if (!Get.isRegistered<HiveService>()) return null;
     try {
-      final profiles =
-          Get.find<HiveService>().loginProfileBox.values.toList()
-            ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+      final profiles = Get.find<HiveService>().loginProfileBox.values.toList()
+        ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
       if (profiles.isEmpty) return null;
 
       final normalizedServer = server?.trim();
@@ -379,6 +384,7 @@ class AppService extends GetxService {
     if (!isSameUser) {
       _userInfo = null;
     }
+    _syncAgentCacheScope();
     _clearRestrictedPluginCachesIfNeeded();
   }
 
@@ -422,13 +428,11 @@ class AppService extends GetxService {
       final scopeKey = pluginCacheScopeKey;
       if (scopeKey.isEmpty) return;
       final hive = Get.find<HiveService>();
-      final installedKeys = hive
-          .installedPluginModelCacheBox.values
+      final installedKeys = hive.installedPluginModelCacheBox.values
           .where((item) => matchesInstalledPluginScope(item.id, scopeKey))
           .map((e) => e.id)
           .toList();
-      final marketKeys = hive
-          .pluginModelCacheBox.values
+      final marketKeys = hive.pluginModelCacheBox.values
           .where((item) => matchesPluginMarketScope(item.id, scopeKey))
           .map((e) => e.id)
           .toList();
@@ -499,9 +503,10 @@ class AppService extends GetxService {
   bool get canManage => hasPermission('manage');
 
   bool get hasLoggedInSession {
-    final loginToken = _loginResponse?.accessToken?.trim();
+    final loginToken = _loginResponse?.accessToken.trim();
     if (loginToken != null && loginToken.isNotEmpty) return true;
-    final profileToken = currentStoredProfile?.accessToken.trim();
+    final profile = currentStoredProfile;
+    final profileToken = profile?.accessToken.trim();
     return profileToken != null && profileToken.isNotEmpty;
   }
 
@@ -509,6 +514,48 @@ class AppService extends GetxService {
   bool get canBrowseMediaCatalog => hasLoggedInSession;
 
   bool get canAccessAppSettings => true;
+
+  bool get canShowAiAgentEntry =>
+      agentCacheScopeKey.value.isNotEmpty &&
+      hasLoggedInSession &&
+      aiAgentEnabled.value &&
+      !aiAgentHideEntry.value;
+
+  void applyUserGlobalConfig(dynamic raw) {
+    final source = _normalizeConfigMap(raw);
+    if (source == null) return;
+    aiAgentEnabled.value =
+        _parsePermissionValue(
+          _permissionValueFromMap(source, 'AI_AGENT_ENABLE'),
+        ) ??
+        false;
+    aiAgentHideEntry.value =
+        _parsePermissionValue(
+          _permissionValueFromMap(source, 'AI_AGENT_HIDE_ENTRY'),
+        ) ??
+        true;
+    llmSupportAudioInput.value =
+        _parsePermissionValue(
+          _permissionValueFromMap(source, 'LLM_SUPPORT_AUDIO_INPUT'),
+        ) ??
+        false;
+    llmSupportAudioOutput.value =
+        _parsePermissionValue(
+          _permissionValueFromMap(source, 'LLM_SUPPORT_AUDIO_OUTPUT'),
+        ) ??
+        false;
+    aiRecommendEnabled.value =
+        _parsePermissionValue(
+          _permissionValueFromMap(source, 'AI_RECOMMEND_ENABLED'),
+        ) ??
+        false;
+  }
+
+  Map<String, dynamic>? _normalizeConfigMap(dynamic raw) {
+    if (raw is Map<String, dynamic>) return raw;
+    if (raw is Map) return Map<String, dynamic>.from(raw);
+    return null;
+  }
 
   bool canAccessRoute(String? route, {bool defaultValue = true}) {
     final normalized = route?.trim();
@@ -652,6 +699,12 @@ class AppService extends GetxService {
     _loginResponse = null;
     _userInfo = null;
     _cookie = null;
+    agentCacheScopeKey.value = '';
+    aiAgentEnabled.value = false;
+    aiAgentHideEntry.value = true;
+    llmSupportAudioInput.value = false;
+    llmSupportAudioOutput.value = false;
+    aiRecommendEnabled.value = false;
     if (kIsWeb) {
       SharedPreferences.getInstance().then(
         (p) => p.remove(kAppSessionCookieKey),
@@ -673,12 +726,18 @@ class AppService extends GetxService {
     if (!isSameUser) {
       _userInfo = null;
     }
+    _syncAgentCacheScope();
     _clearRestrictedPluginCachesIfNeeded();
   }
 
   void saveUserInfo(UserInfo userInfo) {
     _userInfo = userInfo;
+    _syncAgentCacheScope();
     _clearRestrictedPluginCachesIfNeeded();
+  }
+
+  void _syncAgentCacheScope() {
+    agentCacheScopeKey.value = pluginCacheScopeKey;
   }
 
   /// 检查是否有缓存的cookie

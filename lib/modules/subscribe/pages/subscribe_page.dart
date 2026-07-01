@@ -1,13 +1,13 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'dart:ui';
 import 'package:moviepilot_mobile/modules/discover/controllers/discover_controller.dart';
 import 'package:moviepilot_mobile/modules/recommend/models/recommend_api_item.dart';
 import 'package:moviepilot_mobile/modules/subscribe/controllers/subscribe_controller.dart';
 import 'package:moviepilot_mobile/modules/subscribe/models/subscribe_models.dart';
 import 'package:moviepilot_mobile/modules/subscribe/widgets/subscribe_filter_sheet.dart';
 import 'package:moviepilot_mobile/modules/subscribe/widgets/subscribe_item_card.dart';
+import 'package:moviepilot_mobile/modules/subscribe/widgets/subscribe_list_floating_bar.dart';
 import 'package:moviepilot_mobile/modules/subscribe/widgets/subscribe_popular_item_card.dart';
 import 'package:moviepilot_mobile/services/app_service.dart';
 import 'package:moviepilot_mobile/utils/http_path_builder_util.dart';
@@ -20,7 +20,6 @@ class SubscribePage extends GetView<SubscribeController> {
   final ScrollController? scrollController;
 
   static const double _cardSpacing = 12;
-  static const double _floatingBarHeight = 52;
   static const double _narrowRecommendationCardWidth = 140;
   static const double _narrowRecommendationCardHeight = 212;
   static const double _gridChildAspectRatio = 0.84;
@@ -47,13 +46,25 @@ class SubscribePage extends GetView<SubscribeController> {
     return Scaffold(
       appBar: _buildAppBar(context),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: _buildFloatingBar(context),
+      floatingActionButton: Obx(
+        () => SubscribeListFloatingBar(
+          hasActiveFilters: controller.hasActiveFilters,
+          onFilterTap: () => _openFilterSheet(context),
+          keyword: controller.keyword.value,
+          onKeywordSubmitted: controller.updateKeyword,
+        ),
+      ),
       body: CustomScrollView(
         controller: scrollController,
         slivers: [
           _buildSliverContent(context),
-          const SliverToBoxAdapter(
-            child: SizedBox(height: _floatingBarHeight + 32),
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height:
+                  MediaQuery.paddingOf(context).bottom +
+                  SubscribeListFloatingBar.height +
+                  32,
+            ),
           ),
         ],
       ),
@@ -118,136 +129,6 @@ class SubscribePage extends GetView<SubscribeController> {
         icon: Icon(icon, size: 20, color: iconColor),
       ),
     );
-  }
-
-  Widget _buildFloatingBar(BuildContext context) {
-    final theme = Theme.of(context);
-    final child = Row(
-      children: [
-        _buildFloatingFilterButton(context),
-        const SizedBox(width: 8),
-        Expanded(child: _buildFakeSearchBar(context)),
-      ],
-    );
-    final bar = Container(
-      height: _floatingBarHeight,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(999),
-        color: theme.colorScheme.surface.withValues(alpha: 0.2),
-        border: Border.all(
-          color: theme.colorScheme.outline.withValues(alpha: 0.1),
-          width: 0.5,
-        ),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(999),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 90, sigmaY: 90),
-          child: child,
-        ),
-      ),
-    );
-    return SizedBox(
-      width: MediaQuery.sizeOf(context).width,
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: _pageContentSideInset(context)),
-        child: bar,
-      ),
-    );
-  }
-
-  Widget _buildFloatingFilterButton(BuildContext context) {
-    return Obx(() {
-      final hasFilters = controller.hasActiveFilters;
-      final color = hasFilters
-          ? CupertinoDynamicColor.resolve(CupertinoColors.activeBlue, context)
-          : CupertinoDynamicColor.resolve(
-              CupertinoColors.secondaryLabel,
-              context,
-            );
-      return CupertinoButton(
-        padding: EdgeInsets.zero,
-        minimumSize: Size.zero,
-        onPressed: () => _openFilterSheet(context),
-        child: Icon(CupertinoIcons.slider_horizontal_3, size: 20, color: color),
-      );
-    });
-  }
-
-  Widget _buildFakeSearchBar(BuildContext context) {
-    final theme = Theme.of(context);
-    return GestureDetector(
-      onTap: () => _openKeywordSheet(context),
-      child: Container(
-        height: 36,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(999)),
-        child: Row(
-          children: [
-            Icon(
-              CupertinoIcons.search,
-              size: 18,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Obx(
-                () => Text(
-                  controller.keyword.value.isEmpty
-                      ? '搜索订阅名称…'
-                      : controller.keyword.value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _openKeywordSheet(BuildContext context) async {
-    final controllerText = TextEditingController(
-      text: controller.keyword.value,
-    );
-    final submitted = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        final insets = MediaQuery.of(ctx).viewInsets;
-        return Padding(
-          padding: EdgeInsets.only(bottom: insets.bottom),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-            decoration: BoxDecoration(
-              color: CupertinoDynamicColor.resolve(
-                CupertinoColors.systemBackground,
-                ctx,
-              ),
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(18),
-              ),
-            ),
-            child: CupertinoSearchTextField(
-              controller: controllerText,
-              autofocus: true,
-              placeholder: '搜索订阅名称…',
-              onSubmitted: (v) => Navigator.of(ctx).pop(v),
-            ),
-          ),
-        );
-      },
-    );
-    controllerText.dispose();
-    if (submitted == null) return;
-    controller.updateKeyword(submitted);
   }
 
   Widget _buildSliverContent(BuildContext context) {

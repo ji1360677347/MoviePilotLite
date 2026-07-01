@@ -115,18 +115,9 @@ class LoginController extends GetxController {
 
   /// 进入下一步：验证服务器、获取壁纸、进入步骤 2
   Future<void> goToNextStep() async {
-    final server = serverController.text.trim();
-    if (server.isEmpty) {
-      ToastUtil.info('请输入服务器地址');
-      return;
-    }
-
-    // 简单校验 URL 格式
-    final uri = Uri.tryParse(server);
-    if (uri == null || !uri.hasScheme) {
-      ToastUtil.info('请输入有效的服务器地址（含协议，如 https://example.com）');
-      return;
-    }
+    final server = _validatedServerInput();
+    if (server == null) return;
+    serverController.text = server;
 
     isLoading.value = true;
     try {
@@ -289,16 +280,17 @@ class LoginController extends GetxController {
   }
 
   Future<void> submitLogin() async {
-    final server = serverController.text.trim();
+    final server = _validatedServerInput(showEmptyMessage: false);
     final username = usernameController.text.trim();
     final password = passwordController.text;
     _autofillTotpIfMatched();
     final otpPassword = otpController.text.trim();
 
-    if (server.isEmpty || username.isEmpty || password.isEmpty) {
+    if (server == null || username.isEmpty || password.isEmpty) {
       ToastUtil.info('服务器地址、用户名和密码不能为空');
       return;
     }
+    serverController.text = server;
 
     isLoading.value = true;
     try {
@@ -338,6 +330,49 @@ class LoginController extends GetxController {
     if (code == null || code.isEmpty) return;
     if (!force && otpController.text.trim().isNotEmpty) return;
     otpController.text = code;
+  }
+
+  String? _validatedServerInput({bool showEmptyMessage = true}) {
+    final raw = serverController.text;
+    final server = raw.trim();
+    if (server.isEmpty) {
+      if (showEmptyMessage) {
+        ToastUtil.info('请输入服务器地址');
+      }
+      return null;
+    }
+    if (RegExp(r'\s').hasMatch(server)) {
+      ToastUtil.info('服务器地址不能包含空格或换行');
+      return null;
+    }
+
+    final uri = Uri.tryParse(server);
+    if (uri == null ||
+        !uri.hasScheme ||
+        (uri.scheme != 'http' && uri.scheme != 'https') ||
+        uri.host.isEmpty) {
+      ToastUtil.info('请输入有效的服务器地址（含协议，如 https://example.com）');
+      return null;
+    }
+
+    try {
+      if (uri.hasPort) {
+        uri.port;
+      }
+    } catch (_) {
+      ToastUtil.info('服务器地址端口不合法');
+      return null;
+    }
+
+    if (uri.hasQuery || uri.hasFragment) {
+      ToastUtil.info('服务器地址不能包含查询参数或片段');
+      return null;
+    }
+
+    final normalized = server.endsWith('/')
+        ? server.substring(0, server.length - 1)
+        : server;
+    return normalized;
   }
 
   Future<int?> _loadLastTabIndex() async {
