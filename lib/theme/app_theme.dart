@@ -25,16 +25,22 @@ class AppTheme {
   static const Color infoColor = Color(0xFF2395FF);
 
   /// 背景色（浅色主题）
-  static const Color lightBackgroundColor = Color(0xFFF4F7FB);
+  static const Color lightBackgroundColor = Color(0xFFF5F8FC);
+
+  /// Scaffold 背景遮罩（浅色主题）
+  static const Color lightScaffoldBackgroundColor = Color(0xEAF5F8FC);
 
   /// 卡片背景色（浅色主题）
-  static const Color lightCardBackgroundColor = Color(0xFFFFFFFF);
+  static const Color lightCardBackgroundColor = Color(0xF2FFFFFF);
 
   /// 卡片背景色（深色主题）
-  static const Color darkCardBackgroundColor = Color(0xFF172130);
+  static const Color darkCardBackgroundColor = Color(0xE81A1A20);
 
   /// 背景色（深色主题）
-  static const Color darkBackgroundColor = Color(0xFF0D141F);
+  static const Color darkBackgroundColor = Color(0xFF0B0B0F);
+
+  /// Scaffold 背景遮罩（深色主题）
+  static const Color darkScaffoldBackgroundColor = Color(0xE60B0B0F);
 
   /// 文本主色（浅色主题）
   static const Color lightTextPrimaryColor = Color(0xFF111827);
@@ -46,7 +52,7 @@ class AppTheme {
   static const Color lightTextSecondaryColor = Color(0xFF667085);
 
   /// 文本次要色（深色主题）
-  static const Color darkTextSecondaryColor = Color(0xFF98A2B3);
+  static const Color darkTextSecondaryColor = Color(0xFFAEAEB2);
 
   /// 文本次要色
   static const Color textSecondaryColor = lightTextSecondaryColor;
@@ -55,7 +61,7 @@ class AppTheme {
   static const Color lightBorderColor = Color(0xFFD7DFEA);
 
   /// 边框色（深色主题）
-  static const Color darkBorderColor = Color(0xFF2A3545);
+  static const Color darkBorderColor = Color(0xFF33333A);
 
   /// 边框色
   static const Color borderColor = lightBorderColor;
@@ -64,7 +70,7 @@ class AppTheme {
   static const Color lightDividerColor = Color(0xFFE4EAF2);
 
   /// 分隔线颜色（深色主题）
-  static const Color darkDividerColor = Color(0xFF202B3A);
+  static const Color darkDividerColor = Color(0xFF25252B);
 
   /// 分隔线颜色
   static const Color dividerColor = lightDividerColor;
@@ -94,7 +100,9 @@ class AppTheme {
     final cardBackground = isDark
         ? darkCardBackgroundColor
         : lightCardBackgroundColor;
-    final background = isDark ? darkBackgroundColor : lightBackgroundColor;
+    final background = isDark
+        ? darkScaffoldBackgroundColor
+        : lightScaffoldBackgroundColor;
     final divider = isDark ? darkDividerColor : lightDividerColor;
     final border = isDark ? darkBorderColor : lightBorderColor;
 
@@ -218,13 +226,13 @@ class AppTheme {
         onInverseSurface: lightTextPrimaryColor,
         inversePrimary: primary.withValues(alpha: 0.84),
         surfaceTint: primary,
-        surfaceDim: const Color(0xFF111B28),
-        surfaceBright: const Color(0xFF223046),
-        surfaceContainerLowest: const Color(0xFF0B121C),
-        surfaceContainerLow: const Color(0xFF121C29),
-        surfaceContainer: const Color(0xFF182332),
-        surfaceContainerHigh: const Color(0xFF223044),
-        surfaceContainerHighest: const Color(0xFF2A3A52),
+        surfaceDim: const Color(0xFF101014),
+        surfaceBright: const Color(0xFF2A2A31),
+        surfaceContainerLowest: const Color(0xFF08080B),
+        surfaceContainerLow: const Color(0xFF111115),
+        surfaceContainer: const Color(0xFF18181E),
+        surfaceContainerHigh: const Color(0xFF222228),
+        surfaceContainerHighest: const Color(0xFF2D2D35),
       );
     }
 

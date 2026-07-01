@@ -85,7 +85,7 @@ class DiscoverCardSurface extends StatelessWidget {
     required this.year,
     required this.type,
     this.surfaceColor,
-    this.ratingColor = const Color(0xFFFFC46B),
+    this.ratingColor,
   });
 
   final String imageUrl;
@@ -94,13 +94,14 @@ class DiscoverCardSurface extends StatelessWidget {
   final String year;
   final String? type;
   final Color? surfaceColor;
-  final Color ratingColor;
+  final Color? ratingColor;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
+    final effectiveRatingColor = ratingColor ?? colorScheme.secondary;
     return Container(
       decoration: BoxDecoration(
         color: surfaceColor ?? colorScheme.surface,
@@ -153,13 +154,13 @@ class DiscoverCardSurface extends StatelessWidget {
                   color: Colors.black.withValues(alpha: 0.62),
                   borderRadius: BorderRadius.circular(999),
                   border: Border.all(
-                    color: ratingColor.withValues(alpha: 0.38),
+                    color: effectiveRatingColor.withValues(alpha: 0.38),
                   ),
                 ),
                 child: Text(
                   '★ ${vote!.toStringAsFixed(1)}',
                   style: TextStyle(
-                    color: ratingColor,
+                    color: effectiveRatingColor,
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:moviepilot_mobile/modules/multifunction/controllers/multifunction_controller.dart';
 import 'package:moviepilot_mobile/utils/image_util.dart';
+import 'package:moviepilot_mobile/widgets/app_glass_card.dart';
 import 'package:moviepilot_mobile/widgets/cached_image.dart';
 
 class MultifunctionPage extends GetView<MultifunctionController> {
@@ -12,20 +13,18 @@ class MultifunctionPage extends GetView<MultifunctionController> {
   final ScrollController? scrollController;
 
   static bool get _isDark => Get.isDarkMode;
-  static Color get _background =>
-      _isDark ? const Color(0xFF111827) : const Color(0xFFF4F7FB);
   static Color get _surface =>
-      _isDark ? const Color(0xE60B1220) : const Color(0xF7FFFFFF);
+      _isDark ? const Color(0xE619191F) : const Color(0xF7FFFFFF);
   static Color get _surfaceHighest =>
-      _isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0);
+      _isDark ? const Color(0xFF2B2B33) : const Color(0xFFE2E8F0);
   static Color get _outlineSoft =>
       _isDark ? const Color(0x14FFFFFF) : const Color(0x1F0F172A);
   static Color get _textPrimary =>
       _isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
   static Color get _textSecondary =>
-      _isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569);
+      _isDark ? const Color(0xFFC7C7CC) : const Color(0xFF475569);
   static Color get _textMuted =>
-      _isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+      _isDark ? const Color(0xFF8E8E93) : const Color(0xFF64748B);
   static Color get _primary =>
       _isDark ? const Color(0xFF93C5FD) : const Color(0xFF2563EB);
   static Color get _primaryStrong =>
@@ -41,7 +40,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
   Widget build(BuildContext context) {
     Theme.of(context);
     return Scaffold(
-      backgroundColor: _background,
+      backgroundColor: Colors.transparent,
       extendBodyBehindAppBar: true,
       appBar: _buildNavigationBar(context),
       body: Obx(() {
@@ -273,86 +272,80 @@ class MultifunctionPage extends GetView<MultifunctionController> {
     return Semantics(
       button: onTap != null,
       label: '$title，共 $count 部',
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
-          child: Ink(
-            height: 132,
-            decoration: BoxDecoration(
-              color: _surface,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: _outlineSoft, width: 0.5),
-            ),
-            child: Row(
-              children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.horizontal(
-                    left: Radius.circular(13),
-                  ),
-                  child: SizedBox(
-                    width: 108,
-                    height: double.infinity,
-                    child: _buildSubscriptionPosterCollage(
-                      title: title,
-                      accent: accent,
-                      posters: posters,
-                    ),
+      child: AppGlassCard(
+        onTap: onTap,
+        padding: EdgeInsets.zero,
+        borderRadius: 18,
+        accentColor: accent,
+        child: SizedBox(
+          height: 132,
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: const BorderRadius.horizontal(
+                  left: Radius.circular(17),
+                ),
+                child: SizedBox(
+                  width: 108,
+                  height: double.infinity,
+                  child: _buildSubscriptionPosterCollage(
+                    title: title,
+                    accent: accent,
+                    posters: posters,
                   ),
                 ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 12, 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          title,
-                          style: TextStyle(
-                            color: _textPrimary,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: -0.3,
-                          ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 12, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          color: _textPrimary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.3,
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '$count 部',
-                          style: TextStyle(
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '$count 部',
+                        style: TextStyle(
+                          color: accent,
+                          fontSize: 26,
+                          height: 1,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.8,
+                        ),
+                      ),
+                      const Spacer(),
+                      Row(
+                        children: [
+                          Text(
+                            '查看订阅',
+                            style: TextStyle(
+                              color: _textMuted,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const Spacer(),
+                          Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 17,
                             color: accent,
-                            fontSize: 26,
-                            height: 1,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.8,
                           ),
-                        ),
-                        const Spacer(),
-                        Row(
-                          children: [
-                            Text(
-                              '查看订阅',
-                              style: TextStyle(
-                                color: _textMuted,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const Spacer(),
-                            Icon(
-                              Icons.arrow_forward_rounded,
-                              size: 17,
-                              color: accent,
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -366,7 +359,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
   }) {
     if (posters.isEmpty) {
       return ColoredBox(
-        color: _surfaceHighest,
+        color: _surfaceHighest.withValues(alpha: _isDark ? 0.58 : 0.46),
         child: Icon(
           title.startsWith('电影')
               ? Icons.movie_filter_rounded
@@ -396,8 +389,8 @@ class MultifunctionPage extends GetView<MultifunctionController> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            accent.withValues(alpha: _isDark ? 0.13 : 0.09),
-            _surfaceHighest.withValues(alpha: 0.88),
+            accent.withValues(alpha: _isDark ? 0.16 : 0.11),
+            _surfaceHighest.withValues(alpha: _isDark ? 0.54 : 0.70),
           ],
         ),
       ),
@@ -1023,102 +1016,78 @@ class MultifunctionPage extends GetView<MultifunctionController> {
     final arrowBackground = _surfaceHighest.withValues(
       alpha: _isDark ? 0.36 : 0.54,
     );
-    final cardGradient = _isDark
-        ? LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              module.accent.withValues(alpha: index.isEven ? 0.11 : 0.08),
-              _surface,
-            ],
-          )
-        : LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              _surface,
-              softAccent.withValues(alpha: index.isEven ? 0.34 : 0.26),
-            ],
-          );
 
     return Semantics(
       button: true,
       label: '$title，$subtitle',
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () =>
-              controller.handleRouteTap(module.route, title: module.title),
-          borderRadius: BorderRadius.circular(16),
-          child: Ink(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              gradient: cardGradient,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: AppGlassCard(
+        onTap: () =>
+            controller.handleRouteTap(module.route, title: module.title),
+        padding: const EdgeInsets.all(14),
+        borderRadius: 18,
+        accentColor: module.accent,
+        surfaceAlpha: _isDark ? 0.54 : 0.70,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        color: iconBackground,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: module.accent.withValues(
-                            alpha: _isDark ? 0.04 : 0.08,
-                          ),
-                          width: 0.5,
-                        ),
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: iconBackground,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: module.accent.withValues(
+                        alpha: _isDark ? 0.08 : 0.14,
                       ),
-                      child: Icon(module.icon, size: 21, color: module.accent),
+                      width: 0.5,
                     ),
-                    const Spacer(),
-                    Container(
-                      width: 26,
-                      height: 26,
-                      decoration: BoxDecoration(
-                        color: arrowBackground,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.arrow_outward_rounded,
-                        size: 15,
-                        color: _textMuted,
-                      ),
-                    ),
-                  ],
+                  ),
+                  child: Icon(module.icon, size: 21, color: module.accent),
                 ),
                 const Spacer(),
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: _textPrimary,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.2,
+                Container(
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    color: arrowBackground,
+                    shape: BoxShape.circle,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: TextStyle(
+                  child: Icon(
+                    Icons.arrow_outward_rounded,
+                    size: 15,
                     color: _textMuted,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    height: 1.25,
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
-          ),
+            const Spacer(),
+            Text(
+              title,
+              style: TextStyle(
+                color: _textPrimary,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.2,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: TextStyle(
+                color: _textMuted,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                height: 1.25,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ),
       ),
     );
@@ -1129,21 +1098,12 @@ class MultifunctionPage extends GetView<MultifunctionController> {
     VoidCallback? onTap,
     EdgeInsetsGeometry padding = const EdgeInsets.all(16),
   }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Ink(
-          padding: padding,
-          decoration: BoxDecoration(
-            color: _surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _outlineSoft, width: 0.5),
-          ),
-          child: child,
-        ),
-      ),
+    return AppGlassCard(
+      onTap: onTap,
+      padding: padding,
+      borderRadius: 18,
+      surfaceAlpha: _isDark ? 0.56 : 0.74,
+      child: child,
     );
   }
 
@@ -1212,19 +1172,10 @@ class _PageBackdrop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final colors = isDark
-        ? const [Color(0xFF111827), Color(0xFF0F172A), Color(0xFF0B1220)]
-        : const [Color(0xFFF8FAFC), Color(0xFFF1F5F9), Color(0xFFEFF4FA)];
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: colors,
-          stops: [0, 0.56, 1],
-        ),
-      ),
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    return IgnorePointer(
       child: Stack(
         children: [
           Positioned(
@@ -1232,9 +1183,9 @@ class _PageBackdrop extends StatelessWidget {
             left: -90,
             child: _SoftGlow(
               size: 300,
-              color: const Color(
-                0xFF3B82F6,
-              ).withValues(alpha: isDark ? 0.14 : 0.09),
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.026)
+                  : colorScheme.primary.withValues(alpha: 0.07),
             ),
           ),
           Positioned(
@@ -1242,9 +1193,9 @@ class _PageBackdrop extends StatelessWidget {
             right: -140,
             child: _SoftGlow(
               size: 360,
-              color: const Color(
-                0xFFA855F7,
-              ).withValues(alpha: isDark ? 0.10 : 0.06),
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.018)
+                  : colorScheme.secondary.withValues(alpha: 0.045),
             ),
           ),
           Positioned(
@@ -1252,9 +1203,9 @@ class _PageBackdrop extends StatelessWidget {
             left: -130,
             child: _SoftGlow(
               size: 340,
-              color: const Color(
-                0xFF2563EB,
-              ).withValues(alpha: isDark ? 0.07 : 0.045),
+              color: isDark
+                  ? Colors.black.withValues(alpha: 0.050)
+                  : colorScheme.primary.withValues(alpha: 0.035),
             ),
           ),
         ],

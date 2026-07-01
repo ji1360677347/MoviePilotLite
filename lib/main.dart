@@ -43,6 +43,7 @@ import 'modules/dashboard/pages/dashboard_page.dart';
 import 'modules/dashboard/pages/background_task_list_page.dart';
 import 'modules/login/pages/login_page.dart';
 import 'theme/app_theme.dart';
+import 'theme/app_scaffold_background.dart';
 import 'modules/profile/controllers/profile_controller.dart';
 import 'modules/profile/pages/profile_page.dart';
 import 'modules/network_test/controllers/network_test_controller.dart';
@@ -893,11 +894,16 @@ class MyApp extends StatelessWidget {
         ],
         // 配置错误处理
         builder: (context, child) {
-          return TalkerWrapper(
-            talker: talker.talker,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [child!, const AgentFloatingEntry()],
+          return AppScaffoldBackground(
+            child: TalkerWrapper(
+              talker: talker.talker,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  child ?? const SizedBox.shrink(),
+                  const AgentFloatingEntry(),
+                ],
+              ),
             ),
           );
         },
