@@ -62,10 +62,10 @@ class _DefaultScaffoldBackground extends StatelessWidget {
                       Color(0xFF09090D),
                     ]
                   : const [
-                      Color(0xFFFCFDFF),
-                      Color(0xFFEFF7FF),
-                      Color(0xFFF6FBF4),
-                      Color(0xFFFFF5F0),
+                      Color(0xFFFEFEFF),
+                      Color(0xFFF8F8FA),
+                      Color(0xFFF2F2F7),
+                      Color(0xFFFAFAFB),
                     ],
             ),
           ),
@@ -73,11 +73,7 @@ class _DefaultScaffoldBackground extends StatelessWidget {
         ImageFiltered(
           imageFilter: ui.ImageFilter.blur(sigmaX: 34, sigmaY: 34),
           child: CustomPaint(
-            painter: _LiquidGlassBackgroundPainter(
-              primary: colorScheme.primary,
-              secondary: colorScheme.secondary,
-              isDark: isDark,
-            ),
+            painter: _LiquidGlassBackgroundPainter(isDark: isDark),
           ),
         ),
         CustomPaint(painter: _GlassSheenPainter(isDark: isDark)),
@@ -149,14 +145,8 @@ class _UserScaffoldBackground extends StatelessWidget {
 }
 
 class _LiquidGlassBackgroundPainter extends CustomPainter {
-  const _LiquidGlassBackgroundPainter({
-    required this.primary,
-    required this.secondary,
-    required this.isDark,
-  });
+  const _LiquidGlassBackgroundPainter({required this.isDark});
 
-  final Color primary;
-  final Color secondary;
   final bool isDark;
 
   @override
@@ -176,8 +166,8 @@ class _LiquidGlassBackgroundPainter extends CustomPainter {
                 Colors.transparent,
               ]
             : [
-                primary.withValues(alpha: 0.20),
-                const Color(0xFF5AC8FA).withValues(alpha: 0.18),
+                Colors.white.withValues(alpha: 0.42),
+                const Color(0xFFAEAEB2).withValues(alpha: 0.10),
                 Colors.transparent,
               ],
       ).createShader(bounds)
@@ -194,8 +184,8 @@ class _LiquidGlassBackgroundPainter extends CustomPainter {
                 Colors.transparent,
               ]
             : [
-                const Color(0xFFFF9F0A).withValues(alpha: 0.13),
-                secondary.withValues(alpha: 0.12),
+                const Color(0xFFFFF4DF).withValues(alpha: 0.18),
+                Colors.white.withValues(alpha: 0.16),
                 Colors.transparent,
               ],
       ).createShader(bounds)
@@ -288,9 +278,7 @@ class _LiquidGlassBackgroundPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _LiquidGlassBackgroundPainter oldDelegate) {
-    return oldDelegate.primary != primary ||
-        oldDelegate.secondary != secondary ||
-        oldDelegate.isDark != isDark;
+    return oldDelegate.isDark != isDark;
   }
 }
 

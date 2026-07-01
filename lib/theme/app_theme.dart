@@ -25,10 +25,10 @@ class AppTheme {
   static const Color infoColor = Color(0xFF2395FF);
 
   /// 背景色（浅色主题）
-  static const Color lightBackgroundColor = Color(0xFFF5F8FC);
+  static const Color lightBackgroundColor = Color(0xFFF7F7FA);
 
   /// Scaffold 背景遮罩（浅色主题）
-  static const Color lightScaffoldBackgroundColor = Color(0xEAF5F8FC);
+  static const Color lightScaffoldBackgroundColor = Color(0xEAF7F7FA);
 
   /// 卡片背景色（浅色主题）
   static const Color lightCardBackgroundColor = Color(0xF2FFFFFF);
@@ -58,7 +58,7 @@ class AppTheme {
   static const Color textSecondaryColor = lightTextSecondaryColor;
 
   /// 边框色（浅色主题）
-  static const Color lightBorderColor = Color(0xFFD7DFEA);
+  static const Color lightBorderColor = Color(0xFFE1E1E6);
 
   /// 边框色（深色主题）
   static const Color darkBorderColor = Color(0xFF33333A);
@@ -67,7 +67,7 @@ class AppTheme {
   static const Color borderColor = lightBorderColor;
 
   /// 分隔线颜色（浅色主题）
-  static const Color lightDividerColor = Color(0xFFE4EAF2);
+  static const Color lightDividerColor = Color(0xFFE5E5EA);
 
   /// 分隔线颜色（深色主题）
   static const Color darkDividerColor = Color(0xFF25252B);
@@ -261,13 +261,13 @@ class AppTheme {
       onInverseSurface: darkTextPrimaryColor,
       inversePrimary: primary.withValues(alpha: 0.82),
       surfaceTint: primary,
-      surfaceDim: const Color(0xFFE3E9F2),
+      surfaceDim: const Color(0xFFE5E5EA),
       surfaceBright: const Color(0xFFFFFFFF),
       surfaceContainerLowest: const Color(0xFFFFFFFF),
-      surfaceContainerLow: const Color(0xFFF8FAFC),
-      surfaceContainer: const Color(0xFFF2F5F9),
-      surfaceContainerHigh: const Color(0xFFEDF2F8),
-      surfaceContainerHighest: const Color(0xFFE6EDF5),
+      surfaceContainerLow: const Color(0xFFFAFAFB),
+      surfaceContainer: const Color(0xFFF7F7FA),
+      surfaceContainerHigh: const Color(0xFFF2F2F7),
+      surfaceContainerHighest: const Color(0xFFEAEAEE),
     );
   }
 }
