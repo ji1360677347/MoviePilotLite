@@ -19,6 +19,7 @@ import 'package:moviepilot_mobile/utils/image_util.dart';
 import 'package:moviepilot_mobile/utils/media_source_util.dart';
 import 'package:moviepilot_mobile/utils/open_url.dart';
 import 'package:moviepilot_mobile/utils/toast_util.dart';
+import 'package:moviepilot_mobile/widgets/app_loading.dart';
 import 'package:moviepilot_mobile/widgets/cached_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skeletonizer/skeletonizer.dart';
@@ -199,6 +200,7 @@ class MediaDetailPage extends GetWidget<MediaDetailController> {
           fit: StackFit.expand,
           children: [
             if (backdropUrl != null) _buildHeaderBackdrop(backdropUrl),
+            if (isLoading) _buildHeaderLoadingBackdrop(context, isWide: isWide),
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -278,6 +280,31 @@ class MediaDetailPage extends GetWidget<MediaDetailController> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderLoadingBackdrop(
+    BuildContext context, {
+    required bool isWide,
+  }) {
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: Align(
+          alignment: isWide
+              ? const Alignment(0, -0.18)
+              : const Alignment(0, -0.36),
+          child: AppLoading(
+            size: isWide ? 132 : 116,
+            message: '加载详情中',
+            messageStyle: const TextStyle(
+              color: Colors.white70,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+            spacing: 8,
+          ),
+        ),
       ),
     );
   }
