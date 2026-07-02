@@ -96,6 +96,7 @@ class DiscoverFilters {
       'vote_average': voteAverage.toString(),
       'vote_count': voteCount.toString(),
       'release_date': release,
+      'year': release,
     };
     if (useOriginCountry && regionCodes.isNotEmpty) {
       params['origin_country'] = regionCodes.join('|');

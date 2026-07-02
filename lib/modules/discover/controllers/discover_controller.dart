@@ -578,10 +578,11 @@ class DiscoverController extends GetxController {
       return _buildDoubanQuery(filter);
     }
     final options = _queryOptionsFor(source, filter);
-    return filter.toQueryParameters(
+    final params = filter.toQueryParameters(
       useOriginCountry: options.useOriginCountry,
       useProductionCountries: options.useProductionCountries,
     );
+    return params;
   }
 
   String _signatureFor(DiscoverSource source, DiscoverFilters filter) {
