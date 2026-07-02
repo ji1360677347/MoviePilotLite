@@ -12,18 +12,18 @@ import 'package:moviepilot_mobile/utils/http_path_builder_util.dart';
 import 'package:moviepilot_mobile/utils/image_util.dart';
 import 'package:moviepilot_mobile/utils/toast_util.dart';
 import 'package:moviepilot_mobile/widgets/app_glass_card.dart';
+import 'package:moviepilot_mobile/widgets/app_loading.dart';
 import 'package:moviepilot_mobile/widgets/cached_image.dart';
-import 'package:skeletonizer/skeletonizer.dart';
 
 class RecommendCategoryListPage
     extends GetView<RecommendCategoryListController> {
   const RecommendCategoryListPage({super.key});
 
-  static const double _gridSpacing = 8;
+  static const double _gridSpacing = 10;
   static const double _gridPadding = 16;
   static const double _cardAspectRatio = 1 / 1.3;
-  static const double _listPosterWidth = 78;
-  static const double _listPosterHeight = 110;
+  static const double _listPosterWidth = 84;
+  static const double _listPosterHeight = 122;
   static const double _narrowScreenBreakpoint = 600;
 
   @override
@@ -38,7 +38,7 @@ class RecommendCategoryListPage
       );
     }
 
-    final bodyColor = Theme.of(context).colorScheme.surface;
+    final bodyColor = _pageSurface(context);
     return Scaffold(
       backgroundColor: bodyColor,
       body: _buildBody(context, immersive: true, bodyColor: bodyColor),
@@ -82,6 +82,7 @@ class RecommendCategoryListPage
     return Obx(() {
       final items = controller.items.toList();
       final isInitialLoading = items.isEmpty && controller.isLoading.value;
+      final error = controller.error.value;
       final isNarrowScreen =
           MediaQuery.sizeOf(context).width < _narrowScreenBreakpoint;
       controller.preferredViewMode.value;
@@ -111,37 +112,39 @@ class RecommendCategoryListPage
             else
               const SliverToBoxAdapter(child: SizedBox.shrink()),
 
-            immersive
-                ? SliverPadding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 16,
-                    ),
-                    sliver: SliverToBoxAdapter(
-                      child: Text(
-                        controller.categoryTitle,
-                        style: TextStyle(
-                          fontSize: 25,
-                          fontWeight: FontWeight.w900,
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                      ),
-                    ),
-                  )
-                : const SliverToBoxAdapter(child: SizedBox.shrink()),
             SliverPadding(
               padding: EdgeInsets.fromLTRB(
                 _gridPadding,
-                immersive ? 0 : 8,
+                immersive ? 14 : 12,
+                _gridPadding,
+                12,
+              ),
+              sliver: SliverToBoxAdapter(
+                child: _buildCategoryControlPanel(
+                  context,
+                  items: items,
+                  viewMode: viewMode,
+                  isNarrowScreen: isNarrowScreen,
+                  immersive: immersive,
+                ),
+              ),
+            ),
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(
+                _gridPadding,
+                0,
                 _gridPadding,
                 _gridPadding,
               ),
-              sliver: Skeletonizer.sliver(
-                enabled: isInitialLoading,
-                child: viewMode == SearchResultViewMode.list
-                    ? _buildListSliver(context, items)
-                    : _buildGridSliver(items, layout.crossAxisCount),
-              ),
+              sliver: isInitialLoading
+                  ? SliverToBoxAdapter(child: _buildInitialLoading(context))
+                  : items.isEmpty
+                  ? SliverToBoxAdapter(
+                      child: _buildEmptyState(context, error: error),
+                    )
+                  : viewMode == SearchResultViewMode.list
+                  ? _buildListSliver(context, items)
+                  : _buildGridSliver(items, layout.crossAxisCount),
             ),
             SliverToBoxAdapter(child: _buildBottomStatusHost(context)),
             const SliverPadding(padding: EdgeInsets.only(bottom: 80)),
@@ -186,6 +189,85 @@ class RecommendCategoryListPage
     );
   }
 
+  Widget _buildInitialLoading(BuildContext context) {
+    final theme = Theme.of(context);
+    return AppGlassCard(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+      borderRadius: 20,
+      surfaceAlpha: theme.brightness == Brightness.dark ? 0.38 : 0.90,
+      borderAlpha: theme.brightness == Brightness.dark ? 0.14 : 0.42,
+      shadowAlpha: theme.brightness == Brightness.dark ? 0.18 : 0.08,
+      accentColor: _pageAccent(context),
+      child: AppLoading(
+        message: '正在整理推荐内容…',
+        messageStyle: theme.textTheme.bodyMedium?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context, {String? error}) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final hasError = error != null && error.trim().isNotEmpty;
+    return AppGlassCard(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 22),
+      borderRadius: 20,
+      surfaceAlpha: theme.brightness == Brightness.dark ? 0.38 : 0.92,
+      borderAlpha: theme.brightness == Brightness.dark ? 0.14 : 0.42,
+      shadowAlpha: theme.brightness == Brightness.dark ? 0.18 : 0.08,
+      accentColor: _pageAccent(context),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              color: colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.72,
+              ),
+            ),
+            child: Icon(
+              hasError
+                  ? CupertinoIcons.exclamationmark_triangle
+                  : CupertinoIcons.film,
+              color: hasError ? colorScheme.error : colorScheme.primary,
+              size: 23,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            hasError ? error.trim() : '暂无推荐内容',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            hasError ? '可以稍后重试，或返回上一页切换其他分类。' : '换个分类看看，也许会遇到更合眼缘的片单。',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: controller.refreshData,
+            icon: const Icon(CupertinoIcons.refresh, size: 17),
+            label: const Text('重新加载'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildListItem(BuildContext context, RecommendApiItem item) {
     final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -194,7 +276,8 @@ class RecommendCategoryListPage
     final overview = item.overview?.trim();
     final type = item.type?.trim();
     final vote = item.vote_average;
-    final accent = _pageAccent(context, fallbackItem: item);
+    final accent = _accentForItem(context, item);
+    final artworkSize = _listArtworkSize(item);
     final metaChips = <Widget>[
       if (type != null && type.isNotEmpty)
         _buildMetaPill(context, type, accent: accent),
@@ -220,39 +303,45 @@ class RecommendCategoryListPage
         padding: EdgeInsets.zero,
         borderRadius: 20,
         blurSigma: 14,
-        surfaceAlpha: isDark ? 0.30 : 0.70,
-        borderAlpha: isDark ? 0.18 : 0.54,
-        shadowAlpha: isDark ? 0.18 : 0.08,
-        accentColor: accent,
+        surfaceAlpha: isDark ? 0.42 : 0.92,
+        borderAlpha: isDark ? 0.18 : 0.48,
+        shadowAlpha: isDark ? 0.22 : 0.10,
+        accentColor: colorScheme.onSurfaceVariant,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(20),
           child: Stack(
             children: [
-              Positioned.fill(
-                child: CustomPaint(
-                  painter: _RecommendCategoryItemGlowPainter(
-                    accent: accent,
-                    isDark: isDark,
-                  ),
-                ),
-              ),
               Padding(
                 padding: const EdgeInsets.all(12),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildPosterFrame(
-                      context,
-                      item,
-                      width: _listPosterWidth,
-                      height: _listPosterHeight,
-                      radius: 15,
-                      showScore: false,
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(
+                              alpha: isDark ? 0.34 : 0.14,
+                            ),
+                            blurRadius: 16,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: _buildPosterFrame(
+                        context,
+                        item,
+                        width: artworkSize.width,
+                        height: artworkSize.height,
+                        radius: 15,
+                        showScore: false,
+                      ),
                     ),
                     const SizedBox(width: 13),
                     Expanded(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        padding: const EdgeInsets.symmetric(vertical: 3),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
@@ -265,7 +354,7 @@ class RecommendCategoryListPage
                                 color: colorScheme.onSurface,
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,
-                                height: 1.18,
+                                height: 1.16,
                               ),
                             ),
                             if (metaChips.isNotEmpty) ...[
@@ -286,11 +375,13 @@ class RecommendCategoryListPage
                                 style: TextStyle(
                                   color: colorScheme.onSurfaceVariant
                                       .withValues(alpha: isDark ? 0.78 : 0.86),
-                                  fontSize: 12,
-                                  height: 1.38,
+                                  fontSize: 12.5,
+                                  height: 1.42,
                                 ),
                               ),
                             ],
+                            const SizedBox(height: 10),
+                            _buildListItemFooter(context, item, accent),
                           ],
                         ),
                       ),
@@ -312,7 +403,6 @@ class RecommendCategoryListPage
     final year = _displayYear(item);
     final type = item.type?.trim();
     final vote = item.vote_average;
-    final accent = _pageAccent(context, fallbackItem: item);
 
     return RecommendItemBaseCard(
       item: item,
@@ -332,8 +422,8 @@ class RecommendCategoryListPage
               blurSigma: 14,
               surfaceAlpha: isDark ? 0.24 : 0.68,
               borderAlpha: isDark ? 0.16 : 0.48,
-              shadowAlpha: isDark ? 0.20 : 0.10,
-              accentColor: accent,
+              shadowAlpha: isDark ? 0.24 : 0.12,
+              accentColor: colorScheme.onSurfaceVariant,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(20),
                 child: Stack(
@@ -351,20 +441,11 @@ class RecommendCategoryListPage
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            Colors.black.withValues(alpha: 0.04),
-                            Colors.black.withValues(alpha: 0.12),
-                            Colors.black.withValues(alpha: 0.76),
+                            Colors.black.withValues(alpha: 0.02),
+                            Colors.black.withValues(alpha: 0.18),
+                            Colors.black.withValues(alpha: 0.86),
                           ],
-                          stops: const [0.0, 0.48, 1.0],
-                        ),
-                      ),
-                    ),
-                    Positioned.fill(
-                      child: CustomPaint(
-                        painter: _RecommendCategoryItemGlowPainter(
-                          accent: accent,
-                          isDark: true,
-                          strongBottom: true,
+                          stops: const [0.0, 0.45, 1.0],
                         ),
                       ),
                     ),
@@ -399,11 +480,25 @@ class RecommendCategoryListPage
                     Positioned(
                       left: 12,
                       right: 12,
-                      bottom: 12,
+                      bottom: 13,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          if (year.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: Text(
+                                year,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.78),
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
                           Text(
                             title,
                             maxLines: 2,
@@ -415,19 +510,6 @@ class RecommendCategoryListPage
                               height: 1.14,
                             ),
                           ),
-                          if (year.isNotEmpty) ...[
-                            const SizedBox(height: 5),
-                            Text(
-                              year,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.76),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
                         ],
                       ),
                     ),
@@ -449,6 +531,46 @@ class RecommendCategoryListPage
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildListItemFooter(
+    BuildContext context,
+    RecommendApiItem item,
+    Color accent,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final source = item.source?.trim();
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Row(
+        children: [
+          Icon(
+            CupertinoIcons.sparkles,
+            size: 14,
+            color: accent.withValues(alpha: 0.88),
+          ),
+          const SizedBox(width: 5),
+          Expanded(
+            child: Text(
+              source != null && source.isNotEmpty ? source : '推荐内容',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.78),
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Icon(
+            CupertinoIcons.chevron_right,
+            size: 14,
+            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.56),
+          ),
+        ],
       ),
     );
   }
@@ -516,7 +638,7 @@ class RecommendCategoryListPage
     required BoxFit fit,
     int? memCacheWidth,
   }) {
-    final raw = item.poster_path ?? item.backdrop_path;
+    final raw = _bestArtworkPath(item);
     if (raw != null && raw.isNotEmpty) {
       return CachedImage(
         imageUrl: ImageUtil.convertCacheImageUrl(raw),
@@ -548,6 +670,26 @@ class RecommendCategoryListPage
     );
   }
 
+  Size _listArtworkSize(RecommendApiItem item) {
+    final hasPoster = (item.poster_path?.trim().isNotEmpty ?? false);
+    if (hasPoster) {
+      return const Size(_listPosterWidth, _listPosterHeight);
+    }
+    final hasBackdrop = (item.backdrop_path?.trim().isNotEmpty ?? false);
+    if (hasBackdrop) {
+      return const Size(116, 74);
+    }
+    return const Size(_listPosterWidth, _listPosterHeight);
+  }
+
+  String? _bestArtworkPath(RecommendApiItem item) {
+    final poster = item.poster_path?.trim();
+    if (poster != null && poster.isNotEmpty) return poster;
+    final backdrop = item.backdrop_path?.trim();
+    if (backdrop != null && backdrop.isNotEmpty) return backdrop;
+    return null;
+  }
+
   int _scaledCacheExtent(BuildContext context, double logicalExtent) {
     final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
     final value = (logicalExtent * devicePixelRatio * 1.25).ceil();
@@ -566,19 +708,19 @@ class RecommendCategoryListPage
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
         color: quiet
-            ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.52)
-            : accent.withValues(alpha: 0.08),
+            ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.62)
+            : colorScheme.surfaceContainerHighest.withValues(alpha: 0.48),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(
           color: quiet
               ? colorScheme.outlineVariant.withValues(alpha: 0.28)
-              : accent.withValues(alpha: 0.16),
+              : accent.withValues(alpha: 0.30),
         ),
       ),
       child: Text(
         text,
         style: TextStyle(
-          color: quiet ? colorScheme.onSurfaceVariant : colorScheme.onSurface,
+          color: quiet ? colorScheme.onSurfaceVariant : accent,
           fontSize: 11,
           fontWeight: FontWeight.w700,
         ),
@@ -626,15 +768,21 @@ class RecommendCategoryListPage
     return Theme.of(context).colorScheme.primary;
   }
 
-  Color _pageAccent(BuildContext context, {RecommendApiItem? fallbackItem}) {
-    return controller.appBarThemeColor ??
-        (fallbackItem == null
-            ? Theme.of(context).colorScheme.primary
-            : _accentForItem(context, fallbackItem));
+  Color _pageAccent(BuildContext context) {
+    return controller.appBarThemeColor ?? Theme.of(context).colorScheme.primary;
   }
 
   Color _pageSecondaryAccent(BuildContext context) {
     return controller.appBarSecondaryThemeColor ?? _pageAccent(context);
+  }
+
+  Color _pageSurface(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Color.alphaBlend(
+      _pageAccent(context).withValues(alpha: isDark ? 0.14 : 0.08),
+      colorScheme.surface,
+    );
   }
 
   String _displayYear(RecommendApiItem item) {
@@ -656,19 +804,23 @@ class RecommendCategoryListPage
     final secondaryAccent = _pageSecondaryAccent(context);
     final surface = bodyColor ?? colorScheme.surface;
     final headerTop = Color.alphaBlend(
-      accent.withValues(alpha: isDark ? 0.34 : 0.22),
-      colorScheme.surfaceContainerHighest,
+      accent.withValues(alpha: isDark ? 0.82 : 0.56),
+      isDark ? const Color(0xFF070811) : colorScheme.surfaceContainerHighest,
     );
     final headerMid = Color.alphaBlend(
-      secondaryAccent.withValues(alpha: isDark ? 0.20 : 0.12),
+      secondaryAccent.withValues(alpha: isDark ? 0.56 : 0.34),
       surface,
     );
     final headerForeground = _readableOnColor(headerTop);
     final topItems = items.take(3).toList();
+    final loadedCount = items.length;
+    final totalCount = controller.totalItems.value;
     return SliverAppBar(
       pinned: true,
-      expandedHeight: 250,
+      stretch: true,
+      expandedHeight: 312,
       backgroundColor: headerTop,
+      elevation: 0,
       leading: IconButton(
         icon: Icon(Icons.arrow_back, color: headerForeground),
         onPressed: Get.back,
@@ -687,19 +839,332 @@ class RecommendCategoryListPage
         ),
       ],
       flexibleSpace: FlexibleSpaceBar(
-        background: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [headerTop, headerMid, surface],
-              stops: const [0, 0.34, 1.0],
+        background: Stack(
+          fit: StackFit.expand,
+          children: [
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    headerTop,
+                    Color.alphaBlend(
+                      secondaryAccent.withValues(alpha: isDark ? 0.42 : 0.22),
+                      headerMid,
+                    ),
+                    surface,
+                  ],
+                  stops: const [0.0, 0.54, 1.0],
+                ),
+              ),
+            ),
+            Positioned.fill(
+              child: CustomPaint(
+                painter: _RecommendCategoryHeaderPainter(
+                  accent: accent,
+                  secondaryAccent: secondaryAccent,
+                  isDark: isDark,
+                ),
+              ),
+            ),
+            Positioned(
+              top: 74,
+              left: 0,
+              right: 0,
+              child: SizedBox(
+                height: 182,
+                child: _buildPosterRow(context, topItems),
+              ),
+            ),
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: isDark ? 0.06 : 0.00),
+                      surface.withValues(alpha: isDark ? 0.92 : 0.88),
+                    ],
+                    stops: const [0.32, 0.74, 1.0],
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 18,
+              right: 18,
+              bottom: 22,
+              child: _buildHeaderTitleBlock(
+                context,
+                foreground: colorScheme.onSurface,
+                loadedCount: loadedCount,
+                totalCount: totalCount,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeaderTitleBlock(
+    BuildContext context, {
+    required Color foreground,
+    required int loadedCount,
+    required int? totalCount,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final totalLabel = totalCount != null && totalCount > 0
+        ? '$loadedCount / $totalCount'
+        : '$loadedCount';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          controller.categoryTitle,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: foreground,
+            fontSize: 30,
+            height: 1.04,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _buildHeaderChip(
+              context,
+              icon: CupertinoIcons.play_rectangle,
+              text: '媒体推荐',
+            ),
+            _buildHeaderChip(
+              context,
+              icon: CupertinoIcons.square_stack_3d_up,
+              text: '已加载 $totalLabel',
+            ),
+            if (controller.hasMore.value)
+              _buildHeaderChip(
+                context,
+                icon: CupertinoIcons.arrow_down_circle,
+                text: '可继续加载',
+              ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Text(
+          '按来源与热度整理的精选片单，长按卡片可快速订阅或搜索资源。',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.82),
+            fontSize: 12.5,
+            height: 1.35,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeaderChip(
+    BuildContext context, {
+    required IconData icon,
+    required String text,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: colorScheme.surface.withValues(alpha: isDark ? 0.28 : 0.70),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(
+            alpha: isDark ? 0.20 : 0.42,
+          ),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: colorScheme.onSurfaceVariant),
+          const SizedBox(width: 5),
+          Text(
+            text,
+            style: TextStyle(
+              color: colorScheme.onSurfaceVariant,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
             ),
           ),
-          child: Center(
-            child: SizedBox(
-              height: 184,
-              child: _buildPosterRow(context, topItems),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryControlPanel(
+    BuildContext context, {
+    required List<RecommendApiItem> items,
+    required SearchResultViewMode viewMode,
+    required bool isNarrowScreen,
+    required bool immersive,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = _pageAccent(context);
+    final total = controller.totalItems.value;
+    final countLabel = total != null && total > 0
+        ? '${items.length}/$total'
+        : '${items.length}';
+    final pageLabel = math.max(1, controller.currentPage.value);
+    return AppGlassCard(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      borderRadius: 18,
+      blurSigma: immersive ? 18 : 10,
+      surfaceAlpha: isDark ? 0.42 : 0.90,
+      borderAlpha: isDark ? 0.16 : 0.44,
+      shadowAlpha: isDark ? 0.18 : 0.07,
+      accentColor: accent,
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  accent.withValues(alpha: isDark ? 0.96 : 0.84),
+                  _pageSecondaryAccent(
+                    context,
+                  ).withValues(alpha: isDark ? 0.78 : 0.64),
+                ],
+              ),
+            ),
+            child: const Icon(
+              CupertinoIcons.rectangle_stack_fill,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '精选目录',
+                  style: TextStyle(
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '$countLabel 项内容 · 第 $pageLabel 页',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: colorScheme.onSurfaceVariant,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          _buildViewModeSwitch(
+            context,
+            viewMode: viewMode,
+            isNarrowScreen: isNarrowScreen,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildViewModeSwitch(
+    BuildContext context, {
+    required SearchResultViewMode viewMode,
+    required bool isNarrowScreen,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.62),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.28),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildViewModeButton(
+            context,
+            icon: CupertinoIcons.list_bullet,
+            selected: viewMode == SearchResultViewMode.list,
+            tooltip: '列表视图',
+            onPressed: () {
+              if (viewMode != SearchResultViewMode.list) {
+                controller.toggleViewMode(isNarrowScreen: isNarrowScreen);
+              }
+            },
+          ),
+          _buildViewModeButton(
+            context,
+            icon: CupertinoIcons.square_grid_2x2,
+            selected: viewMode == SearchResultViewMode.grid,
+            tooltip: '网格视图',
+            onPressed: () {
+              if (viewMode != SearchResultViewMode.grid) {
+                controller.toggleViewMode(isNarrowScreen: isNarrowScreen);
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildViewModeButton(
+    BuildContext context, {
+    required IconData icon,
+    required bool selected,
+    required String tooltip,
+    required VoidCallback onPressed,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final accent = _pageAccent(context);
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: selected ? accent : Colors.transparent,
+        borderRadius: BorderRadius.circular(11),
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(11),
+          child: SizedBox(
+            width: 34,
+            height: 32,
+            child: Icon(
+              icon,
+              size: 18,
+              color: selected ? Colors.white : colorScheme.onSurfaceVariant,
             ),
           ),
         ),
@@ -799,15 +1264,16 @@ class RecommendCategoryListPage
     if (isLoading) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 16),
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(child: AppLoading()),
       );
     }
     if (hasMore) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        child: OutlinedButton(
+        child: FilledButton.icon(
           onPressed: controller.loadMore,
-          child: const Text('加载更多'),
+          icon: const Icon(CupertinoIcons.arrow_down_circle, size: 18),
+          label: const Text('加载更多'),
         ),
       );
     }
@@ -871,59 +1337,80 @@ class RecommendCategoryListPage
   }
 }
 
-class _RecommendCategoryItemGlowPainter extends CustomPainter {
-  const _RecommendCategoryItemGlowPainter({
+class _RecommendCategoryHeaderPainter extends CustomPainter {
+  const _RecommendCategoryHeaderPainter({
     required this.accent,
+    required this.secondaryAccent,
     required this.isDark,
-    this.strongBottom = false,
   });
 
   final Color accent;
+  final Color secondaryAccent;
   final bool isDark;
-  final bool strongBottom;
 
   @override
   void paint(Canvas canvas, Size size) {
     final bounds = Offset.zero & size;
-    final rrect = RRect.fromRectAndRadius(bounds, const Radius.circular(20));
 
-    final topGlow = Paint()
-      ..shader = RadialGradient(
-        center: const Alignment(-0.9, -0.82),
-        radius: 1.08,
+    final sheen = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
         colors: [
-          Colors.white.withValues(alpha: isDark ? 0.12 : 0.30),
-          accent.withValues(alpha: isDark ? 0.08 : 0.12),
+          Colors.white.withValues(alpha: isDark ? 0.08 : 0.20),
           Colors.transparent,
+          secondaryAccent.withValues(alpha: isDark ? 0.20 : 0.12),
         ],
         stops: const [0.0, 0.42, 1.0],
       ).createShader(bounds);
-    canvas.drawRRect(rrect, topGlow);
+    canvas.drawRect(bounds, sheen);
 
-    final bottomGlow = Paint()
-      ..shader = RadialGradient(
-        center: const Alignment(0.92, 0.94),
-        radius: strongBottom ? 1.1 : 0.86,
+    final bandPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.centerLeft,
+        end: Alignment.centerRight,
         colors: [
-          accent.withValues(alpha: strongBottom ? 0.18 : 0.10),
-          Colors.transparent,
+          accent.withValues(alpha: isDark ? 0.34 : 0.24),
+          secondaryAccent.withValues(alpha: isDark ? 0.26 : 0.18),
         ],
       ).createShader(bounds);
-    canvas.drawRRect(rrect, bottomGlow);
 
-    canvas.drawRRect(
-      rrect.deflate(0.7),
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.7
-        ..color = Colors.white.withValues(alpha: isDark ? 0.08 : 0.34),
+    final band = Path()
+      ..moveTo(size.width * 0.06, size.height * 0.22)
+      ..lineTo(size.width * 0.96, size.height * 0.06)
+      ..lineTo(size.width * 1.02, size.height * 0.18)
+      ..lineTo(size.width * 0.10, size.height * 0.38)
+      ..close();
+    canvas.drawPath(band, bandPaint);
+
+    final lowerBand = Path()
+      ..moveTo(size.width * -0.06, size.height * 0.54)
+      ..lineTo(size.width * 0.74, size.height * 0.38)
+      ..lineTo(size.width * 0.88, size.height * 0.48)
+      ..lineTo(size.width * 0.02, size.height * 0.68)
+      ..close();
+    canvas.drawPath(
+      lowerBand,
+      Paint()..color = Colors.black.withValues(alpha: isDark ? 0.12 : 0.04),
     );
+
+    final linePaint = Paint()
+      ..color = Colors.white.withValues(alpha: isDark ? 0.10 : 0.24)
+      ..strokeWidth = 1;
+    for (var i = 0; i < 5; i++) {
+      final y = size.height * (0.16 + i * 0.09);
+      canvas.drawLine(
+        Offset(size.width * 0.10, y),
+        Offset(size.width * 0.90, y - size.height * 0.11),
+        linePaint,
+      );
+    }
   }
 
   @override
-  bool shouldRepaint(covariant _RecommendCategoryItemGlowPainter oldDelegate) {
+  bool shouldRepaint(covariant _RecommendCategoryHeaderPainter oldDelegate) {
     return oldDelegate.accent != accent ||
-        oldDelegate.isDark != isDark ||
-        oldDelegate.strongBottom != strongBottom;
+        oldDelegate.secondaryAccent != secondaryAccent ||
+        oldDelegate.isDark != isDark;
   }
 }
