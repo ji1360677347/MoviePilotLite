@@ -569,7 +569,12 @@ class DashboardPage extends GetView<DashboardController> {
     final palette = DashboardPalette.of(context);
     final cards = <Widget>[];
     if (visible.contains('实时速率')) {
-      cards.add(const RealTimeSpeedWidget(compact: true));
+      cards.add(
+        InkWell(
+          child: const RealTimeSpeedWidget(compact: true),
+          onTap: () => Get.toNamed('/downloader-config'),
+        ),
+      );
     }
     if (visible.contains('存储空间')) {
       cards.add(

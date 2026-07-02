@@ -10,6 +10,7 @@ import 'package:moviepilot_mobile/utils/http_path_builder_util.dart';
 import 'package:moviepilot_mobile/utils/image_util.dart';
 import 'package:moviepilot_mobile/utils/toast_util.dart';
 import 'package:moviepilot_mobile/widgets/cached_image.dart';
+import 'package:moviepilot_mobile/widgets/app_loading.dart';
 import 'package:moviepilot_mobile/widgets/constrained_page_content.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
@@ -385,9 +386,7 @@ class SearchIndexPage extends GetView<SearchIndexController> {
           padding: const EdgeInsets.only(top: 4),
           child: SizedBox(
             height: 232,
-            child: Center(
-              child: CircularProgressIndicator(color: colorScheme.primary),
-            ),
+            child: const Center(child: AppLoading()),
           ),
         );
       }
@@ -668,7 +667,6 @@ class SearchIndexPage extends GetView<SearchIndexController> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
-    final keyword = controller.keyword.value.trim();
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(

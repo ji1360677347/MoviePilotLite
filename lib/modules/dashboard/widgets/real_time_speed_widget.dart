@@ -113,7 +113,7 @@ class RealTimeSpeedWidget extends StatelessWidget {
                   size: 16,
                   color: palette.mutedText,
                 ),
-                const Spacer(),
+                const SizedBox(width: 12),
                 Text(
                   '网络',
                   style: TextStyle(
@@ -122,6 +122,12 @@ class RealTimeSpeedWidget extends StatelessWidget {
                     letterSpacing: 1.2,
                     color: palette.faintText,
                   ),
+                ),
+                const Spacer(),
+                Icon(
+                  CupertinoIcons.chevron_right,
+                  size: 12,
+                  color: palette.mutedText,
                 ),
               ],
             ),

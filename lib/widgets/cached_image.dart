@@ -68,9 +68,22 @@ class CachedImage extends StatelessWidget {
   /// Cookie
   final String? cookie;
 
+  static const double _decodeOverscan = 1.35;
+  static const int _minAutoCacheExtent = 64;
+  static const int _maxAutoCacheExtent = 1600;
+
   @override
   Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) => _buildImage(context, constraints),
+    );
+  }
+
+  Widget _buildImage(BuildContext context, BoxConstraints constraints) {
     final manager = cacheManager ?? AppImageCacheManager.instance;
+    final autoCacheExtents = _autoCacheExtents(context, constraints);
+    final effectiveMemCacheWidth = memCacheWidth ?? autoCacheExtents.width;
+    final effectiveMemCacheHeight = memCacheHeight ?? autoCacheExtents.height;
     if (kIsWeb) {
       final imageWidget = CachedNetworkImage(
         imageUrl: imageUrl,
@@ -78,8 +91,8 @@ class CachedImage extends StatelessWidget {
         height: height,
         fit: fit,
         cacheManager: manager,
-        memCacheWidth: memCacheWidth,
-        memCacheHeight: memCacheHeight,
+        memCacheWidth: effectiveMemCacheWidth,
+        memCacheHeight: effectiveMemCacheHeight,
         fadeInDuration: fadeInDuration,
         fadeOutDuration: fadeOutDuration,
         errorListener: (_) {},
@@ -103,8 +116,8 @@ class CachedImage extends StatelessWidget {
       height: height,
       fit: fit,
       cacheManager: manager,
-      memCacheWidth: memCacheWidth,
-      memCacheHeight: memCacheHeight,
+      memCacheWidth: effectiveMemCacheWidth,
+      memCacheHeight: effectiveMemCacheHeight,
       fadeInDuration: fadeInDuration,
       fadeOutDuration: fadeOutDuration,
       errorListener: (_) => _evictBrokenImage(manager, cacheKey),
@@ -117,6 +130,39 @@ class CachedImage extends StatelessWidget {
     );
 
     return _clipIfNeeded(imageWidget);
+  }
+
+  ({int? width, int? height}) _autoCacheExtents(
+    BuildContext context,
+    BoxConstraints constraints,
+  ) {
+    final logicalWidth =
+        _finiteExtent(width) ?? _finiteExtent(constraints.maxWidth);
+    final logicalHeight =
+        _finiteExtent(height) ?? _finiteExtent(constraints.maxHeight);
+    final cacheWidth = _scaledCacheExtent(context, logicalWidth);
+    final cacheHeight = _scaledCacheExtent(context, logicalHeight);
+
+    if (cacheWidth == null) return (width: null, height: cacheHeight);
+    if (cacheHeight == null) return (width: cacheWidth, height: null);
+    if (fit == BoxFit.cover && cacheHeight > cacheWidth) {
+      return (width: null, height: cacheHeight);
+    }
+    return (width: cacheWidth, height: null);
+  }
+
+  int? _scaledCacheExtent(BuildContext context, double? logicalExtent) {
+    if (logicalExtent == null || logicalExtent <= 0) return null;
+    final raw =
+        logicalExtent *
+        MediaQuery.devicePixelRatioOf(context) *
+        _decodeOverscan;
+    return raw.ceil().clamp(_minAutoCacheExtent, _maxAutoCacheExtent);
+  }
+
+  double? _finiteExtent(double? value) {
+    if (value == null || !value.isFinite) return null;
+    return value;
   }
 
   Widget _clipIfNeeded(Widget child) {

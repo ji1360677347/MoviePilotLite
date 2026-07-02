@@ -29,6 +29,7 @@ import 'package:moviepilot_mobile/services/jpush_service.dart';
 import 'package:moviepilot_mobile/l10n/app_localizations.dart';
 import 'package:moviepilot_mobile/services/app_service.dart';
 import 'package:moviepilot_mobile/services/hive_service.dart';
+import 'package:moviepilot_mobile/utils/image_cache_manager.dart';
 import 'package:moviepilot_mobile/utils/image_util.dart';
 import 'package:moviepilot_mobile/utils/web_view_screen.dart';
 import 'package:moviepilot_mobile/widgets/agent_floating_entry.dart';
@@ -143,6 +144,7 @@ List<GetMiddleware> permissionGuards([String? permissionRoute]) => [
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  AppImageCacheManager.configureGlobalDecodedCache();
   try {
     Get.put(AppLog());
     await Get.putAsync(() => HiveService().init(), permanent: true);

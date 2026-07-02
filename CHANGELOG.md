@@ -2,6 +2,7 @@
 
 ## 2026-06-29
 - 新增通用 Lottie 加载组件 `AppLoading` / `AppLoadingIndicator`，媒体搜索页搜索过程改用 `loading.json` 动画，替换原自定义粒子 loading。
+- 搜索首页推荐内容加载态改用统一 `AppLoading` 动画，提升加载反馈的可见性与一致性。
 - 新增玻璃胶囊搜索条 `GlassSearchFloatingBar`，统一订阅页、已安装插件页、插件市场页的底部筛选/搜索/排序浮条样式，修复深浅色主题下底色与文字颜色不一致问题。
 - AI 助手全局悬浮入口改版：接入 Lottie 小宠物动画、极光光环与玻璃容器，长按菜单改为标准 `CupertinoContextMenuAction`，修复菜单弹出布局异常。
 - 探索页 Discover 卡片与区块标题字重、字距收敛，整体视觉更轻。

@@ -6,12 +6,12 @@ import 'package:get/get.dart';
 import 'package:moviepilot_mobile/modules/recommend/controllers/recommend_category_list_controller.dart';
 import 'package:moviepilot_mobile/modules/recommend/models/recommend_api_item.dart';
 import 'package:moviepilot_mobile/modules/recommend/widgets/recommend_item_base_card.dart';
-import 'package:moviepilot_mobile/modules/recommend/widgets/recommend_item_card.dart';
 import 'package:moviepilot_mobile/modules/search_result/controllers/search_result_controller.dart';
 import 'package:moviepilot_mobile/utils/grid_layout.dart';
 import 'package:moviepilot_mobile/utils/http_path_builder_util.dart';
 import 'package:moviepilot_mobile/utils/image_util.dart';
 import 'package:moviepilot_mobile/utils/toast_util.dart';
+import 'package:moviepilot_mobile/widgets/app_glass_card.dart';
 import 'package:moviepilot_mobile/widgets/cached_image.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
@@ -22,8 +22,8 @@ class RecommendCategoryListPage
   static const double _gridSpacing = 8;
   static const double _gridPadding = 16;
   static const double _cardAspectRatio = 1 / 1.3;
-  static const double _listPosterWidth = 72;
-  static const double _listPosterHeight = 96;
+  static const double _listPosterWidth = 78;
+  static const double _listPosterHeight = 110;
   static const double _narrowScreenBreakpoint = 600;
 
   @override
@@ -81,9 +81,7 @@ class RecommendCategoryListPage
   }) {
     return Obx(() {
       final items = controller.items.toList();
-      final isLoading = controller.isLoading.value;
-      final error = controller.error.value;
-      final hasMore = controller.hasMore.value;
+      final isInitialLoading = items.isEmpty && controller.isLoading.value;
       final isNarrowScreen =
           MediaQuery.sizeOf(context).width < _narrowScreenBreakpoint;
       controller.preferredViewMode.value;
@@ -99,6 +97,7 @@ class RecommendCategoryListPage
       return RefreshIndicator(
         onRefresh: () => controller.refreshData(),
         child: CustomScrollView(
+          cacheExtent: 160,
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             if (immersive)
@@ -138,21 +137,13 @@ class RecommendCategoryListPage
                 _gridPadding,
               ),
               sliver: Skeletonizer.sliver(
-                enabled: isLoading || items.isEmpty,
+                enabled: isInitialLoading,
                 child: viewMode == SearchResultViewMode.list
                     ? _buildListSliver(context, items)
                     : _buildGridSliver(items, layout.crossAxisCount),
               ),
             ),
-            SliverToBoxAdapter(
-              child: _buildBottomStatus(
-                context,
-                isLoading: isLoading,
-                hasMore: hasMore,
-                hasItems: items.isNotEmpty,
-                error: error,
-              ),
-            ),
+            SliverToBoxAdapter(child: _buildBottomStatusHost(context)),
             const SliverPadding(padding: EdgeInsets.only(bottom: 80)),
           ],
         ),
@@ -162,10 +153,14 @@ class RecommendCategoryListPage
 
   Widget _buildGridSliver(List<RecommendApiItem> items, int crossAxisCount) {
     return SliverGrid(
-      delegate: SliverChildBuilderDelegate((context, index) {
-        final item = items[index];
-        return RecommendItemCard(item: item, onTap: () => _openDetail(item));
-      }, childCount: items.length),
+      delegate: SliverChildBuilderDelegate(
+        (context, index) {
+          final item = items[index];
+          return _buildGridItem(context, item);
+        },
+        childCount: items.length,
+        addAutomaticKeepAlives: false,
+      ),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
         mainAxisSpacing: _gridSpacing,
@@ -176,101 +171,130 @@ class RecommendCategoryListPage
   }
 
   Widget _buildListSliver(BuildContext context, List<RecommendApiItem> items) {
-    final dividerColor = Theme.of(
-      context,
-    ).colorScheme.outlineVariant.withValues(alpha: 0.42);
     return SliverList(
-      delegate: SliverChildBuilderDelegate((context, index) {
-        final isLast = index == items.length - 1;
-        final item = items[index];
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            RecommendItemBaseCard(
-              item: item,
-              child: _buildListRow(context, item),
-            ),
-            if (!isLast) ...[
-              const SizedBox(height: 10),
-              Divider(height: 1, thickness: 1, color: dividerColor),
-              const SizedBox(height: 10),
-            ],
-          ],
-        );
-      }, childCount: items.length),
+      delegate: SliverChildBuilderDelegate(
+        (context, index) {
+          final item = items[index];
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _buildListItem(context, item),
+          );
+        },
+        childCount: items.length,
+        addAutomaticKeepAlives: false,
+      ),
     );
   }
 
-  Widget _buildListRow(BuildContext context, RecommendApiItem item) {
+  Widget _buildListItem(BuildContext context, RecommendApiItem item) {
     final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final title = _bestTitle(item) ?? '';
     final year = _displayYear(item);
     final overview = item.overview?.trim();
     final type = item.type?.trim();
     final vote = item.vote_average;
+    final accent = _pageAccent(context, fallbackItem: item);
     final metaChips = <Widget>[
-      if (type != null && type.isNotEmpty) _buildListMetaPill(context, type),
+      if (type != null && type.isNotEmpty)
+        _buildMetaPill(context, type, accent: accent),
       if (year.isNotEmpty)
-        Text(
+        _buildMetaPill(
+          context,
           year,
-          style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 13),
+          accent: colorScheme.secondary,
+          quiet: true,
         ),
       if (vote != null && vote > 0)
-        _buildListMetaPill(context, vote.toStringAsFixed(1)),
+        _buildMetaPill(
+          context,
+          vote.toStringAsFixed(1),
+          accent: const Color(0xFFFFC857),
+        ),
     ];
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+
+    return RecommendItemBaseCard(
+      item: item,
+      child: AppGlassCard(
         onTap: () => _openDetail(item),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        padding: EdgeInsets.zero,
+        borderRadius: 20,
+        blurSigma: 14,
+        surfaceAlpha: isDark ? 0.30 : 0.70,
+        borderAlpha: isDark ? 0.18 : 0.54,
+        shadowAlpha: isDark ? 0.18 : 0.08,
+        accentColor: accent,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Stack(
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: _listPoster(item),
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _RecommendCategoryItemGlowPainter(
+                    accent: accent,
+                    isDark: isDark,
+                  ),
+                ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: colorScheme.onSurface,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        height: 1.25,
-                      ),
+                    _buildPosterFrame(
+                      context,
+                      item,
+                      width: _listPosterWidth,
+                      height: _listPosterHeight,
+                      radius: 15,
+                      showScore: false,
                     ),
-                    if (metaChips.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 4,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: metaChips,
-                      ),
-                    ],
-                    if (overview != null && overview.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        overview,
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: colorScheme.onSurfaceVariant,
-                          fontSize: 12,
-                          height: 1.4,
+                    const SizedBox(width: 13),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: colorScheme.onSurface,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                height: 1.18,
+                              ),
+                            ),
+                            if (metaChips.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 7,
+                                runSpacing: 6,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: metaChips,
+                              ),
+                            ],
+                            if (overview != null && overview.isNotEmpty) ...[
+                              const SizedBox(height: 9),
+                              Text(
+                                overview,
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: colorScheme.onSurfaceVariant
+                                      .withValues(alpha: isDark ? 0.78 : 0.86),
+                                  fontSize: 12,
+                                  height: 1.38,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
-                    ],
+                    ),
                   ],
                 ),
               ),
@@ -281,55 +305,336 @@ class RecommendCategoryListPage
     );
   }
 
-  Widget _listPoster(RecommendApiItem item) {
+  Widget _buildGridItem(BuildContext context, RecommendApiItem item) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colorScheme = Theme.of(context).colorScheme;
+    final title = _bestTitle(item) ?? '';
+    final year = _displayYear(item);
+    final type = item.type?.trim();
+    final vote = item.vote_average;
+    final accent = _pageAccent(context, fallbackItem: item);
+
+    return RecommendItemBaseCard(
+      item: item,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth.isFinite
+              ? constraints.maxWidth
+              : 160.0;
+          final height = width / _cardAspectRatio;
+          return SizedBox(
+            width: width,
+            height: height,
+            child: AppGlassCard(
+              onTap: () => _openDetail(item),
+              padding: EdgeInsets.zero,
+              borderRadius: 20,
+              blurSigma: 14,
+              surfaceAlpha: isDark ? 0.24 : 0.68,
+              borderAlpha: isDark ? 0.16 : 0.48,
+              shadowAlpha: isDark ? 0.20 : 0.10,
+              accentColor: accent,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    _buildPosterImage(
+                      context,
+                      item,
+                      fit: BoxFit.cover,
+                      memCacheWidth: _scaledCacheExtent(context, width),
+                    ),
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withValues(alpha: 0.04),
+                            Colors.black.withValues(alpha: 0.12),
+                            Colors.black.withValues(alpha: 0.76),
+                          ],
+                          stops: const [0.0, 0.48, 1.0],
+                        ),
+                      ),
+                    ),
+                    Positioned.fill(
+                      child: CustomPaint(
+                        painter: _RecommendCategoryItemGlowPainter(
+                          accent: accent,
+                          isDark: true,
+                          strongBottom: true,
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: 10,
+                      right: 10,
+                      top: 10,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (type != null && type.isNotEmpty)
+                            Flexible(
+                              child: _buildOverlayPill(
+                                type,
+                                background: Colors.black.withValues(
+                                  alpha: 0.36,
+                                ),
+                              ),
+                            ),
+                          const Spacer(),
+                          if (vote != null && vote > 0)
+                            _buildOverlayPill(
+                              vote.toStringAsFixed(1),
+                              background: const Color(
+                                0xFFFFC857,
+                              ).withValues(alpha: 0.92),
+                              foreground: Colors.black87,
+                            ),
+                        ],
+                      ),
+                    ),
+                    Positioned(
+                      left: 12,
+                      right: 12,
+                      bottom: 12,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              height: 1.14,
+                            ),
+                          ),
+                          if (year.isNotEmpty) ...[
+                            const SizedBox(height: 5),
+                            Text(
+                              year,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.76),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    Positioned.fill(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: colorScheme.outlineVariant.withValues(
+                              alpha: isDark ? 0.12 : 0.22,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildPosterFrame(
+    BuildContext context,
+    RecommendApiItem item, {
+    required double width,
+    required double height,
+    required double radius,
+    bool showScore = true,
+  }) {
+    final vote = item.vote_average;
+    final borderRadius = BorderRadius.circular(radius);
+    return SizedBox(
+      width: width,
+      height: height,
+      child: ClipRRect(
+        borderRadius: borderRadius,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            _buildPosterImage(
+              context,
+              item,
+              fit: BoxFit.cover,
+              memCacheWidth: _scaledCacheExtent(context, width),
+            ),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.34),
+                  ],
+                ),
+              ),
+            ),
+            if (showScore && vote != null && vote > 0)
+              Positioned(
+                left: 7,
+                bottom: 7,
+                child: _buildOverlayPill(
+                  vote.toStringAsFixed(1),
+                  background: Colors.black.withValues(alpha: 0.48),
+                ),
+              ),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: borderRadius,
+                border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPosterImage(
+    BuildContext context,
+    RecommendApiItem item, {
+    required BoxFit fit,
+    int? memCacheWidth,
+  }) {
     final raw = item.poster_path ?? item.backdrop_path;
     if (raw != null && raw.isNotEmpty) {
       return CachedImage(
         imageUrl: ImageUtil.convertCacheImageUrl(raw),
-        width: _listPosterWidth,
-        height: _listPosterHeight,
-        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        fit: fit,
+        memCacheWidth: memCacheWidth,
       );
     }
-    return Builder(
-      builder: (context) {
-        final colorScheme = Theme.of(context).colorScheme;
-        return Container(
-          width: _listPosterWidth,
-          height: _listPosterHeight,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                colorScheme.surfaceContainerHighest,
-                colorScheme.primaryContainer,
-              ],
-            ),
-          ),
-        );
-      },
+    final colorScheme = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            colorScheme.surfaceContainerHighest,
+            colorScheme.primaryContainer.withValues(alpha: 0.82),
+          ],
+        ),
+      ),
+      child: Center(
+        child: Icon(
+          CupertinoIcons.photo,
+          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.54),
+          size: 30,
+        ),
+      ),
     );
   }
 
-  Widget _buildListMetaPill(BuildContext context, String text) {
+  int _scaledCacheExtent(BuildContext context, double logicalExtent) {
+    final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
+    final value = (logicalExtent * devicePixelRatio * 1.25).ceil();
+    return value.clamp(96, 900);
+  }
+
+  Widget _buildMetaPill(
+    BuildContext context,
+    String text, {
+    required Color accent,
+    bool quiet = false,
+  }) {
     final colorScheme = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      constraints: const BoxConstraints(minHeight: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
-        color: colorScheme.primaryContainer.withValues(alpha: 0.78),
-        borderRadius: BorderRadius.circular(12),
+        color: quiet
+            ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.52)
+            : accent.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: quiet
+              ? colorScheme.outlineVariant.withValues(alpha: 0.28)
+              : accent.withValues(alpha: 0.16),
+        ),
       ),
       child: Text(
         text,
         style: TextStyle(
-          color: colorScheme.onPrimaryContainer,
+          color: quiet ? colorScheme.onSurfaceVariant : colorScheme.onSurface,
           fontSize: 11,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
+  }
+
+  Widget _buildOverlayPill(
+    String text, {
+    required Color background,
+    Color foreground = Colors.white,
+  }) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+      ),
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        softWrap: false,
+        style: TextStyle(
+          color: foreground,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+
+  Color _accentForItem(BuildContext context, RecommendApiItem item) {
+    final source = (item.source ?? item.type ?? item.category ?? '')
+        .toLowerCase()
+        .trim();
+    if (source.contains('douban')) return const Color(0xFF42A75C);
+    if (source.contains('imdb')) return const Color(0xFFF5C518);
+    if (source.contains('bangumi')) return const Color(0xFFF09199);
+    if (source.contains('tmdb') || source.contains('themoviedb')) {
+      return const Color(0xFF01B4E4);
+    }
+    return Theme.of(context).colorScheme.primary;
+  }
+
+  Color _pageAccent(BuildContext context, {RecommendApiItem? fallbackItem}) {
+    return controller.appBarThemeColor ??
+        (fallbackItem == null
+            ? Theme.of(context).colorScheme.primary
+            : _accentForItem(context, fallbackItem));
+  }
+
+  Color _pageSecondaryAccent(BuildContext context) {
+    return controller.appBarSecondaryThemeColor ?? _pageAccent(context);
   }
 
   String _displayYear(RecommendApiItem item) {
@@ -346,16 +651,24 @@ class RecommendCategoryListPage
     required bool isNarrowScreen,
   }) {
     final colorScheme = Theme.of(context).colorScheme;
-    final themeColor =
-        controller.appBarThemeColor ?? colorScheme.surfaceContainerHighest;
-    final secondaryColor =
-        controller.appBarSecondaryThemeColor ?? colorScheme.surfaceContainer;
-    final headerForeground = _readableOnColor(secondaryColor);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = _pageAccent(context);
+    final secondaryAccent = _pageSecondaryAccent(context);
+    final surface = bodyColor ?? colorScheme.surface;
+    final headerTop = Color.alphaBlend(
+      accent.withValues(alpha: isDark ? 0.34 : 0.22),
+      colorScheme.surfaceContainerHighest,
+    );
+    final headerMid = Color.alphaBlend(
+      secondaryAccent.withValues(alpha: isDark ? 0.20 : 0.12),
+      surface,
+    );
+    final headerForeground = _readableOnColor(headerTop);
     final topItems = items.take(3).toList();
     return SliverAppBar(
       pinned: true,
       expandedHeight: 250,
-      backgroundColor: Colors.transparent,
+      backgroundColor: headerTop,
       leading: IconButton(
         icon: Icon(Icons.arrow_back, color: headerForeground),
         onPressed: Get.back,
@@ -379,23 +692,22 @@ class RecommendCategoryListPage
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                secondaryColor,
-                themeColor.withValues(alpha: 0.5),
-                bodyColor ?? colorScheme.surface,
-              ],
-              stops: const [0, 0.6, 1.0],
+              colors: [headerTop, headerMid, surface],
+              stops: const [0, 0.34, 1.0],
             ),
           ),
           child: Center(
-            child: SizedBox(height: 160, child: _buildPosterRow(topItems)),
+            child: SizedBox(
+              height: 184,
+              child: _buildPosterRow(context, topItems),
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildPosterRow(List<RecommendApiItem> items) {
+  Widget _buildPosterRow(BuildContext context, List<RecommendApiItem> items) {
     final posters = items
         .map((e) => e.poster_path ?? e.backdrop_path)
         .whereType<String>()
@@ -404,20 +716,21 @@ class RecommendCategoryListPage
     if (posters.isEmpty) {
       return const SizedBox.shrink();
     }
-    final size = 90.0;
+    const posterWidth = 94.0;
+    const posterHeight = 142.0;
     final children = <Widget>[];
     for (var i = 0; i < posters.length && i < 3; i++) {
       var angleValue = 0.0;
       var offsetValue = Offset(0, 0);
       if (i == 0) {
-        angleValue = 10;
-        offsetValue = Offset(-size + 10, 0);
-      } else if (i == 1) {
-        angleValue = -5;
-        offsetValue = Offset(0, size / 4);
-      } else {
         angleValue = 8;
-        offsetValue = Offset(size - 10, size - 30);
+        offsetValue = const Offset(-82, 8);
+      } else if (i == 1) {
+        angleValue = -4;
+        offsetValue = const Offset(0, 18);
+      } else {
+        angleValue = 6;
+        offsetValue = const Offset(82, 8);
       }
 
       final angle = angleValue * math.pi / 180;
@@ -429,13 +742,26 @@ class RecommendCategoryListPage
             offset: offsetValue,
             child: Transform.rotate(
               angle: angle,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: CachedImage(
-                  imageUrl: ImageUtil.convertCacheImageUrl(posters[i]),
-                  width: size,
-                  height: size,
-                  fit: BoxFit.cover,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.24),
+                      blurRadius: 18,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: CachedImage(
+                    imageUrl: ImageUtil.convertCacheImageUrl(posters[i]),
+                    width: posterWidth,
+                    height: posterHeight,
+                    fit: BoxFit.cover,
+                    memCacheWidth: _scaledCacheExtent(context, posterWidth),
+                  ),
                 ),
               ),
             ),
@@ -445,6 +771,18 @@ class RecommendCategoryListPage
     }
     return Stack(
       children: [if (children.length == 1) children[0] else ...children],
+    );
+  }
+
+  Widget _buildBottomStatusHost(BuildContext context) {
+    return Obx(
+      () => _buildBottomStatus(
+        context,
+        isLoading: controller.isLoading.value,
+        hasMore: controller.hasMore.value,
+        hasItems: controller.items.isNotEmpty,
+        error: controller.error.value,
+      ),
     );
   }
 
@@ -530,5 +868,62 @@ class RecommendCategoryListPage
 
   Color _readableOnColor(Color color) {
     return color.computeLuminance() > 0.48 ? Colors.black87 : Colors.white;
+  }
+}
+
+class _RecommendCategoryItemGlowPainter extends CustomPainter {
+  const _RecommendCategoryItemGlowPainter({
+    required this.accent,
+    required this.isDark,
+    this.strongBottom = false,
+  });
+
+  final Color accent;
+  final bool isDark;
+  final bool strongBottom;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final bounds = Offset.zero & size;
+    final rrect = RRect.fromRectAndRadius(bounds, const Radius.circular(20));
+
+    final topGlow = Paint()
+      ..shader = RadialGradient(
+        center: const Alignment(-0.9, -0.82),
+        radius: 1.08,
+        colors: [
+          Colors.white.withValues(alpha: isDark ? 0.12 : 0.30),
+          accent.withValues(alpha: isDark ? 0.08 : 0.12),
+          Colors.transparent,
+        ],
+        stops: const [0.0, 0.42, 1.0],
+      ).createShader(bounds);
+    canvas.drawRRect(rrect, topGlow);
+
+    final bottomGlow = Paint()
+      ..shader = RadialGradient(
+        center: const Alignment(0.92, 0.94),
+        radius: strongBottom ? 1.1 : 0.86,
+        colors: [
+          accent.withValues(alpha: strongBottom ? 0.18 : 0.10),
+          Colors.transparent,
+        ],
+      ).createShader(bounds);
+    canvas.drawRRect(rrect, bottomGlow);
+
+    canvas.drawRRect(
+      rrect.deflate(0.7),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.7
+        ..color = Colors.white.withValues(alpha: isDark ? 0.08 : 0.34),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _RecommendCategoryItemGlowPainter oldDelegate) {
+    return oldDelegate.accent != accent ||
+        oldDelegate.isDark != isDark ||
+        oldDelegate.strongBottom != strongBottom;
   }
 }

@@ -129,6 +129,14 @@ class RecommendController extends GetxController {
     _initLocalConfig();
   }
 
+  @override
+  void onClose() {
+    categoryPageController.dispose();
+    _bannerPageController?.dispose();
+    _trimInactiveDecodedImages();
+    super.onClose();
+  }
+
   Future<void> _initLocalConfig() async {
     await _loadLocalConfig();
     _syncSubCategory();
@@ -237,6 +245,10 @@ class RecommendController extends GetxController {
     for (final subCategory in allVisibleSubCategories) {
       ensureSubCategoryLoaded(subCategory, forceRefresh: forceRefresh);
     }
+  }
+
+  void _trimInactiveDecodedImages() {
+    PaintingBinding.instance.imageCache.clear();
   }
 
   bool isCategoryVisible(RecommendCategory category) {
@@ -493,6 +505,7 @@ class RecommendController extends GetxController {
 
       itemsByKey[key] = items;
       itemsByKey.refresh();
+      _trimInactiveDecodedImages();
       _lastFetchAt[key] = DateTime.now();
       unawaited(Get.find<SearchKeywordHintsService>().ingestFromItems(items));
       for (final item in items) {
