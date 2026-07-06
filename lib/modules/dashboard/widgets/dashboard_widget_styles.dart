@@ -350,6 +350,33 @@ class DashboardMetricTile extends StatelessWidget {
   }
 }
 
+class DashboardMetricCard extends StatelessWidget {
+  const DashboardMetricCard({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(14),
+    this.borderRadius = 18,
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final double borderRadius;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = DashboardPalette.of(context);
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: palette.tileSurface,
+        borderRadius: BorderRadius.circular(borderRadius),
+        border: Border.all(color: palette.tileBorder),
+      ),
+      child: child,
+    );
+  }
+}
+
 class DashboardProgressBar extends StatelessWidget {
   const DashboardProgressBar({
     super.key,

@@ -1,7 +1,5 @@
-import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:moviepilot_mobile/applog/app_log.dart';
-import 'package:moviepilot_mobile/modules/login/models/login_profile.dart';
 import 'package:moviepilot_mobile/modules/login/repositories/auth_repository.dart';
 import 'package:moviepilot_mobile/modules/multifunction/controllers/multifunction_controller.dart';
 import 'package:moviepilot_mobile/modules/recommend/models/recommend_api_item.dart';
@@ -13,11 +11,23 @@ import 'package:moviepilot_mobile/services/api_client.dart';
 import 'package:moviepilot_mobile/services/app_service.dart';
 import 'package:moviepilot_mobile/services/hive_service.dart';
 import 'package:moviepilot_mobile/utils/toast_util.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// 订阅类型：电视剧 / 电影
 enum SubscribeType { tv, movie }
 
 enum SubscribeCollectionTab { following, washing }
+
+enum SubscribeSortKey { addedAt }
+
+extension SubscribeSortKeyX on SubscribeSortKey {
+  String get displayName {
+    switch (this) {
+      case SubscribeSortKey.addedAt:
+        return '添加时间';
+    }
+  }
+}
 
 /// 订阅状态
 enum SubscribeState {
@@ -56,6 +66,8 @@ extension SubscribeTypeX on SubscribeType {
 class SubscribeController extends GetxController {
   static const int _recommendationThreshold = 10;
   static const int _recommendationPreviewCount = 5;
+  static const String _sortKeyPrefPrefix = 'subscribe.sort.key';
+  static const String _sortAscendingPrefPrefix = 'subscribe.sort.ascending';
 
   final _apiClient = Get.find<ApiClient>();
   final _appService = Get.find<AppService>();
@@ -74,11 +86,14 @@ class SubscribeController extends GetxController {
   final keyword = ''.obs;
   final selectedStates = <SubscribeState>{}.obs;
   final selectedCollectionTab = SubscribeCollectionTab.following.obs;
+  final sortKey = SubscribeSortKey.addedAt.obs;
+  final sortAscending = false.obs;
   int _recommendationRequestId = 0;
 
   @override
   void onReady() {
     super.onReady();
+    _restoreSortPreferences();
     loadAll();
   }
 
@@ -119,9 +134,8 @@ class SubscribeController extends GetxController {
   String? _latestProfileUsername() {
     if (!Get.isRegistered<HiveService>()) return null;
     try {
-      final profiles =
-          Get.find<HiveService>().loginProfileBox.values.toList()
-            ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+      final profiles = Get.find<HiveService>().loginProfileBox.values.toList()
+        ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
       if (profiles.isEmpty) return null;
       return _normalizeUsername(profiles.first.username);
     } catch (_) {
@@ -262,6 +276,23 @@ class SubscribeController extends GetxController {
     selectedCollectionTab.value = tab;
   }
 
+  String get sortValue => sortKey.value.name;
+
+  void setSortValue(String value) {
+    final next = SubscribeSortKey.values.firstWhereOrNull(
+      (key) => key.name == value,
+    );
+    if (next == null || next == sortKey.value) return;
+    sortKey.value = next;
+    _saveSortPreferences();
+  }
+
+  void setSortDirection(bool ascending) {
+    if (sortAscending.value == ascending) return;
+    sortAscending.value = ascending;
+    _saveSortPreferences();
+  }
+
   List<SubscribeItem> get filteredUserItems {
     var list = userItems.toList();
     final key = keyword.value.trim().toLowerCase();
@@ -276,7 +307,7 @@ class SubscribeController extends GetxController {
           .where((e) => states.contains(_resolveSubscribeState(e)))
           .toList();
     }
-    return list;
+    return _sortItems(list);
   }
 
   List<SubscribeItem> get visibleUserItems => filteredUserItems;
@@ -323,6 +354,48 @@ class SubscribeController extends GetxController {
       keyword.value.trim().isEmpty &&
       selectedStates.isEmpty &&
       recommendationLoading.value;
+
+  List<SubscribeItem> _sortItems(List<SubscribeItem> source) {
+    final sorted = source.toList();
+    sorted.sort(_compareSubscribeItems);
+    return sorted;
+  }
+
+  int _compareSubscribeItems(SubscribeItem a, SubscribeItem b) {
+    final factor = sortAscending.value ? 1 : -1;
+    switch (sortKey.value) {
+      case SubscribeSortKey.addedAt:
+        final compared = _compareAddedSequence(a, b);
+        if (compared != 0) return compared * factor;
+        return _compareNullableStrings(a.name, b.name);
+    }
+  }
+
+  int _compareAddedSequence(SubscribeItem a, SubscribeItem b) {
+    final aValue = _addedSequenceValue(a);
+    final bValue = _addedSequenceValue(b);
+    return aValue.compareTo(bValue);
+  }
+
+  int _addedSequenceValue(SubscribeItem item) {
+    final parsedDate = _parseDate(item.date);
+    if (parsedDate != null) {
+      return parsedDate.millisecondsSinceEpoch;
+    }
+    return item.id ?? 0;
+  }
+
+  DateTime? _parseDate(String? raw) {
+    final value = raw?.trim();
+    if (value == null || value.isEmpty) return null;
+    return DateTime.tryParse(value);
+  }
+
+  int _compareNullableStrings(String? a, String? b) {
+    final av = a?.trim().toLowerCase() ?? '';
+    final bv = b?.trim().toLowerCase() ?? '';
+    return av.compareTo(bv);
+  }
 
   /// 解析订阅项的状态：洗板中由 best_version 决定，其余由 state 字段映射
   SubscribeState _resolveSubscribeState(SubscribeItem item) {
@@ -439,6 +512,37 @@ class SubscribeController extends GetxController {
   List<SubscribeState> get availableStates => SubscribeState.values;
 
   bool get hasActiveFilters => selectedStates.isNotEmpty;
+
+  String get _sortKeyPrefKey => '$_sortKeyPrefPrefix.${subscribeType.name}';
+
+  String get _sortAscendingPrefKey =>
+      '$_sortAscendingPrefPrefix.${subscribeType.name}';
+
+  Future<void> _restoreSortPreferences() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final storedKey = prefs.getString(_sortKeyPrefKey);
+      final restoredKey = SubscribeSortKey.values.firstWhereOrNull(
+        (key) => key.name == storedKey,
+      );
+      if (restoredKey != null) {
+        sortKey.value = restoredKey;
+      }
+      sortAscending.value = prefs.getBool(_sortAscendingPrefKey) ?? false;
+    } catch (e, st) {
+      _log.handle(e, stackTrace: st, message: '读取订阅排序偏好失败');
+    }
+  }
+
+  Future<void> _saveSortPreferences() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_sortKeyPrefKey, sortKey.value.name);
+      await prefs.setBool(_sortAscendingPrefKey, sortAscending.value);
+    } catch (e, st) {
+      _log.handle(e, stackTrace: st, message: '写入订阅排序偏好失败');
+    }
+  }
 
   /// 用于卡片等展示：显示订阅项的状态名称
   String resolveStateDisplayName(SubscribeItem item) {

@@ -52,6 +52,13 @@ class SubscribePage extends GetView<SubscribeController> {
           onFilterTap: () => _openFilterSheet(context),
           keyword: controller.keyword.value,
           onKeywordSubmitted: controller.updateKeyword,
+          sortValue: controller.sortValue,
+          sortOptions: SubscribeSortKey.values.map((key) => key.name).toList(),
+          sortLabelBuilder: _sortLabel,
+          isSortAscending: controller.sortAscending.value,
+          onSortDirectionChanged: controller.setSortDirection,
+          onSortChanged: controller.setSortValue,
+          showSortDirection: true,
         ),
       ),
       body: CustomScrollView(
@@ -260,6 +267,13 @@ class SubscribePage extends GetView<SubscribeController> {
     });
   }
 
+  static String _sortLabel(String value) {
+    final key = SubscribeSortKey.values.firstWhereOrNull(
+      (item) => item.name == value,
+    );
+    return key?.displayName ?? SubscribeSortKey.addedAt.displayName;
+  }
+
   Widget _wrapConstrainedSliver(BuildContext context, Widget sliver) {
     final side = _pageContentSideInset(context);
 
@@ -294,7 +308,9 @@ class SubscribePage extends GetView<SubscribeController> {
     return 2;
   }
 
-  ({double width, double height}) _recommendationCardSize(BuildContext context) {
+  ({double width, double height}) _recommendationCardSize(
+    BuildContext context,
+  ) {
     if (!ConstrainedPageContent.isWideScreen(context)) {
       return (
         width: _narrowRecommendationCardWidth,
@@ -303,7 +319,9 @@ class SubscribePage extends GetView<SubscribeController> {
     }
     final contentWidth = _pageContentWidth(context);
     final width = ((contentWidth - _cardSpacing * 4) / 5).clamp(156.0, 176.0);
-    final height = width * (_narrowRecommendationCardHeight / _narrowRecommendationCardWidth);
+    final height =
+        width *
+        (_narrowRecommendationCardHeight / _narrowRecommendationCardWidth);
     return (width: width, height: height);
   }
 

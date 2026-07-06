@@ -13,6 +13,11 @@ class SubscribeListFloatingBar extends StatelessWidget {
     required this.onKeywordSubmitted,
     this.sortValue,
     this.onSortChanged,
+    this.sortOptions,
+    this.sortLabelBuilder,
+    this.isSortAscending = true,
+    this.onSortDirectionChanged,
+    this.showSortDirection = false,
     this.searchPlaceholder = '搜索订阅名称…',
   });
 
@@ -22,6 +27,11 @@ class SubscribeListFloatingBar extends StatelessWidget {
   final ValueChanged<String> onKeywordSubmitted;
   final String? sortValue;
   final ValueChanged<String>? onSortChanged;
+  final List<String>? sortOptions;
+  final String Function(String value)? sortLabelBuilder;
+  final bool isSortAscending;
+  final ValueChanged<bool>? onSortDirectionChanged;
+  final bool showSortDirection;
   final String searchPlaceholder;
 
   static const double height = GlassSearchFloatingBar.height;
@@ -75,15 +85,17 @@ class SubscribeListFloatingBar extends StatelessWidget {
       ),
       trailing: sortValue != null && onSortChanged != null
           ? SortPullDownWidget<String>(
-              showDirectionSection: false,
-              isAscending: true,
+              showDirectionSection: showSortDirection,
+              isAscending: isSortAscending,
               currentValue: sortValue!,
-              options: [
-                for (final o in SubscribePopularFilterDefines.sortOptions)
-                  o.value,
-              ],
-              labelBuilder: sortLabel,
-              onDirectionChanged: (_) {},
+              options:
+                  sortOptions ??
+                  [
+                    for (final o in SubscribePopularFilterDefines.sortOptions)
+                      o.value,
+                  ],
+              labelBuilder: sortLabelBuilder ?? sortLabel,
+              onDirectionChanged: onSortDirectionChanged ?? (_) {},
               onValueChanged: onSortChanged!,
             )
           : null,

@@ -6,6 +6,7 @@ import 'package:moviepilot_mobile/modules/multifunction/controllers/multifunctio
 import 'package:moviepilot_mobile/utils/image_util.dart';
 import 'package:moviepilot_mobile/widgets/app_glass_card.dart';
 import 'package:moviepilot_mobile/widgets/cached_image.dart';
+import 'package:moviepilot_mobile/widgets/dashboard_scaffold.dart';
 
 class MultifunctionPage extends GetView<MultifunctionController> {
   const MultifunctionPage({super.key, this.scrollController});
@@ -38,10 +39,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
 
   @override
   Widget build(BuildContext context) {
-    Theme.of(context);
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      extendBodyBehindAppBar: true,
+    return DashboardScaffold(
       appBar: _buildNavigationBar(context),
       body: Obx(() {
         final modules = controller.buildDashboardModules();
@@ -69,65 +67,61 @@ class MultifunctionPage extends GetView<MultifunctionController> {
             final pageWidth = constraints.maxWidth;
             final horizontalPadding = pageWidth >= 720 ? 24.0 : 20.0;
             final contentMaxWidth = pageWidth >= 1100 ? 1024.0 : 920.0;
-            final topPadding = MediaQuery.paddingOf(context).top + 4;
+            final topPadding =
+                MediaQuery.paddingOf(context).top + kToolbarHeight + 12;
 
-            return Stack(
-              children: [
-                const Positioned.fill(child: _PageBackdrop()),
-                Center(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: contentMaxWidth),
-                    child: RefreshIndicator(
-                      onRefresh: controller.refreshDashboard,
-                      color: _primaryStrong,
-                      backgroundColor: _surfaceHighest,
-                      child: ListView(
-                        controller: scrollController,
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: EdgeInsets.fromLTRB(
-                          horizontalPadding,
-                          topPadding,
-                          horizontalPadding,
-                          104,
-                        ),
-                        children: [
-                          if (controller.canAccessSubscribe) ...[
-                            _buildSubscriptionSection(
-                              pageWidth: pageWidth,
-                              movieModule: modulesByRoute['/subscribe-movie'],
-                              tvModule: modulesByRoute['/subscribe-tv'],
-                            ),
-                            const SizedBox(height: 16),
-                            _buildReleasesSection(
-                              pageWidth: pageWidth,
-                              segment: calendarSegment,
-                              items: calendarItems,
-                              module: modulesByRoute['/subscribe-calendar'],
-                            ),
-                            const SizedBox(height: 16),
-                          ],
-                          if (modulesByRoute['/site'] != null) ...[
-                            _buildSitesSection(modulesByRoute['/site']!),
-                            const SizedBox(height: 16),
-                          ],
-                          if (modulesByRoute['/downloader'] != null) ...[
-                            _buildDownloaderSection(
-                              pageWidth: pageWidth,
-                              module: modulesByRoute['/downloader']!,
-                            ),
-                            const SizedBox(height: 16),
-                          ],
-                          if (utilityModules.isNotEmpty)
-                            _buildUtilitiesSection(
-                              pageWidth: pageWidth,
-                              modules: utilityModules,
-                            ),
-                        ],
-                      ),
+            return Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: contentMaxWidth),
+                child: RefreshIndicator(
+                  onRefresh: controller.refreshDashboard,
+                  color: _primaryStrong,
+                  backgroundColor: _surfaceHighest,
+                  child: ListView(
+                    controller: scrollController,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.fromLTRB(
+                      horizontalPadding,
+                      topPadding,
+                      horizontalPadding,
+                      104,
                     ),
+                    children: [
+                      if (controller.canAccessSubscribe) ...[
+                        _buildSubscriptionSection(
+                          pageWidth: pageWidth,
+                          movieModule: modulesByRoute['/subscribe-movie'],
+                          tvModule: modulesByRoute['/subscribe-tv'],
+                        ),
+                        const SizedBox(height: 16),
+                        _buildReleasesSection(
+                          pageWidth: pageWidth,
+                          segment: calendarSegment,
+                          items: calendarItems,
+                          module: modulesByRoute['/subscribe-calendar'],
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                      if (modulesByRoute['/site'] != null) ...[
+                        _buildSitesSection(modulesByRoute['/site']!),
+                        const SizedBox(height: 16),
+                      ],
+                      if (modulesByRoute['/downloader'] != null) ...[
+                        _buildDownloaderSection(
+                          pageWidth: pageWidth,
+                          module: modulesByRoute['/downloader']!,
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                      if (utilityModules.isNotEmpty)
+                        _buildUtilitiesSection(
+                          pageWidth: pageWidth,
+                          modules: utilityModules,
+                        ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             );
           },
         );
@@ -1164,73 +1158,5 @@ class MultifunctionPage extends GetView<MultifunctionController> {
       return date.substring(5, 10);
     }
     return date;
-  }
-}
-
-class _PageBackdrop extends StatelessWidget {
-  const _PageBackdrop();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-    return IgnorePointer(
-      child: Stack(
-        children: [
-          Positioned(
-            top: -110,
-            left: -90,
-            child: _SoftGlow(
-              size: 300,
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.026)
-                  : colorScheme.primary.withValues(alpha: 0.07),
-            ),
-          ),
-          Positioned(
-            top: 220,
-            right: -140,
-            child: _SoftGlow(
-              size: 360,
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.018)
-                  : colorScheme.secondary.withValues(alpha: 0.045),
-            ),
-          ),
-          Positioned(
-            bottom: -180,
-            left: -130,
-            child: _SoftGlow(
-              size: 340,
-              color: isDark
-                  ? Colors.black.withValues(alpha: 0.050)
-                  : colorScheme.primary.withValues(alpha: 0.035),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SoftGlow extends StatelessWidget {
-  const _SoftGlow({required this.size, required this.color});
-
-  final double size;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: RadialGradient(colors: [color, color.withValues(alpha: 0)]),
-        ),
-      ),
-    );
   }
 }

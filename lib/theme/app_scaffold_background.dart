@@ -56,10 +56,10 @@ class _DefaultScaffoldBackground extends StatelessWidget {
               end: Alignment.bottomRight,
               colors: isDark
                   ? const [
-                      Color(0xFF08080B),
-                      Color(0xFF0D0D12),
-                      Color(0xFF111116),
-                      Color(0xFF09090D),
+                      Color(0xFF151821),
+                      Color(0xFF191D27),
+                      Color(0xFF202632),
+                      Color(0xFF161A23),
                     ]
                   : const [
                       Color(0xFFFEFEFF),
@@ -85,9 +85,9 @@ class _DefaultScaffoldBackground extends StatelessWidget {
               end: Alignment.bottomCenter,
               colors: isDark
                   ? [
-                      Colors.white.withValues(alpha: 0.035),
-                      Colors.transparent,
-                      Colors.black.withValues(alpha: 0.30),
+                      Colors.white.withValues(alpha: 0.050),
+                      Colors.white.withValues(alpha: 0.012),
+                      Colors.black.withValues(alpha: 0.16),
                     ]
                   : [
                       Colors.white.withValues(alpha: 0.52),
@@ -135,7 +135,7 @@ class _UserScaffoldBackground extends StatelessWidget {
         DecoratedBox(
           decoration: BoxDecoration(
             color: (isDark ? Colors.black : Colors.white).withValues(
-              alpha: isDark ? 0.22 : 0.10,
+              alpha: isDark ? 0.16 : 0.10,
             ),
           ),
         ),
