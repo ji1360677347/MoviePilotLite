@@ -676,8 +676,8 @@ class MediaOrganizeDetailSheet extends StatelessWidget {
       case 'copy':
         return '复制';
       case 'hard link':
-      case 'hard_link':
       case 'hardlink':
+      case 'link':
         return '硬连接';
       case 'soft link':
       case 'soft_link':

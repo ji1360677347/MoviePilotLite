@@ -551,6 +551,7 @@ class MediaOrganizeItemCard extends StatelessWidget {
       case 'hard link':
       case 'hard_link':
       case 'hardlink':
+      case 'link':
         return '硬连接';
       case 'soft link':
       case 'soft_link':

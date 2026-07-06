@@ -93,7 +93,6 @@ class _FileManualTransferSheetState extends State<FileManualTransferSheet> {
   static const _progressEndpoint = '/api/v1/system/progress/filetransfer';
   static const double _fieldHeight = 48;
   static const double _fieldRadius = 12;
-  static const double _segmentHeight = 40;
 
   final _apiClient = Get.find<ApiClient>();
   final _log = Get.find<AppLog>();
@@ -116,6 +115,7 @@ class _FileManualTransferSheetState extends State<FileManualTransferSheet> {
   bool _scrape = true;
   bool _libraryTypeFolder = true;
   bool _libraryCategoryFolder = true;
+  bool _showAdvancedOptions = false;
   bool _isSubmitting = false;
   double _progress = 0;
   String _progressMessage = '准备整理...';
@@ -291,6 +291,8 @@ class _FileManualTransferSheetState extends State<FileManualTransferSheet> {
   }
 
   Widget _buildCompactForm(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final displayName = widget.file.name?.trim().isNotEmpty == true
         ? widget.file.name!.trim()
         : (widget.file.basename ?? '未命名文件');
@@ -298,168 +300,276 @@ class _FileManualTransferSheetState extends State<FileManualTransferSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            displayName,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: scheme.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  CupertinoIcons.doc_text,
+                  size: 18,
+                  color: scheme.primary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      displayName,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: scheme.onSurface,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '确认类型、目标位置和整理方式',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            '统一填写目标信息后即可发起整理',
-            style: TextStyle(
-              fontSize: 12,
-              color: CupertinoColors.secondaryLabel.resolveFrom(context),
-            ),
-          ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 18),
           _buildFieldLabel('媒体类型'),
           const SizedBox(height: 8),
           _buildSegmentContainer(
+            context: context,
             child: CupertinoSlidingSegmentedControl<FileManualTransferMode>(
               groupValue: _mode,
               onValueChanged: _onModeChanged,
-              children: const {
-                FileManualTransferMode.auto: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  child: Text('自动'),
+              backgroundColor: Colors.transparent,
+              thumbColor: _segmentThumbColor(context),
+              children: {
+                FileManualTransferMode.auto: _buildSegmentText(
+                  context,
+                  '自动',
+                  _mode == FileManualTransferMode.auto,
                 ),
-                FileManualTransferMode.movie: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  child: Text('电影'),
+                FileManualTransferMode.movie: _buildSegmentText(
+                  context,
+                  '电影',
+                  _mode == FileManualTransferMode.movie,
                 ),
-                FileManualTransferMode.tv: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  child: Text('电视剧'),
+                FileManualTransferMode.tv: _buildSegmentText(
+                  context,
+                  '电视剧',
+                  _mode == FileManualTransferMode.tv,
                 ),
               },
             ),
           ),
+          const SizedBox(height: 16),
+          _buildStorageField(context),
           const SizedBox(height: 14),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(flex: 4, child: _buildStorageField(context)),
-              const SizedBox(width: 10),
-              Expanded(flex: 6, child: _buildTargetPathField(context)),
-            ],
-          ),
-          const SizedBox(height: 14),
+          _buildTargetPathField(context),
           _buildTargetPathStatus(),
           _buildFieldLabel('整理方式'),
           const SizedBox(height: 8),
           _buildSegmentContainer(
+            context: context,
             child: CupertinoSlidingSegmentedControl<String>(
               groupValue: _transferType,
+              backgroundColor: Colors.transparent,
+              thumbColor: _segmentThumbColor(context),
               onValueChanged: (value) {
                 if (value == null) return;
                 setState(() => _transferType = value);
               },
-              children: const {
-                'auto': Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                  child: Text('自动'),
+              children: {
+                'auto': _buildSegmentText(
+                  context,
+                  '自动',
+                  _transferType == 'auto',
                 ),
-                'copy': Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                  child: Text('复制'),
+                'copy': _buildSegmentText(
+                  context,
+                  '复制',
+                  _transferType == 'copy',
                 ),
-                'move': Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                  child: Text('移动'),
+                'move': _buildSegmentText(
+                  context,
+                  '移动',
+                  _transferType == 'move',
                 ),
-                'softlink': Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                  child: Text('软链'),
+                'softlink': _buildSegmentText(
+                  context,
+                  '软链',
+                  _transferType == 'softlink',
                 ),
-                'hardlink': Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                  child: Text('硬链'),
+                'hardlink': _buildSegmentText(
+                  context,
+                  '硬链',
+                  _transferType == 'hardlink',
                 ),
               },
             ),
           ),
-          const SizedBox(height: 14),
-          Row(
+          const SizedBox(height: 16),
+          _buildCompactToggles(context),
+          const SizedBox(height: 16),
+          _buildAdvancedToggle(context),
+          if (_showAdvancedOptions) ...[
+            const SizedBox(height: 14),
+            _buildAdvancedFields(context),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAdvancedToggle(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(_fieldRadius),
+        onTap: () {
+          setState(() => _showAdvancedOptions = !_showAdvancedOptions);
+        },
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          decoration: BoxDecoration(
+            color: _controlSurface(context),
+            borderRadius: BorderRadius.circular(_fieldRadius),
+            border: Border.all(color: _outlineColor(context)),
+          ),
+          child: Row(
             children: [
-              Expanded(
-                child: _buildTextField(
-                  label: 'TheMovieDB',
-                  controller: _tmdbIdController,
-                  placeholder: 'TMDB ID',
-                  keyboardType: TextInputType.number,
-                ),
+              Icon(
+                CupertinoIcons.slider_horizontal_3,
+                size: 18,
+                color: scheme.onSurfaceVariant,
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: _buildTextField(
-                  label: '指定 Part',
-                  controller: _partController,
-                  placeholder: '可选',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _buildTextField(
-                  label: '最小文件尺寸(MB)',
-                  controller: _minFileSizeController,
-                  placeholder: '0',
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
+                child: Text(
+                  '高级参数',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: scheme.onSurface,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
-              if (_isTvMode) ...[
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _buildTextField(
-                    label: 'Season',
-                    controller: _seasonController,
-                    placeholder: '季',
-                    keyboardType: TextInputType.number,
-                  ),
+              Text(
+                _showAdvancedOptions ? '收起' : '可选',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
                 ),
-              ] else
-                const Expanded(child: SizedBox()),
+              ),
+              const SizedBox(width: 6),
+              Icon(
+                _showAdvancedOptions
+                    ? CupertinoIcons.chevron_up
+                    : CupertinoIcons.chevron_down,
+                size: 15,
+                color: scheme.onSurfaceVariant,
+              ),
             ],
           ),
-          if (_isTvMode) ...[
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildTextField(
-                    label: '指定剧集组',
-                    controller: _episodeGroupController,
-                    placeholder: '可选',
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _buildTextField(
-                    label: '集数定位',
-                    controller: _episodeFormatController,
-                    placeholder: '可选',
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            _buildTextField(
-              label: '集数偏移',
-              controller: _episodeOffsetController,
-              placeholder: '可选',
-              keyboardType: const TextInputType.numberWithOptions(signed: true),
-            ),
-          ],
-          const SizedBox(height: 14),
-          _buildCompactToggles(),
-        ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildAdvancedFields(BuildContext context) {
+    return Column(
+      children: [
+        _buildResponsivePair(
+          context,
+          first: _buildTextField(
+            label: 'TheMovieDB',
+            controller: _tmdbIdController,
+            placeholder: 'TMDB ID',
+            keyboardType: TextInputType.number,
+          ),
+          second: _buildTextField(
+            label: '指定 Part',
+            controller: _partController,
+            placeholder: '可选',
+          ),
+        ),
+        const SizedBox(height: 14),
+        _buildResponsivePair(
+          context,
+          first: _buildTextField(
+            label: '最小文件尺寸(MB)',
+            controller: _minFileSizeController,
+            placeholder: '0',
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          ),
+          second: _isTvMode
+              ? _buildTextField(
+                  label: 'Season',
+                  controller: _seasonController,
+                  placeholder: '季',
+                  keyboardType: TextInputType.number,
+                )
+              : null,
+        ),
+        if (_isTvMode) ...[
+          const SizedBox(height: 14),
+          _buildResponsivePair(
+            context,
+            first: _buildTextField(
+              label: '指定剧集组',
+              controller: _episodeGroupController,
+              placeholder: '可选',
+            ),
+            second: _buildTextField(
+              label: '集数定位',
+              controller: _episodeFormatController,
+              placeholder: '可选',
+            ),
+          ),
+          const SizedBox(height: 14),
+          _buildTextField(
+            label: '集数偏移',
+            controller: _episodeOffsetController,
+            placeholder: '可选',
+            keyboardType: const TextInputType.numberWithOptions(signed: true),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildResponsivePair(
+    BuildContext context, {
+    required Widget first,
+    Widget? second,
+  }) {
+    if (second == null) {
+      return first;
+    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 380) {
+          return Column(children: [first, const SizedBox(height: 14), second]);
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: first),
+            const SizedBox(width: 10),
+            Expanded(child: second),
+          ],
+        );
+      },
     );
   }
 
@@ -543,12 +653,13 @@ class _FileManualTransferSheetState extends State<FileManualTransferSheet> {
     return int.tryParse(value?.toString() ?? '');
   }
 
-  Widget _buildCompactToggles() {
+  Widget _buildCompactToggles(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: CupertinoColors.systemGrey6,
+        color: _controlSurface(context),
         borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _outlineColor(context)),
       ),
       child: Column(
         children: [
@@ -576,6 +687,8 @@ class _FileManualTransferSheetState extends State<FileManualTransferSheet> {
   }
 
   Widget _buildActionSection(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final percent = (_progress * 100).clamp(0, 100).toStringAsFixed(0);
     final footerParts = <String>[
       if (_progressTotal > 0) '$_progressCurrent/$_progressTotal',
@@ -589,8 +702,8 @@ class _FileManualTransferSheetState extends State<FileManualTransferSheet> {
             children: [
               Text(
                 _isSubmitting ? '整理进度' : '开始整理',
-                style: const TextStyle(
-                  fontSize: 15,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: scheme.onSurface,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -598,9 +711,8 @@ class _FileManualTransferSheetState extends State<FileManualTransferSheet> {
               if (_isSubmitting)
                 Text(
                   '$percent%',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Theme.of(context).colorScheme.primary,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: scheme.primary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -610,7 +722,10 @@ class _FileManualTransferSheetState extends State<FileManualTransferSheet> {
           if (_isSubmitting) ...[
             Text(
               _progressMessage,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: scheme.onSurface,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             const SizedBox(height: 10),
             ClipRRect(
@@ -618,16 +733,16 @@ class _FileManualTransferSheetState extends State<FileManualTransferSheet> {
               child: LinearProgressIndicator(
                 value: _progress.clamp(0.0, 1.0),
                 minHeight: 8,
-                backgroundColor: CupertinoColors.systemGrey5,
+                backgroundColor: _controlSurface(context),
+                color: scheme.primary,
               ),
             ),
             if (footerParts.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text(
                 footerParts.join(' · '),
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: CupertinoColors.systemGrey,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
                 ),
               ),
             ],
@@ -635,9 +750,8 @@ class _FileManualTransferSheetState extends State<FileManualTransferSheet> {
           ] else ...[
             Text(
               '确认目标信息后发起整理任务',
-              style: TextStyle(
-                fontSize: 12,
-                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 14),
@@ -671,6 +785,8 @@ class _FileManualTransferSheetState extends State<FileManualTransferSheet> {
   }
 
   Widget _buildStorageSelector(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final storages = widget.availableStorages.isEmpty
         ? [StorageSetting(type: _targetStorage, name: _targetStorage)]
         : widget.availableStorages;
@@ -706,8 +822,8 @@ class _FileManualTransferSheetState extends State<FileManualTransferSheet> {
                   Expanded(
                     child: Text(
                       storage.name,
-                      style: const TextStyle(
-                        fontSize: 15,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: scheme.onSurface,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -740,16 +856,15 @@ class _FileManualTransferSheetState extends State<FileManualTransferSheet> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 14,
                     fontWeight: FontWeight.w500,
-                  ),
+                  ).copyWith(color: scheme.onSurface),
                 ),
               ),
               const SizedBox(width: 6),
-              const Icon(
+              Icon(
                 CupertinoIcons.chevron_up_chevron_down,
                 size: 15,
-                color: CupertinoColors.systemGrey,
+                color: scheme.onSurfaceVariant,
               ),
             ],
           ),
@@ -760,6 +875,8 @@ class _FileManualTransferSheetState extends State<FileManualTransferSheet> {
 
   Widget _buildTargetPathField(BuildContext context) {
     return Obx(() {
+      final theme = Theme.of(context);
+      final scheme = theme.colorScheme;
       final options = _targetPathOptions;
       final current = _targetPathController.text.trim();
       final resolvedValue = options.contains(current)
@@ -791,10 +908,10 @@ class _FileManualTransferSheetState extends State<FileManualTransferSheet> {
                     value: path,
                     child: Row(
                       children: [
-                        const Icon(
+                        Icon(
                           CupertinoIcons.folder,
                           size: 18,
-                          color: CupertinoColors.systemGrey,
+                          color: scheme.onSurfaceVariant,
                         ),
                         const SizedBox(width: 10),
                         Expanded(
@@ -802,8 +919,8 @@ class _FileManualTransferSheetState extends State<FileManualTransferSheet> {
                             path,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 14,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: scheme.onSurface,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -821,10 +938,10 @@ class _FileManualTransferSheetState extends State<FileManualTransferSheet> {
               child: _buildFieldSurface(
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       CupertinoIcons.folder,
                       size: 18,
-                      color: CupertinoColors.systemGrey,
+                      color: scheme.onSurfaceVariant,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
@@ -836,8 +953,8 @@ class _FileManualTransferSheetState extends State<FileManualTransferSheet> {
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                           color: options.isNotEmpty
-                              ? CupertinoColors.label.resolveFrom(context)
-                              : CupertinoColors.systemGrey,
+                              ? scheme.onSurface
+                              : scheme.onSurfaceVariant,
                         ),
                       ),
                     ),
@@ -847,7 +964,7 @@ class _FileManualTransferSheetState extends State<FileManualTransferSheet> {
                           ? CupertinoIcons.chevron_up_chevron_down
                           : CupertinoIcons.exclamationmark_circle,
                       size: 15,
-                      color: CupertinoColors.systemGrey,
+                      color: scheme.onSurfaceVariant,
                     ),
                   ],
                 ),
@@ -861,6 +978,8 @@ class _FileManualTransferSheetState extends State<FileManualTransferSheet> {
 
   Widget _buildTargetPathStatus() {
     return Obx(() {
+      final theme = Theme.of(context);
+      final scheme = theme.colorScheme;
       final error = _directoryController.errorText.value?.trim() ?? '';
       final isLoading = _directoryController.isLoading.value;
       final hasOptions = _targetPathOptions.isNotEmpty;
@@ -869,19 +988,18 @@ class _FileManualTransferSheetState extends State<FileManualTransferSheet> {
           padding: const EdgeInsets.only(bottom: 10),
           child: Text(
             error,
-            style: const TextStyle(
-              fontSize: 12,
-              color: CupertinoColors.systemRed,
-            ),
+            style: theme.textTheme.bodySmall?.copyWith(color: scheme.error),
           ),
         );
       }
       if (isLoading && !hasOptions) {
-        return const Padding(
-          padding: EdgeInsets.only(bottom: 10),
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10),
           child: Text(
             '目录加载中...',
-            style: TextStyle(fontSize: 12, color: CupertinoColors.systemGrey),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
           ),
         );
       }
@@ -895,6 +1013,8 @@ class _FileManualTransferSheetState extends State<FileManualTransferSheet> {
     String? placeholder,
     TextInputType? keyboardType,
   }) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -906,11 +1026,18 @@ class _FileManualTransferSheetState extends State<FileManualTransferSheet> {
             controller: controller,
             placeholder: placeholder,
             keyboardType: keyboardType,
+            cursorColor: scheme.primary,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: scheme.onSurface,
+            ),
+            placeholderStyle: theme.textTheme.bodyMedium?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: CupertinoColors.systemGrey6,
+              color: _controlSurface(context),
               borderRadius: BorderRadius.circular(_fieldRadius),
-              border: Border.all(color: CupertinoColors.systemGrey5),
+              border: Border.all(color: _outlineColor(context)),
             ),
           ),
         ),
@@ -919,13 +1046,12 @@ class _FileManualTransferSheetState extends State<FileManualTransferSheet> {
   }
 
   Widget _buildFieldLabel(String text) {
+    final theme = Theme.of(context);
     return Text(
       text,
-      style: const TextStyle(
-        fontSize: 12,
+      style: theme.textTheme.labelMedium?.copyWith(
         fontWeight: FontWeight.w700,
-        color: CupertinoColors.systemGrey,
-        letterSpacing: 0.2,
+        color: theme.colorScheme.onSurfaceVariant,
       ),
     );
   }
@@ -935,23 +1061,45 @@ class _FileManualTransferSheetState extends State<FileManualTransferSheet> {
       height: _fieldHeight,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: CupertinoColors.systemGrey6,
+        color: _controlSurface(context),
         borderRadius: BorderRadius.circular(_fieldRadius),
-        border: Border.all(color: CupertinoColors.systemGrey5),
+        border: Border.all(color: _outlineColor(context)),
       ),
-      child: child,
+      child: SizedBox(width: double.infinity, child: child),
     );
   }
 
-  Widget _buildSegmentContainer({required Widget child}) {
+  Widget _buildSegmentContainer({
+    required BuildContext context,
+    required Widget child,
+  }) {
     return Container(
-      height: _segmentHeight,
+      width: double.infinity,
+      constraints: const BoxConstraints(minHeight: 44),
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: CupertinoColors.systemGrey6,
+        color: _controlSurface(context),
         borderRadius: BorderRadius.circular(_fieldRadius),
+        border: Border.all(color: _outlineColor(context)),
       ),
-      child: child,
+      child: SizedBox(width: double.infinity, child: child),
+    );
+  }
+
+  Widget _buildSegmentText(BuildContext context, String text, bool isSelected) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.labelLarge?.copyWith(
+          color: isSelected ? scheme.primary : scheme.onSurfaceVariant,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 
@@ -960,11 +1108,43 @@ class _FileManualTransferSheetState extends State<FileManualTransferSheet> {
     required bool value,
     required ValueChanged<bool> onChanged,
   }) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     return Row(
       children: [
-        Expanded(child: Text(title, style: const TextStyle(fontSize: 14))),
-        CupertinoSwitch(value: value, onChanged: onChanged),
+        Expanded(
+          child: Text(
+            title,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: scheme.onSurface,
+            ),
+          ),
+        ),
+        CupertinoSwitch(
+          value: value,
+          activeTrackColor: scheme.primary,
+          onChanged: onChanged,
+        ),
       ],
     );
+  }
+
+  Color _controlSurface(BuildContext context) {
+    final theme = Theme.of(context);
+    return theme.colorScheme.surfaceContainerHighest.withValues(
+      alpha: theme.brightness == Brightness.dark ? 0.72 : 0.64,
+    );
+  }
+
+  Color _segmentThumbColor(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return theme.brightness == Brightness.dark
+        ? scheme.surfaceContainerHigh
+        : scheme.surface;
+  }
+
+  Color _outlineColor(BuildContext context) {
+    return Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.72);
   }
 }
