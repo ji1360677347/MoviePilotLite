@@ -10,12 +10,16 @@ class DashboardScaffold extends StatelessWidget {
     super.key,
     required this.body,
     this.appBar,
+    this.floatingActionButton,
+    this.floatingActionButtonLocation,
     this.extendBodyBehindAppBar = true,
     this.includeUserBackground = true,
   });
 
   final Widget body;
   final PreferredSizeWidget? appBar;
+  final Widget? floatingActionButton;
+  final FloatingActionButtonLocation? floatingActionButtonLocation;
   final bool extendBodyBehindAppBar;
   final bool includeUserBackground;
 
@@ -25,6 +29,8 @@ class DashboardScaffold extends StatelessWidget {
       backgroundColor: Colors.transparent,
       extendBodyBehindAppBar: extendBodyBehindAppBar,
       appBar: appBar,
+      floatingActionButton: floatingActionButton,
+      floatingActionButtonLocation: floatingActionButtonLocation,
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -116,7 +122,7 @@ class DashboardPageBackground extends StatelessWidget {
   }
 }
 
-class _DashboardBackgroundImage extends StatelessWidget {
+class _DashboardBackgroundImage extends StatefulWidget {
   const _DashboardBackgroundImage({
     required this.bytes,
     required this.opacity,
@@ -130,18 +136,58 @@ class _DashboardBackgroundImage extends StatelessWidget {
   final Color gradientBottom;
 
   @override
+  State<_DashboardBackgroundImage> createState() =>
+      _DashboardBackgroundImageState();
+}
+
+class _DashboardBackgroundImageState extends State<_DashboardBackgroundImage> {
+  Uint8List? _bytes;
+  MemoryImage? _imageProvider;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncImageProvider();
+  }
+
+  @override
+  void didUpdateWidget(covariant _DashboardBackgroundImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.bytes, widget.bytes)) {
+      _syncImageProvider();
+    }
+  }
+
+  void _syncImageProvider() {
+    final bytes = widget.bytes;
+    if (bytes == null) {
+      _bytes = null;
+      _imageProvider = null;
+      return;
+    }
+    if (identical(_bytes, bytes) && _imageProvider != null) return;
+    _bytes = bytes;
+    final provider = MemoryImage(bytes);
+    _imageProvider = provider;
+    precacheImage(provider, context);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (bytes == null) return const SizedBox.shrink();
+    final provider = _imageProvider;
+    if (provider == null) return const SizedBox.shrink();
     return IgnorePointer(
       child: Stack(
         fit: StackFit.expand,
         children: [
           Opacity(
-            opacity: opacity,
-            child: Image.memory(
-              bytes!,
+            opacity: widget.opacity,
+            child: Image(
+              image: provider,
               fit: BoxFit.cover,
               alignment: Alignment.center,
+              gaplessPlayback: true,
+              filterQuality: FilterQuality.medium,
             ),
           ),
           Positioned.fill(
@@ -150,7 +196,7 @@ class _DashboardBackgroundImage extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [gradientTop, gradientBottom],
+                  colors: [widget.gradientTop, widget.gradientBottom],
                 ),
               ),
             ),

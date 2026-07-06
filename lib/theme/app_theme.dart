@@ -134,6 +134,8 @@ class AppTheme {
         backgroundColor: background,
         foregroundColor: colorScheme.onSurface,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        shadowColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         titleTextStyle: TextStyle(
           color: colorScheme.onSurface,

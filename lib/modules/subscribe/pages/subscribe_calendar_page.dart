@@ -36,11 +36,9 @@ class SubscribeCalendarPage extends GetView<SubscribeCalendarController> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: CupertinoDynamicColor.resolve(
-        CupertinoColors.systemGroupedBackground,
-        context,
-      ),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('订阅日历'),
         centerTitle: false,
