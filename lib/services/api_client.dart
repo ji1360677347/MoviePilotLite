@@ -392,6 +392,32 @@ class ApiClient extends g.GetxController {
     return response;
   }
 
+  Future<Response<T>> postMultipart<T>(
+    String path,
+    FormData formData, {
+    String? token,
+    int? timeout,
+    Map<String, dynamic>? headers,
+  }) async {
+    await _ensureReady();
+    final authToken = token ?? this.token;
+    final response = await _dio.post<T>(
+      path,
+      data: formData,
+      options: Options(
+        receiveTimeout: Duration(seconds: timeout ?? 120),
+        sendTimeout: Duration(seconds: timeout ?? 120),
+        headers: {
+          if (authToken != null) 'authorization': 'Bearer $authToken',
+          ...?headers,
+        },
+        validateStatus: (_) => true,
+      ),
+    );
+    _handleUnauthorized(response.statusCode);
+    return response;
+  }
+
   Future<Response<T>> post<T>(
     String path, {
     Map<String, dynamic>? data,

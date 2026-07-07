@@ -11,7 +11,6 @@ import 'package:moviepilot_mobile/theme/section.dart';
 import 'package:moviepilot_mobile/utils/image_util.dart';
 import 'package:moviepilot_mobile/utils/toast_util.dart';
 import 'package:moviepilot_mobile/widgets/cached_image.dart';
-import 'package:moviepilot_mobile/widgets/section_header.dart';
 
 import '../controllers/plugin_controller.dart';
 
@@ -55,6 +54,89 @@ class PluginInfoSheet extends StatefulWidget {
 
 enum PluginInfoSheetState { normal, installing, installed }
 
+class _PluginSheetHeader extends StatelessWidget {
+  const _PluginSheetHeader({required this.title, required this.onClose});
+
+  final String title;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: cs.surface,
+        border: Border(
+          bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.45)),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 12, 10),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 38,
+              height: 4,
+              decoration: BoxDecoration(
+                color: cs.onSurfaceVariant.withValues(alpha: 0.28),
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style:
+                            theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: cs.onSurface,
+                            ) ??
+                            TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: cs.onSurface,
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Material(
+                  color: cs.surfaceContainerHighest.withValues(alpha: 0.72),
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: onClose,
+                    child: SizedBox(
+                      width: 36,
+                      height: 36,
+                      child: Icon(
+                        Icons.close_rounded,
+                        size: 19,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _PluginInfoSheetState extends State<PluginInfoSheet> {
   final controller = Get.find<PluginController>();
   final isInstalling = PluginInfoSheetState.normal.obs;
@@ -91,17 +173,9 @@ class _PluginInfoSheetState extends State<PluginInfoSheet> {
         padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: SectionHeader(
-                title: widget.item.pluginName,
-                trailing: IconButton(
-                  icon: Icon(Icons.close, color: colorScheme.primary),
-                  onPressed: () {
-                    Get.back();
-                  },
-                ),
-              ),
+            _PluginSheetHeader(
+              title: widget.item.pluginName,
+              onClose: Get.back,
             ),
             Expanded(
               child: ListView(
@@ -235,9 +309,14 @@ class _PluginInfoSheetState extends State<PluginInfoSheet> {
 }
 
 class SpecifiedPluginInstallSheet extends StatefulWidget {
-  const SpecifiedPluginInstallSheet({super.key, this.initialRepoUrl = ''});
+  const SpecifiedPluginInstallSheet({
+    super.key,
+    this.initialRepoUrl = '',
+    this.scrollController,
+  });
 
   final String initialRepoUrl;
+  final ScrollController? scrollController;
 
   @override
   State<SpecifiedPluginInstallSheet> createState() =>
@@ -271,38 +350,38 @@ class _SpecifiedPluginInstallSheetState
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-    return AnimatedPadding(
-      duration: const Duration(milliseconds: 180),
-      curve: Curves.easeOut,
-      padding: EdgeInsets.only(bottom: bottomInset),
+    final bottomSafeArea = MediaQuery.paddingOf(context).bottom;
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: () => FocusScope.of(context).unfocus(),
       child: Material(
-        color: Colors.transparent,
-        child: Container(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(context).height * 0.9,
-          ),
-          decoration: BoxDecoration(
-            color: CupertinoDynamicColor.resolve(
-              CupertinoColors.systemBackground,
-              context,
-            ),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
+        color: CupertinoDynamicColor.resolve(
+          CupertinoColors.systemBackground,
+          context,
+        ),
+        child: SafeArea(
+          top: false,
+          bottom: false,
           child: Column(
             children: [
-              SectionHeader(
+              _PluginSheetHeader(
                 title: '指定仓库安装',
-                trailing: IconButton(
-                  icon: Icon(
-                    Icons.close,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  onPressed: () => Get.back(),
-                ),
+                onClose: () {
+                  FocusScope.of(context).unfocus();
+                  Get.back();
+                },
               ),
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                  controller: widget.scrollController,
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    0,
+                    16,
+                    20 + bottomSafeArea + bottomInset,
+                  ),
                   children: [
                     _buildInputSection(context),
                     const SizedBox(height: 16),
