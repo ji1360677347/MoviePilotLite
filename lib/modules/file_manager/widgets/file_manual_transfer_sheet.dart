@@ -409,10 +409,10 @@ class _FileManualTransferSheetState extends State<FileManualTransferSheet> {
                   '软链',
                   _transferType == 'softlink',
                 ),
-                'hardlink': _buildSegmentText(
+                'link': _buildSegmentText(
                   context,
                   '硬链',
-                  _transferType == 'hardlink',
+                  _transferType == 'link',
                 ),
               },
             ),
