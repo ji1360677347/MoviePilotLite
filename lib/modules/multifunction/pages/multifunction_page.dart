@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:moviepilot_mobile/modules/multifunction/controllers/multifunction_controller.dart';
+import 'package:moviepilot_mobile/modules/multifunction/models/multifunction_models.dart';
+import 'package:moviepilot_mobile/modules/dynamic_form/utils/vuetify_mappings.dart';
 import 'package:moviepilot_mobile/utils/image_util.dart';
 import 'package:moviepilot_mobile/widgets/app_glass_card.dart';
 import 'package:moviepilot_mobile/widgets/cached_image.dart';
@@ -57,10 +59,12 @@ class MultifunctionPage extends GetView<MultifunctionController> {
           '/site',
           '/downloader',
           '/subscribe-calendar',
+          '/plugin',
         };
         final utilityModules = modules
             .where((module) => !hiddenRoutes.contains(module.route))
             .toList();
+        final sidebarNavItems = controller.sidebarNavItems;
 
         return LayoutBuilder(
           builder: (context, constraints) {
@@ -113,11 +117,16 @@ class MultifunctionPage extends GetView<MultifunctionController> {
                         ),
                         const SizedBox(height: 16),
                       ],
-                      if (utilityModules.isNotEmpty)
-                        _buildUtilitiesSection(
+                      if (controller.canAccessManage) ...[
+                        _buildPluginSidebarSection(
                           pageWidth: pageWidth,
-                          modules: utilityModules,
+                          items: sidebarNavItems,
+                          pluginModule: modulesByRoute['/plugin'],
                         ),
+                        const SizedBox(height: 16),
+                      ],
+                      if (utilityModules.isNotEmpty)
+                        _buildUtilitiesSection(modules: utilityModules),
                     ],
                   ),
                 ),
@@ -959,9 +968,10 @@ class MultifunctionPage extends GetView<MultifunctionController> {
     );
   }
 
-  Widget _buildUtilitiesSection({
+  Widget _buildPluginSidebarSection({
     required double pageWidth,
-    required List<DashboardModuleViewModel> modules,
+    required List<PluginSidebarNavItem> items,
+    DashboardModuleViewModel? pluginModule,
   }) {
     final crossAxisCount = pageWidth >= 960
         ? 4
@@ -969,57 +979,94 @@ class MultifunctionPage extends GetView<MultifunctionController> {
         ? 3
         : 2;
     final childAspectRatio = pageWidth >= 640 ? 1.65 : 1.35;
+    final pluginMeta = pluginModule?.primaryText.trim() ?? '';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '实用工具',
-          style: TextStyle(
-            color: _textPrimary,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            letterSpacing: -0.2,
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => controller.handleRouteTap('/plugin', title: '插件'),
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '插件入口',
+                      style: TextStyle(
+                        color: _textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                  ),
+                  if (pluginMeta.isNotEmpty) ...[
+                    Text(
+                      pluginMeta,
+                      style: TextStyle(
+                        color: _textMuted,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                  ],
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 22,
+                    color: _textMuted,
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
-        const SizedBox(height: 16),
-        GridView.builder(
-          padding: EdgeInsets.zero,
-          itemCount: modules.length,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: childAspectRatio,
+        if (items.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          GridView.builder(
+            padding: EdgeInsets.zero,
+            itemCount: items.length,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: childAspectRatio,
+            ),
+            itemBuilder: (_, index) =>
+                _pluginSidebarCard(items[index], index: index),
           ),
-          itemBuilder: (_, index) => _utilityCard(modules[index], index: index),
-        ),
+        ],
       ],
     );
   }
 
-  Widget _utilityCard(DashboardModuleViewModel module, {required int index}) {
-    final title = _utilityTitle(module.title);
-    final subtitle = module.primaryText.trim();
-    final softAccent = _softUtilityAccent(module.accent);
+  Widget _pluginSidebarCard(PluginSidebarNavItem item, {required int index}) {
+    final accent = _sidebarAccent(item.section, index);
+    final icon = VuetifyMappings.iconFromMdi(item.icon) ??
+        Icons.extension_outlined;
+    final softAccent = _softUtilityAccent(accent);
     final iconBackground = _isDark
-        ? module.accent.withValues(alpha: 0.14)
+        ? accent.withValues(alpha: 0.14)
         : softAccent.withValues(alpha: 0.72);
     final arrowBackground = _surfaceHighest.withValues(
       alpha: _isDark ? 0.36 : 0.54,
     );
+    final subtitle = _sidebarSectionLabel(item.section);
 
     return Semantics(
       button: true,
-      label: '$title，$subtitle',
+      label: '${item.title}，$subtitle',
       child: AppGlassCard(
-        onTap: () =>
-            controller.handleRouteTap(module.route, title: module.title),
+        onTap: () => controller.handleSidebarNavTap(item),
         padding: const EdgeInsets.all(14),
         borderRadius: 18,
-        accentColor: module.accent,
+        accentColor: accent,
         surfaceAlpha: _isDark ? 0.54 : 0.70,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1033,13 +1080,13 @@ class MultifunctionPage extends GetView<MultifunctionController> {
                     color: iconBackground,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: module.accent.withValues(
+                      color: accent.withValues(
                         alpha: _isDark ? 0.08 : 0.14,
                       ),
                       width: 0.5,
                     ),
                   ),
-                  child: Icon(module.icon, size: 21, color: module.accent),
+                  child: Icon(icon, size: 21, color: accent),
                 ),
                 const Spacer(),
                 Container(
@@ -1059,7 +1106,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
             ),
             const Spacer(),
             Text(
-              title,
+              item.title,
               style: TextStyle(
                 color: _textPrimary,
                 fontSize: 15,
@@ -1082,6 +1129,125 @@ class MultifunctionPage extends GetView<MultifunctionController> {
               overflow: TextOverflow.ellipsis,
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Color _sidebarAccent(String section, int index) {
+    switch (section) {
+      case 'organize':
+        return const Color(0xFF8E44AD);
+      case 'system':
+        return const Color(0xFF8F67FF);
+      default:
+        return index.isEven ? _primaryStrong : _secondaryStrong;
+    }
+  }
+
+  String _sidebarSectionLabel(String section) {
+    switch (section) {
+      case 'organize':
+        return '整理插件';
+      case 'system':
+        return '系统插件';
+      default:
+        return '插件功能';
+    }
+  }
+
+  Widget _buildUtilitiesSection({
+    required List<DashboardModuleViewModel> modules,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '实用工具',
+          style: TextStyle(
+            color: _textPrimary,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.2,
+          ),
+        ),
+        const SizedBox(height: 16),
+        _glassCard(
+          padding: EdgeInsets.zero,
+          child: Column(
+            children: [
+              for (var index = 0; index < modules.length; index++)
+                _utilityRow(
+                  module: modules[index],
+                  showDivider: index < modules.length - 1,
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _utilityRow({
+    required DashboardModuleViewModel module,
+    required bool showDivider,
+  }) {
+    final title = _utilityTitle(module.title);
+    final meta = module.primaryText.trim();
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () =>
+            controller.handleRouteTap(module.route, title: module.title),
+        child: Container(
+          decoration: BoxDecoration(
+            border: showDivider
+                ? Border(bottom: BorderSide(color: _outlineSoft, width: 0.5))
+                : null,
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: module.accent.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(module.icon, size: 18, color: module.accent),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    color: _textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+              ),
+              if (meta.isNotEmpty) ...[
+                Text(
+                  meta,
+                  style: TextStyle(
+                    color: _textMuted,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(width: 6),
+              ],
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 20,
+                color: _textMuted,
+              ),
+            ],
+          ),
         ),
       ),
     );

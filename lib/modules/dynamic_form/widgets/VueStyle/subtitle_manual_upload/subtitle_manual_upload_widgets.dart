@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:file_picker/file_picker.dart' as fp;
 import 'package:flutter/cupertino.dart';
@@ -10,6 +12,7 @@ import 'package:moviepilot_mobile/modules/settings/models/settings_field_config.
 import 'package:moviepilot_mobile/modules/settings/state/settings_field_state.dart';
 import 'package:moviepilot_mobile/modules/settings/state/settings_form_manager.dart';
 import 'package:moviepilot_mobile/modules/settings/state/settings_form_row_builder.dart';
+import 'package:moviepilot_mobile/modules/search_result/widgets/sort_pull_down_widget.dart';
 import 'package:moviepilot_mobile/theme/section.dart';
 import 'package:moviepilot_mobile/utils/open_url.dart';
 import 'package:moviepilot_mobile/widgets/section_header.dart';
@@ -59,25 +62,293 @@ class _SubtitlePageView extends StatelessWidget {
 
   final SubtitleManualUploadFormController controller;
 
+  static const double _listBottomSpacer = 120;
+
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
-      onRefresh: controller.load,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-        children: [
-          _FeedbackBanner(controller: controller),
-          _StatusSection(controller: controller),
-          const SizedBox(height: 12),
-          _QuickActions(controller: controller),
-          const SizedBox(height: 12),
-          _SearchPanel(controller: controller),
-          const SizedBox(height: 12),
-          _MediaResults(controller: controller),
-        ],
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButton: _ResourceSearchFloatingBar(controller: controller),
+      body: RefreshIndicator(
+        onRefresh: controller.load,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, _listBottomSpacer),
+          children: [
+            _FeedbackBanner(controller: controller),
+            _StatusSection(controller: controller),
+            const SizedBox(height: 12),
+            _QuickActions(controller: controller),
+            const SizedBox(height: 12),
+            _MediaResults(controller: controller),
+          ],
+        ),
       ),
     );
   }
+}
+
+class _ResourceSearchFloatingBar extends StatelessWidget {
+  const _ResourceSearchFloatingBar({required this.controller});
+
+  final SubtitleManualUploadFormController controller;
+
+  static const double _barHeight = 52;
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final searching = controller.mediaSearching.value;
+      final child = searching
+          ? _buildSearchingIndicator(context)
+          : Row(
+              children: [
+                _buildFilterButton(context),
+                const SizedBox(width: 8),
+                Expanded(child: _buildFakeSearchBar(context)),
+                const SizedBox(width: 8),
+                _buildSortButton(context),
+              ],
+            );
+      final theme = Theme.of(context);
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            color: Colors.white.withValues(alpha: 0.2),
+            border: Border.all(
+              color: theme.colorScheme.outline.withValues(alpha: 0.1),
+              width: 0.5,
+            ),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 90, sigmaY: 90),
+              child: Container(
+                height: _barHeight,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: child,
+              ),
+            ),
+          ),
+        ),
+      );
+    });
+  }
+
+  Widget _buildSearchingIndicator(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: CupertinoDynamicColor.resolve(Colors.white, context),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          '搜索中…',
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.white.withValues(alpha: 0.88),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFilterButton(BuildContext context) {
+    return Obx(() {
+      final has = controller.hasActiveMediaFilters;
+      final color = has
+          ? CupertinoDynamicColor.resolve(CupertinoColors.activeBlue, context)
+          : CupertinoDynamicColor.resolve(Colors.white, context);
+      return CupertinoButton(
+        padding: EdgeInsets.zero,
+        minSize: 0,
+        onPressed: controller.mediaSearching.value
+            ? null
+            : () => _openMediaFilterSheet(context, controller),
+        child: Icon(CupertinoIcons.slider_horizontal_3, size: 20, color: color),
+      );
+    });
+  }
+
+  Widget _buildSortButton(BuildContext context) {
+    return Obx(
+      () => SortPullDownWidget<SubtitleMediaSortKey>(
+        isAscending: controller.mediaSortAscending.value,
+        currentValue: controller.mediaSortKey.value,
+        options: SubtitleMediaSortKey.values,
+        labelBuilder: _mediaSortLabel,
+        onDirectionChanged: (asc) {
+          final wantAsc = asc;
+          if (controller.mediaSortAscending.value != wantAsc) {
+            controller.toggleMediaSortDirection();
+          }
+        },
+        onValueChanged: controller.updateMediaSortKey,
+      ),
+    );
+  }
+
+  Widget _buildFakeSearchBar(BuildContext context) {
+    return GestureDetector(
+      onTap: controller.mediaSearching.value
+          ? null
+          : () => _openMediaKeywordSheet(context, controller),
+      child: Container(
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(999)),
+        child: Row(
+          children: [
+            Icon(
+              CupertinoIcons.search,
+              size: 18,
+              color: CupertinoDynamicColor.resolve(Colors.white, context),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Obx(
+                () => Text(
+                  controller.searchKeyword.value.isEmpty
+                      ? '搜索本地资源'
+                      : controller.searchKeyword.value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.white.withValues(alpha: 0.72),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _mediaSortLabel(SubtitleMediaSortKey key) {
+  switch (key) {
+    case SubtitleMediaSortKey.defaultSort:
+      return '默认';
+    case SubtitleMediaSortKey.title:
+      return '标题';
+    case SubtitleMediaSortKey.year:
+      return '年份';
+  }
+}
+
+Future<void> _openMediaKeywordSheet(
+  BuildContext context,
+  SubtitleManualUploadFormController controller,
+) async {
+  final textController = TextEditingController(
+    text: controller.searchKeyword.value,
+  );
+  final submitted = await showModalBottomSheet<String>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (ctx) {
+      final insets = MediaQuery.of(ctx).viewInsets;
+      return Padding(
+        padding: EdgeInsets.only(bottom: insets.bottom),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          decoration: BoxDecoration(
+            color: CupertinoDynamicColor.resolve(
+              CupertinoColors.systemBackground,
+              ctx,
+            ),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+          ),
+          child: CupertinoSearchTextField(
+            controller: textController,
+            autofocus: true,
+            placeholder: '搜索本地资源',
+            onSubmitted: (value) => Navigator.of(ctx).pop(value),
+          ),
+        ),
+      );
+    },
+  );
+  textController.dispose();
+  if (submitted == null) return;
+  controller.updateMediaKeyword(submitted);
+}
+
+Future<void> _openMediaFilterSheet(
+  BuildContext context,
+  SubtitleManualUploadFormController controller,
+) async {
+  final selected = await showModalBottomSheet<String>(
+    context: context,
+    backgroundColor: Colors.transparent,
+    builder: (ctx) {
+      final theme = Theme.of(ctx);
+      return ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        child: Material(
+          color: theme.colorScheme.surface,
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '资源类型',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                ),
+                for (final entry in const [
+                  ('all', '全部'),
+                  ('movie', '电影'),
+                  ('tv', '剧集'),
+                ])
+                  ListTile(
+                    title: Text(entry.$2),
+                    trailing: controller.mediaType.value == entry.$1
+                        ? Icon(Icons.check, color: theme.colorScheme.primary)
+                        : null,
+                    onTap: () => Navigator.of(ctx).pop(entry.$1),
+                  ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
+  );
+  if (selected == null) return;
+  controller.updateMediaType(selected);
 }
 
 class _HomeHeader extends StatelessWidget {
@@ -248,7 +519,6 @@ class _StatusSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Obx(() {
       final status = controller.status.value;
-      final busy = controller.busy.value;
       final index =
           SubtitleManualUploadFormController.asMap(status['index']) ?? {};
       final archive =
@@ -259,94 +529,119 @@ class _StatusSection extends StatelessWidget {
           {};
       final ai =
           SubtitleManualUploadFormController.asMap(status['ai_subtitle']) ?? {};
+      final enabled = status['enabled'] == true;
+      final indexReady = index['ready'] == true;
+      final theme = Theme.of(context);
+      final scheme = theme.colorScheme;
+      final mediaCount = index['media_count'] ?? 0;
+      final videoCount = index['entry_count'] ?? 0;
+
       return Section(
         margin: EdgeInsets.zero,
-        padding: const EdgeInsets.all(12),
-        header: SectionHeader(
-          title: '运行概览',
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                tooltip: '刷新状态',
-                onPressed: controller.load,
-                constraints: const BoxConstraints.tightFor(
-                  width: 36,
-                  height: 36,
-                ),
-                padding: EdgeInsets.zero,
-                icon: const Icon(Icons.refresh),
-              ),
-              IconButton(
-                tooltip: '自动入库队列',
-                onPressed: () {
-                  _push(
-                    context,
-                    '自动入库队列',
-                    (_) => _AutoQueuePanelLoader(controller: controller),
-                  );
-                },
-                constraints: const BoxConstraints.tightFor(
-                  width: 36,
-                  height: 36,
-                ),
-                padding: EdgeInsets.zero,
-                icon: const Icon(Icons.queue),
-              ),
-            ],
-          ),
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        header: const SectionHeader(title: '运行概览'),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _StatusPill(
-                  icon: Icons.power_settings_new,
-                  label: status['enabled'] == true ? '插件已启用' : '插件未启用',
-                  color: status['enabled'] == true ? Colors.green : Colors.grey,
+                Padding(
+                  padding: const EdgeInsets.only(top: 5),
+                  child: _StatusLed(active: enabled),
                 ),
-                _StatusPill(
-                  icon: Icons.video_library_outlined,
-                  label:
-                      '${index['media_count'] ?? 0} 媒体 · ${index['entry_count'] ?? 0} 视频',
-                  color: index['ready'] == true ? Colors.blue : Colors.orange,
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text.rich(
+                    TextSpan(
+                      style: theme.textTheme.bodyMedium?.copyWith(height: 1.45),
+                      children: [
+                        TextSpan(
+                          text: enabled ? '已启用' : '未启用',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: enabled
+                                ? scheme.primary
+                                : scheme.onSurfaceVariant,
+                          ),
+                        ),
+                        TextSpan(
+                          text: '  ·  ',
+                          style: TextStyle(color: scheme.outline),
+                        ),
+                        TextSpan(
+                          text: '$mediaCount',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        TextSpan(
+                          text: ' 媒体  ·  ',
+                          style: TextStyle(color: scheme.onSurfaceVariant),
+                        ),
+                        TextSpan(
+                          text: '$videoCount',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        TextSpan(
+                          text: ' 视频',
+                          style: TextStyle(color: scheme.onSurfaceVariant),
+                        ),
+                        if (!indexReady) ...[
+                          TextSpan(
+                            text: '  ·  ',
+                            style: TextStyle(color: scheme.outline),
+                          ),
+                          TextSpan(
+                            text: '索引更新中',
+                            style: TextStyle(
+                              color: scheme.tertiary,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ),
-                _StatusPill(
-                  icon: Icons.inventory_2_outlined,
-                  label: archive['rar'] == true ? 'RAR 可用' : 'RAR 不可用',
-                  color: archive['rar'] == true ? Colors.green : Colors.orange,
-                ),
-                _StatusPill(
-                  icon: Icons.graphic_eq,
-                  label: timeline['available'] == true ? '智能调轴可用' : '调轴不可用',
-                  color: timeline['available'] == true
-                      ? Colors.green
-                      : Colors.grey,
-                ),
-                _StatusPill(
-                  icon: Icons.auto_awesome,
-                  label: ai['available'] == true ? 'AI 可用' : 'AI 未就绪',
-                  color: ai['available'] == true ? Colors.purple : Colors.grey,
-                ),
+                if (!indexReady)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8, top: 2),
+                    child: SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: scheme.tertiary,
+                      ),
+                    ),
+                  ),
               ],
             ),
-            const SizedBox(height: 10),
+            Padding(
+              padding: const EdgeInsets.only(top: 10, bottom: 10),
+              child: Divider(
+                height: 1,
+                thickness: 1,
+                color: scheme.outlineVariant.withValues(alpha: 0.35),
+              ),
+            ),
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: busy ? null : controller.refreshIndex,
-                    icon: busy
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.sync),
-                    label: const Text('刷新资源清单'),
+                  child: _CapChip(
+                    label: 'RAR',
+                    ready: archive['rar'] == true,
+                  ),
+                ),
+                Expanded(
+                  child: _CapChip(
+                    label: '调轴',
+                    ready: timeline['available'] == true,
+                  ),
+                ),
+                Expanded(
+                  child: _CapChip(
+                    label: 'AI',
+                    ready: ai['available'] == true,
                   ),
                 ),
               ],
@@ -358,63 +653,61 @@ class _StatusSection extends StatelessWidget {
   }
 }
 
-class _SearchPanel extends StatelessWidget {
-  const _SearchPanel({required this.controller});
+class _StatusLed extends StatelessWidget {
+  const _StatusLed({required this.active});
 
-  final SubtitleManualUploadFormController controller;
+  final bool active;
 
   @override
   Widget build(BuildContext context) {
-    return Obx(() {
-      final mediaType = controller.mediaType.value;
-      return Section(
-        margin: EdgeInsets.zero,
-        padding: const EdgeInsets.all(12),
-        header: const SectionHeader(title: '搜索资源', subtitle: '本地媒体库'),
-        child: Column(
-          children: [
-            TextField(
-              decoration: _fieldDecoration(
-                context,
-                label: '搜索本地资源',
-                icon: Icons.search,
-              ),
-              onChanged: (value) => controller.searchKeyword.value = value,
-              onSubmitted: (_) => controller.runSearch(reset: true),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    initialValue: mediaType,
-                    decoration: _fieldDecoration(context, label: '类型'),
-                    items: const [
-                      DropdownMenuItem(value: 'all', child: Text('全部')),
-                      DropdownMenuItem(value: 'movie', child: Text('电影')),
-                      DropdownMenuItem(value: 'tv', child: Text('剧集')),
-                    ],
-                    onChanged: (value) {
-                      if (value == null) return;
-                      controller.mediaType.value = value;
-                    },
-                  ),
+    final scheme = Theme.of(context).colorScheme;
+    final color = active ? scheme.primary : scheme.outline;
+    return Container(
+      width: 8,
+      height: 8,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        boxShadow: active
+            ? [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.35),
+                  blurRadius: 6,
                 ),
-                const SizedBox(width: 8),
-                SizedBox(
-                  height: 48,
-                  child: FilledButton.icon(
-                    onPressed: () => controller.runSearch(reset: true),
-                    icon: const Icon(Icons.search, size: 18),
-                    label: const Text('搜索'),
-                  ),
-                ),
-              ],
-            ),
-          ],
+              ]
+            : null,
+      ),
+    );
+  }
+}
+
+class _CapChip extends StatelessWidget {
+  const _CapChip({required this.label, required this.ready});
+
+  final String label;
+  final bool ready;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final color = ready ? scheme.onSurface : scheme.onSurfaceVariant;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          ready ? Icons.check_rounded : Icons.close_rounded,
+          size: 13,
+          color: ready ? scheme.primary : scheme.outline,
         ),
-      );
-    });
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: theme.textTheme.bodySmall?.copyWith(color: color),
+        ),
+      ],
+    );
   }
 }
 
@@ -426,54 +719,265 @@ class _MediaResults extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      final medias = controller.medias;
+      final medias = controller.visibleMedias;
       final hasMore = controller.mediaHasMore.value;
       final total = controller.mediaTotal.value;
-      if (medias.isEmpty) {
-        return const _EmptyPanel(text: '暂无资源，刷新清单或输入关键词试试');
+      final keyword = controller.searchKeyword.value.trim();
+      final typeLabel = switch (controller.mediaType.value) {
+        'movie' => '电影',
+        'tv' => '剧集',
+        _ => '全部',
+      };
+      final subtitle = keyword.isEmpty
+          ? '本地媒体库 · $typeLabel'
+          : '「$keyword」· $typeLabel';
+
+      if (medias.isEmpty && !controller.mediaSearching.value) {
+        return Section(
+          margin: EdgeInsets.zero,
+          padding: const EdgeInsets.all(12),
+          header: SectionHeader(title: '搜索资源', subtitle: subtitle),
+          child: const _EmptyPanel(text: '暂无资源，刷新清单或输入关键词试试'),
+        );
       }
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _SectionHeader(title: '本地资源', trailing: '$total 个结果'),
-          const SizedBox(height: 8),
-          for (final media in medias)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: _ListCard(
-                onTap: () {
-                  _push(
-                    context,
-                    controller.mediaLabel(media),
-                    (_) => _TargetDetailLoader(
-                      controller: controller,
-                      media: media,
-                    ),
-                  ).then((_) => controller.resetSelection());
-                },
-                child: ListTile(
-                  minVerticalPadding: 12,
-                  leading: _Poster(url: _mediaPoster(media)),
-                  title: Text(
-                    controller.mediaLabel(media),
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  subtitle: Text(_mediaSubtitle(media)),
-                  trailing: const Icon(Icons.chevron_right),
+
+      return Section(
+        margin: EdgeInsets.zero,
+        padding: const EdgeInsets.all(12),
+        header: SectionHeader(
+          title: '搜索资源',
+          subtitle: medias.isEmpty ? subtitle : '$subtitle · $total 个结果',
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (controller.hasActiveMediaFilters || keyword.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    if (keyword.isNotEmpty)
+                      _MetaChip(label: '关键词: $keyword'),
+                    if (controller.hasActiveMediaFilters)
+                      _MetaChip(label: '类型: $typeLabel'),
+                  ],
                 ),
               ),
-            ),
-          if (hasMore)
-            OutlinedButton.icon(
-              onPressed: controller.loadMoreMedia,
-              icon: const Icon(Icons.expand_more),
-              label: Text('加载更多 · 共 $total'),
-            ),
-        ],
+            if (controller.mediaSearching.value && medias.isEmpty)
+              const SizedBox(
+                height: 160,
+                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              )
+            else
+              for (final media in medias)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _MediaListCard(
+                    media: media,
+                    onTap: () {
+                      _push(
+                        context,
+                        controller.mediaLabel(media),
+                        (_) => _TargetDetailLoader(
+                          controller: controller,
+                          media: media,
+                        ),
+                      ).then((_) => controller.resetSelection());
+                    },
+                  ),
+                ),
+            if (hasMore)
+              OutlinedButton.icon(
+                onPressed: controller.loadMoreMedia,
+                icon: const Icon(Icons.expand_more),
+                label: Text('加载更多 · 共 $total'),
+              ),
+          ],
+        ),
       );
     });
+  }
+}
+
+class _MediaListCard extends StatelessWidget {
+  const _MediaListCard({
+    required this.media,
+    required this.onTap,
+  });
+
+  final Map<String, dynamic> media;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final isTv = _isTvMedia(media);
+    final title = _mediaDisplayTitle(media);
+    final year = _mediaYearText(media);
+    final stats = _mediaStats(media);
+
+    return _ListCard(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            _MediaListPoster(
+              url: _mediaPoster(media),
+              isTv: isTv,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      height: 1.28,
+                      letterSpacing: -0.1,
+                    ),
+                  ),
+                  if (year != null) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      year,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                  if (stats.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: stats,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 22,
+              color: scheme.onSurfaceVariant.withValues(alpha: 0.55),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MediaListPoster extends StatelessWidget {
+  const _MediaListPoster({required this.url, required this.isTv});
+
+  final String url;
+  final bool isTv;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.10),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          _Poster(url: url, isTv: isTv, width: 72, height: 102),
+          Positioned(
+            left: 5,
+            bottom: 5,
+            child: _MediaPosterTypeTag(isTv: isTv),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MediaPosterTypeTag extends StatelessWidget {
+  const _MediaPosterTypeTag({required this.isTv});
+
+  final bool isTv;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.62),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+        child: Text(
+          isTv ? '剧集' : '电影',
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: Colors.white,
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            height: 1.1,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MediaStatChip extends StatelessWidget {
+  const _MediaStatChip({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 13,
+              color: scheme.primary.withValues(alpha: 0.88),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+                height: 1.1,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -594,13 +1098,10 @@ class _TargetSummaryPanel extends StatelessWidget {
               );
             },
             onOnline: () {
-              _push(
+              _pushOnlineSheet(
                 context,
-                '在线字幕',
-                (_) => _OnlinePanelLoader(
-                  controller: controller,
-                  start: controller.openBatchOnlineSearch,
-                ),
+                controller,
+                start: controller.openBatchOnlineSearch,
               );
             },
           ),
@@ -799,14 +1300,11 @@ class _TargetCard extends StatelessWidget {
                         compact: true,
                         enabled: !disabled,
                         onTap: () {
-                          _push(
+                          _pushOnlineSheet(
                             context,
-                            '在线字幕',
-                            (_) => _OnlinePanelLoader(
-                              controller: controller,
-                              start: () =>
-                                  controller.openSingleOnlineSearch(target),
-                            ),
+                            controller,
+                            start: () =>
+                                controller.openSingleOnlineSearch(target),
                           );
                         },
                       ),
@@ -1204,14 +1702,11 @@ class _HistoryCard extends StatelessWidget {
                       IconButton(
                         tooltip: '在线搜索',
                         onPressed: () {
-                          _push(
+                          _pushOnlineSheet(
                             context,
-                            '在线字幕',
-                            (_) => _OnlinePanelLoader(
-                              controller: controller,
-                              start: () =>
-                                  controller.openSingleOnlineSearch(target),
-                            ),
+                            controller,
+                            start: () =>
+                                controller.openSingleOnlineSearch(target),
                           );
                         },
                         icon: const Icon(Icons.travel_explore),
@@ -1416,65 +1911,77 @@ class _PreviewItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final uploadId = '${item['upload_id'] ?? ''}';
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: _ListCard(
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            children: [
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                value: item['selected'] != false,
-                onChanged: (value) =>
-                    controller.togglePreviewItem(uploadId, value == true),
-                title: Text(
-                  '${item['source_name'] ?? '字幕文件'}',
-                  style: Theme.of(
+    return Obx(() {
+      final preview = controller.uploadPreview.value;
+      var current = item;
+      for (final entry in SubtitleManualUploadFormController.asMapList(
+        preview?['items'],
+      )) {
+        if ('${entry['upload_id'] ?? ''}' == uploadId) {
+          current = entry;
+          break;
+        }
+      }
+      return Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: _ListCard(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              children: [
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: current['selected'] != false,
+                  onChanged: (value) =>
+                      controller.togglePreviewItem(uploadId, value == true),
+                  title: Text(
+                    '${current['source_name'] ?? '字幕文件'}',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  subtitle: Text('${current['output_name'] ?? ''}'),
+                ),
+                DropdownButtonFormField<String>(
+                  initialValue: '${current['target_id'] ?? ''}'.isEmpty
+                      ? null
+                      : '${current['target_id']}',
+                  decoration: _fieldDecoration(
                     context,
-                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+                    label: '目标视频',
+                    dense: true,
+                  ),
+                  items: controller.uploadScopeTargets
+                      .map(
+                        (target) => DropdownMenuItem(
+                          value: '${target['id']}',
+                          child: Text(controller.compactTargetName(target)),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      controller.updatePreviewTarget(uploadId, value);
+                    }
+                  },
                 ),
-                subtitle: Text('${item['output_name'] ?? ''}'),
-              ),
-              DropdownButtonFormField<String>(
-                initialValue: '${item['target_id'] ?? ''}'.isEmpty
-                    ? null
-                    : '${item['target_id']}',
-                decoration: _fieldDecoration(
-                  context,
-                  label: '目标视频',
-                  dense: true,
+                const SizedBox(height: 8),
+                TextFormField(
+                  initialValue: '${current['language_suffix'] ?? ''}',
+                  decoration: _fieldDecoration(
+                    context,
+                    label: '语言后缀',
+                    dense: true,
+                  ),
+                  onChanged: (value) =>
+                      controller.updatePreviewLanguage(uploadId, value),
                 ),
-                items: controller.uploadScopeTargets
-                    .map(
-                      (target) => DropdownMenuItem(
-                        value: '${target['id']}',
-                        child: Text(controller.compactTargetName(target)),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    controller.updatePreviewTarget(uploadId, value);
-                  }
-                },
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                initialValue: '${item['language_suffix'] ?? ''}',
-                decoration: _fieldDecoration(
-                  context,
-                  label: '语言后缀',
-                  dense: true,
-                ),
-                onChanged: (value) =>
-                    controller.updatePreviewLanguage(uploadId, value),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
-    );
+      );
+    });
   }
 }
 
@@ -1487,7 +1994,6 @@ class _OnlinePanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Obx(() {
       final results = controller.filteredOnlineResults;
-      final selectedCount = controller.onlineSelectedResultKeys.length;
       final manualLinkCount = controller.onlineManualLinks.fold<int>(
         0,
         (sum, provider) =>
@@ -1496,148 +2002,52 @@ class _OnlinePanel extends StatelessWidget {
               provider['links'],
             ).length,
       );
+      final targetCount = controller.onlineTargets.length;
+      final providerCount = controller.onlineSelectedProviders.length;
+
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _Panel(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _PanelTitle(
-                  title: controller.onlineTitle.value,
-                  icon: Icons.travel_explore,
-                ),
-                _OnlineControlGroup(
-                  title: '搜索条件',
-                  icon: Icons.tune,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      TextField(
-                        decoration: _fieldDecoration(
-                          context,
-                          label: '关键词',
-                          icon: Icons.search,
-                        ),
-                        onChanged: (value) =>
-                            controller.onlineKeyword.value = value,
-                        onSubmitted: (_) => controller.runOnlineSearch(),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        '字幕源',
-                        style: Theme.of(context).textTheme.labelMedium
-                            ?.copyWith(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
-                              fontWeight: FontWeight.w600,
-                            ),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          for (final provider in const [
-                            'subhd',
-                            'zimuku',
-                            'assrt',
-                            'opensubtitles',
-                          ])
-                            _ProviderChip(
-                              label: _providerName(provider),
-                              selected: controller.onlineSelectedProviders
-                                  .contains(provider),
-                              onTap: () {
-                                if (controller.onlineSelectedProviders.contains(
-                                  provider,
-                                )) {
-                                  controller.onlineSelectedProviders.remove(
-                                    provider,
-                                  );
-                                } else {
-                                  controller.onlineSelectedProviders.add(
-                                    provider,
-                                  );
-                                }
-                              },
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _OnlineControlGroup(
-                  title: '操作',
-                  icon: Icons.bolt_outlined,
-                  accent: true,
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final itemWidth = constraints.maxWidth >= 300
-                          ? (constraints.maxWidth - 16) / 3
-                          : (constraints.maxWidth - 8) / 2;
-                      return Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          SizedBox(
-                            width: itemWidth,
-                            child: _OnlineCommandButton(
-                              icon: Icons.search,
-                              label: controller.onlineSearching.value
-                                  ? '搜索中'
-                                  : '搜索',
-                              primary: true,
-                              onTap: controller.onlineSearching.value
-                                  ? null
-                                  : controller.runOnlineSearch,
-                            ),
-                          ),
-                          SizedBox(
-                            width: itemWidth,
-                            child: _OnlineCommandButton(
-                              icon: Icons.download,
-                              label: selectedCount == 0
-                                  ? '下载预览'
-                                  : '预览 $selectedCount',
-                              onTap: () async {
-                                await controller.downloadOnlinePreview();
-                                if (!context.mounted ||
-                                    controller.uploadPreview.value == null) {
-                                  return;
-                                }
-                                _push(
-                                  context,
-                                  controller.uploadTitle.value,
-                                  (_) => _UploadPanel(controller: controller),
-                                );
-                              },
-                            ),
-                          ),
-                          SizedBox(
-                            width: itemWidth,
-                            child: _OnlineCommandButton(
-                              icon: Icons.auto_awesome,
-                              label: 'AI 翻译',
-                              confirm: true,
-                              onTap: controller.aiAvailable
-                                  ? () => controller.downloadOnlinePreview(
-                                      submitAi: true,
-                                    )
-                                  : null,
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-              ],
+          _OnlineHeader(
+            title: controller.onlineTitle.value,
+            targetCount: targetCount,
+            providerCount: providerCount,
+          ),
+          const SizedBox(height: 14),
+          Text(
+            '字幕源',
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final provider in const [
+                'subhd',
+                'zimuku',
+                'assrt',
+                'opensubtitles',
+              ])
+                _ProviderChip(
+                  label: _providerName(provider),
+                  selected: controller.onlineSelectedProviders.contains(
+                    provider,
+                  ),
+                  onTap: () {
+                    if (controller.onlineSelectedProviders.contains(provider)) {
+                      controller.onlineSelectedProviders.remove(provider);
+                    } else {
+                      controller.onlineSelectedProviders.add(provider);
+                    }
+                  },
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
           _OnlineSegmentContainer(
             child: CupertinoSlidingSegmentedControl<String>(
               groupValue: controller.onlineView.value,
@@ -1664,31 +2074,565 @@ class _OnlinePanel extends StatelessWidget {
               },
             ),
           ),
-          const SizedBox(height: 12),
-          if (controller.onlineView.value == 'manual')
+          const SizedBox(height: 14),
+          if (controller.onlineSearching.value)
+            const _CenterStatusView(
+              loading: true,
+              text: '正在搜索在线字幕',
+            )
+          else if (controller.onlineView.value == 'manual')
             _ManualSearchPanel(controller: controller)
-          else ...[
-            _SectionHeader(
-              title: '搜索结果',
-              trailing: controller.onlineSearching.value
-                  ? '搜索中'
-                  : '${results.length} 条',
-            ),
-            const SizedBox(height: 8),
-            if (controller.onlineSearching.value)
-              const _LoadingPanel(text: '正在搜索在线字幕')
-            else if (results.isEmpty)
-              const _EmptyPanel(text: '暂无在线字幕结果，可调整关键词或使用手动搜索链接。')
-            else
-              for (final item in results)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: _OnlineResultCard(controller: controller, item: item),
-                ),
-          ],
+          else if (results.isEmpty)
+            const _CenterStatusView(
+              text: '暂无在线字幕结果，可切换字幕源或使用手动搜索链接。',
+            )
+          else
+            for (final item in results)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _OnlineResultCard(controller: controller, item: item),
+              ),
         ],
       );
     });
+  }
+}
+
+class _OnlineHeader extends StatelessWidget {
+  const _OnlineHeader({
+    required this.title,
+    required this.targetCount,
+    required this.providerCount,
+  });
+
+  final String title;
+  final int targetCount;
+  final int providerCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: scheme.primary.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            Icons.travel_explore_outlined,
+            size: 20,
+            color: scheme.primary,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.2,
+                  height: 1.25,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '$targetCount 个目标 · $providerCount 个字幕源已启用',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  height: 1.3,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _OnlineActionBar extends StatelessWidget {
+  const _OnlineActionBar({
+    required this.controller,
+    required this.sheetContext,
+  });
+
+  final SubtitleManualUploadFormController controller;
+  final BuildContext sheetContext;
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final selectedCount = controller.onlineSelectedResultKeys.length;
+      final downloading = controller.onlineDownloading.value;
+      final applying = controller.onlineApplying.value;
+      final busy = downloading || applying;
+
+      return SafeArea(
+        top: false,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            border: Border(
+              top: BorderSide(
+                color: Theme.of(
+                  context,
+                ).colorScheme.outlineVariant.withValues(alpha: 0.55),
+              ),
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: _OnlineCommandButton(
+                  icon: Icons.save_alt_outlined,
+                  label: applying
+                      ? '写入中'
+                      : selectedCount == 0
+                      ? '直接写入'
+                      : '写入 $selectedCount',
+                  primary: true,
+                  onTap: busy || selectedCount == 0
+                      ? null
+                      : () async {
+                          final ok = await controller.applyOnlineDirect();
+                          if (ok && sheetContext.mounted) {
+                            Navigator.of(sheetContext).pop();
+                          }
+                        },
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _OnlineCommandButton(
+                  icon: Icons.preview_outlined,
+                  label: downloading ? '生成中' : '预览',
+                  onTap: busy || selectedCount == 0
+                      ? null
+                      : () => _openUploadPreview(sheetContext, controller),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _OnlineCommandButton(
+                  icon: Icons.auto_awesome,
+                  label: 'AI',
+                  confirm: true,
+                  onTap: controller.aiAvailable && !busy
+                      ? () async {
+                          Navigator.of(sheetContext).pop();
+                          await controller.downloadOnlinePreview(
+                            submitAi: true,
+                          );
+                        }
+                      : null,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    });
+  }
+}
+
+void _openUploadPreview(
+  BuildContext sheetContext,
+  SubtitleManualUploadFormController controller,
+) {
+  _push(
+    sheetContext,
+    controller.uploadTitle.value,
+    (_) => _UploadPreviewLoader(controller: controller),
+    footerBuilder: (previewContext) => _PreviewApplyFooter(
+      controller: controller,
+      sheetContext: previewContext,
+    ),
+  );
+}
+
+class _UploadPreviewLoader extends StatefulWidget {
+  const _UploadPreviewLoader({required this.controller});
+
+  final SubtitleManualUploadFormController controller;
+
+  @override
+  State<_UploadPreviewLoader> createState() => _UploadPreviewLoaderState();
+}
+
+class _UploadPreviewLoaderState extends State<_UploadPreviewLoader> {
+  var _loading = true;
+  String? _error;
+
+  Future<void> _runPreview() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    widget.controller.errorText.value = null;
+    widget.controller.uploadPreview.value = null;
+    final ok = await widget.controller.downloadOnlinePreview();
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _error = ok
+          ? null
+          : widget.controller.errorText.value ?? '预览生成失败，请重试';
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _runPreview());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading || widget.controller.onlineDownloading.value) {
+      return const _CenterStatusView(
+        loading: true,
+        text: '正在下载并生成预览…',
+      );
+    }
+    if (widget.controller.uploadPreview.value == null) {
+      return Column(
+        children: [
+          _CenterStatusView(text: _error ?? '预览生成失败，请重试'),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _runPreview,
+              icon: const Icon(Icons.refresh),
+              label: const Text('重试'),
+            ),
+          ),
+        ],
+      );
+    }
+    final preview = widget.controller.uploadPreview.value;
+    if (preview?['source'] == 'online') {
+      return _OnlinePreviewPanel(controller: widget.controller);
+    }
+    return _UploadPanel(controller: widget.controller);
+  }
+}
+
+class _OnlinePreviewPanel extends StatelessWidget {
+  const _OnlinePreviewPanel({required this.controller});
+
+  final SubtitleManualUploadFormController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Obx(() {
+      final preview = controller.uploadPreview.value;
+      final items = preview == null
+          ? <Map<String, dynamic>>[]
+          : SubtitleManualUploadFormController.asMapList(preview['items']);
+      final selectedCount = items.where((e) => e['selected'] != false).length;
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: scheme.primaryContainer.withValues(alpha: 0.34),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: scheme.primary.withValues(alpha: 0.14),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: scheme.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.fact_check_outlined,
+                    color: scheme.primary,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '写入预览',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '已选 $selectedCount / ${items.length} 个字幕，确认目标与语言后缀后可写入',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            value: controller.fixTimeline.value,
+            onChanged: controller.timelineAvailable
+                ? (value) => controller.fixTimeline.value = value
+                : null,
+            title: const Text('写入后智能调轴'),
+            subtitle: Text(
+              controller.timelineAvailable ? '流媒体目标会自动跳过' : '调轴依赖不可用',
+            ),
+          ),
+          const SizedBox(height: 4),
+          for (final item in items)
+            _OnlinePreviewItem(controller: controller, item: item),
+        ],
+      );
+    });
+  }
+}
+
+class _OnlinePreviewItem extends StatelessWidget {
+  const _OnlinePreviewItem({required this.controller, required this.item});
+
+  final SubtitleManualUploadFormController controller;
+  final Map<String, dynamic> item;
+
+  @override
+  Widget build(BuildContext context) {
+    final uploadId = '${item['upload_id'] ?? ''}';
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return Obx(() {
+      final preview = controller.uploadPreview.value;
+      var current = item;
+      for (final entry in SubtitleManualUploadFormController.asMapList(
+        preview?['items'],
+      )) {
+        if ('${entry['upload_id'] ?? ''}' == uploadId) {
+          current = entry;
+          break;
+        }
+      }
+      final selected = current['selected'] != false;
+
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          decoration: BoxDecoration(
+            color: selected
+                ? scheme.surfaceContainerHighest.withValues(alpha: 0.55)
+                : scheme.surfaceContainerHighest.withValues(alpha: 0.28),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: selected
+                  ? scheme.primary.withValues(alpha: 0.28)
+                  : scheme.outlineVariant.withValues(alpha: 0.45),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(8, 8, 12, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: selected,
+                  onChanged: (value) =>
+                      controller.togglePreviewItem(uploadId, value == true),
+                  title: Text(
+                    '${current['source_name'] ?? current['title'] ?? '字幕文件'}',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  subtitle: Text(
+                    '${current['output_name'] ?? ''}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, right: 4),
+                  child: DropdownButtonFormField<String>(
+                    value: '${current['target_id'] ?? ''}'.isEmpty
+                        ? null
+                        : '${current['target_id']}',
+                    decoration: _fieldDecoration(
+                      context,
+                      label: '目标视频',
+                      dense: true,
+                    ),
+                    items: controller.uploadScopeTargets
+                        .map(
+                          (target) => DropdownMenuItem(
+                            value: '${target['id']}',
+                            child: Text(controller.compactTargetName(target)),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        controller.updatePreviewTarget(uploadId, value);
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: TextFormField(
+                    initialValue: '${current['language_suffix'] ?? ''}',
+                    decoration: _fieldDecoration(
+                      context,
+                      label: '语言后缀',
+                      dense: true,
+                    ),
+                    onChanged: (value) =>
+                        controller.updatePreviewLanguage(uploadId, value),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    });
+  }
+}
+
+class _PreviewApplyFooter extends StatelessWidget {
+  const _PreviewApplyFooter({
+    required this.controller,
+    required this.sheetContext,
+  });
+
+  final SubtitleManualUploadFormController controller;
+  final BuildContext sheetContext;
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final preview = controller.uploadPreview.value;
+      if (preview == null) {
+        return const SizedBox.shrink();
+      }
+      final applying = controller.applying.value;
+      return SafeArea(
+        top: false,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            border: Border(
+              top: BorderSide(
+                color: Theme.of(
+                  context,
+                ).colorScheme.outlineVariant.withValues(alpha: 0.55),
+              ),
+            ),
+          ),
+          child: FilledButton.icon(
+            onPressed: applying
+                ? null
+                : () async {
+                    await controller.applyUpload();
+                    if (!sheetContext.mounted) return;
+                    if (controller.uploadPreview.value == null &&
+                        Navigator.of(sheetContext).canPop()) {
+                      Navigator.of(sheetContext).pop();
+                    }
+                  },
+            icon: applying
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.done_all),
+            label: Text(applying ? '写入中…' : '确认写入'),
+          ),
+        ),
+      );
+    });
+  }
+}
+
+class _CenterStatusView extends StatelessWidget {
+  const _CenterStatusView({required this.text, this.loading = false});
+
+  final String text;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SizedBox(
+      height: 280,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (loading)
+                const SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: CircularProgressIndicator(strokeWidth: 2.4),
+                )
+              else
+                Icon(
+                  Icons.subtitles_off_outlined,
+                  size: 32,
+                  color: scheme.onSurfaceVariant.withValues(alpha: 0.72),
+                ),
+              const SizedBox(height: 14),
+              Text(
+                text,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  height: 1.45,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -2816,51 +3760,54 @@ class _OnlineResultCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final key = controller.onlineResultKey(item);
-    final selected = controller.onlineSelectedResultKeys.contains(key);
     final provider = _providerName('${item['provider'] ?? ''}');
     final language = '${item['language'] ?? item['language_name'] ?? ''}';
-    return _ListCard(
-      onTap: () => controller.toggleOnlineResult(item, !selected),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(8, 10, 12, 10),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Checkbox(
-              value: selected,
-              visualDensity: VisualDensity.compact,
-              onChanged: (value) =>
-                  controller.toggleOnlineResult(item, value == true),
-            ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${item['title'] ?? item['name'] ?? '在线字幕'}',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 4,
-                    children: [
-                      _MetaChip(label: provider),
-                      if (language.trim().isNotEmpty)
-                        _MetaChip(label: language),
-                    ],
-                  ),
-                ],
+
+    return Obx(() {
+      final selected = controller.onlineSelectedResultKeys.contains(key);
+      return _ListCard(
+        onTap: () => controller.toggleOnlineResult(item, !selected),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8, 10, 12, 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Checkbox(
+                value: selected,
+                visualDensity: VisualDensity.compact,
+                onChanged: (value) =>
+                    controller.toggleOnlineResult(item, value == true),
               ),
-            ),
-          ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${item['title'] ?? item['name'] ?? '在线字幕'}',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        _MetaChip(label: provider),
+                        if (language.trim().isNotEmpty)
+                          _MetaChip(label: language),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    });
   }
 }
 
@@ -2869,33 +3816,9 @@ class _OnlinePreparingView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _Panel(
-      child: Column(
-        children: [
-          const SizedBox(height: 8),
-          const SizedBox(
-            width: 26,
-            height: 26,
-            child: CircularProgressIndicator(strokeWidth: 2.4),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            '准备在线字幕搜索',
-            style: Theme.of(
-              context,
-            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w500),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            '正在读取字幕源状态并生成搜索条件',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 8),
-        ],
-      ),
+    return const _CenterStatusView(
+      loading: true,
+      text: '正在读取字幕源并准备搜索',
     );
   }
 }
@@ -3098,38 +4021,6 @@ InputDecoration _fieldDecoration(
   );
 }
 
-class _StatusPill extends StatelessWidget {
-  const _StatusPill({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.28)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 6),
-          Text(label, style: Theme.of(context).textTheme.labelMedium),
-        ],
-      ),
-    );
-  }
-}
-
 class _StatusDot extends StatelessWidget {
   const _StatusDot({required this.label, required this.active});
 
@@ -3196,40 +4087,45 @@ class _InlineHint extends StatelessWidget {
 }
 
 class _Poster extends StatelessWidget {
-  const _Poster({required this.url});
+  const _Poster({
+    required this.url,
+    this.isTv = false,
+    this.width = 48,
+    this.height = 68,
+  });
 
   final String url;
+  final bool isTv;
+  final double width;
+  final double height;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    if (url.isEmpty) {
-      return Container(
-        width: 48,
-        height: 64,
-        decoration: BoxDecoration(
-          color: theme.primaryColor.withValues(alpha: 0.10),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(Icons.movie_outlined, color: theme.primaryColor),
-      );
-    }
+    final scheme = theme.colorScheme;
+    final placeholder = Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.65),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Icon(
+        isTv ? Icons.live_tv_outlined : Icons.movie_outlined,
+        color: scheme.primary.withValues(alpha: 0.75),
+        size: 22,
+      ),
+    );
+    if (url.isEmpty) return placeholder;
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
       child: CachedNetworkImage(
         imageUrl: url,
-        width: 48,
-        height: 64,
+        width: width,
+        height: height,
         fit: BoxFit.cover,
-        placeholder: (context, url) => Container(
-          width: 48,
-          height: 64,
-          decoration: BoxDecoration(
-            color: theme.primaryColor.withValues(alpha: 0.10),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(Icons.movie_outlined, color: theme.primaryColor),
-        ),
+        placeholder: (context, url) => placeholder,
+        errorWidget: (context, url, error) => placeholder,
       ),
     );
   }
@@ -3307,13 +4203,82 @@ String _mediaPoster(Map<String, dynamic> item) {
   return '${item['poster_thumb_url'] ?? item['poster_url'] ?? ''}';
 }
 
-String _mediaSubtitle(Map<String, dynamic> item) {
-  final parts = [
-    '${item['media_type'] ?? ''}',
-    '${item['season_count'] ?? item['episode_count'] ?? ''}',
-    '${item['path_count'] ?? item['target_count'] ?? ''}',
-  ].where((e) => e.trim().isNotEmpty).toList();
-  return parts.join(' · ');
+bool _isTvMedia(Map<String, dynamic> item) {
+  final type = '${item['media_type'] ?? ''}'.trim().toLowerCase();
+  return type == 'tv' || type == 'series' || type == '电视剧';
+}
+
+String _mediaDisplayTitle(Map<String, dynamic> item) {
+  final title = '${item['title'] ?? item['name'] ?? ''}'.trim();
+  return title.isEmpty ? '未知媒体' : title;
+}
+
+String? _mediaYearText(Map<String, dynamic> item) {
+  final year = '${item['year'] ?? ''}'.trim();
+  return year.isEmpty ? null : year;
+}
+
+List<Widget> _mediaStats(Map<String, dynamic> item) {
+  final isTv = _isTvMedia(item);
+  final videoCount = SubtitleManualUploadFormController.asInt(
+    item['target_count'] ?? item['path_count'],
+    0,
+  );
+  final chips = <Widget>[];
+
+  if (isTv) {
+    var seasonCount = SubtitleManualUploadFormController.asInt(
+      item['season_count'],
+      0,
+    );
+    var episodeCount = SubtitleManualUploadFormController.asInt(
+      item['episode_count'],
+      0,
+    );
+    if (seasonCount == 0 || episodeCount == 0) {
+      final seasons = SubtitleManualUploadFormController.asMapList(
+        item['seasons'],
+      );
+      if (seasonCount == 0 && seasons.isNotEmpty) {
+        seasonCount = seasons.length;
+      }
+      if (episodeCount == 0) {
+        for (final season in seasons) {
+          episodeCount += SubtitleManualUploadFormController.asInt(
+            season['episode_count'] ?? season['episodes'],
+            0,
+          );
+        }
+      }
+    }
+    if (seasonCount > 0) {
+      chips.add(
+        _MediaStatChip(
+          icon: Icons.layers_outlined,
+          label: '$seasonCount 季',
+        ),
+      );
+    }
+    if (episodeCount > 0) {
+      chips.add(
+        _MediaStatChip(
+          icon: Icons.playlist_play_rounded,
+          label: '$episodeCount 集',
+        ),
+      );
+    }
+  }
+
+  if (videoCount > 0) {
+    chips.add(
+      _MediaStatChip(
+        icon: Icons.videocam_outlined,
+        label: '$videoCount 视频',
+      ),
+    );
+  }
+
+  return chips;
 }
 
 String _targetPath(Map<String, dynamic> target) {
@@ -3374,8 +4339,10 @@ Future<void> _launch(String rawUrl) async {
 Future<T?> _push<T>(
   BuildContext context,
   String title,
-  WidgetBuilder childBuilder,
-) {
+  WidgetBuilder childBuilder, {
+  WidgetBuilder? footerBuilder,
+  WidgetBuilder? headerActionsBuilder,
+}) {
   return showModalBottomSheet<T>(
     context: context,
     isScrollControlled: true,
@@ -3393,7 +4360,49 @@ Future<T?> _push<T>(
         title: title,
         scrollController: scrollController,
         childBuilder: childBuilder,
+        footerBuilder: footerBuilder,
+        headerActionsBuilder: headerActionsBuilder,
       ),
+    ),
+  );
+}
+
+Future<void> _pushOnlineSheet(
+  BuildContext hostContext,
+  SubtitleManualUploadFormController controller, {
+  required Future<void> Function() start,
+  String title = '在线字幕',
+}) {
+  return _push(
+    hostContext,
+    title,
+    (_) => _OnlinePanelLoader(controller: controller, start: start),
+    headerActionsBuilder: (_) => Obx(() {
+      if (controller.onlineSearching.value) {
+        return const Padding(
+          padding: EdgeInsets.only(right: 4),
+          child: SizedBox(
+            width: 36,
+            height: 36,
+            child: Center(
+              child: SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          ),
+        );
+      }
+      return IconButton(
+        tooltip: '重新搜索',
+        onPressed: controller.runOnlineSearch,
+        icon: const Icon(Icons.refresh_rounded),
+      );
+    }),
+    footerBuilder: (sheetContext) => _OnlineActionBar(
+      controller: controller,
+      sheetContext: sheetContext,
     ),
   );
 }
@@ -3501,11 +4510,15 @@ class _SubtitleBottomSheet extends StatelessWidget {
     required this.title,
     required this.scrollController,
     required this.childBuilder,
+    this.footerBuilder,
+    this.headerActionsBuilder,
   });
 
   final String title;
   final ScrollController scrollController;
   final WidgetBuilder childBuilder;
+  final WidgetBuilder? footerBuilder;
+  final WidgetBuilder? headerActionsBuilder;
 
   @override
   Widget build(BuildContext context) {
@@ -3541,6 +4554,8 @@ class _SubtitleBottomSheet extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (headerActionsBuilder != null)
+                    headerActionsBuilder!(context),
                   IconButton(
                     tooltip: '关闭',
                     onPressed: () => Navigator.of(context).pop(),
@@ -3557,12 +4572,18 @@ class _SubtitleBottomSheet extends StatelessWidget {
                     ScrollViewKeyboardDismissBehavior.onDrag,
                 slivers: [
                   SliverPadding(
-                    padding: EdgeInsets.fromLTRB(16, 12, 16, 24 + bottomInset),
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      12,
+                      16,
+                      footerBuilder == null ? 24 + bottomInset : 16,
+                    ),
                     sliver: SliverToBoxAdapter(child: childBuilder(context)),
                   ),
                 ],
               ),
             ),
+            if (footerBuilder != null) footerBuilder!(context),
           ],
         ),
       ),

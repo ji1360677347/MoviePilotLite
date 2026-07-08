@@ -13,6 +13,8 @@ import 'package:moviepilot_mobile/services/api_client.dart';
 import 'package:moviepilot_mobile/services/app_service.dart';
 import 'package:moviepilot_mobile/utils/toast_util.dart';
 
+enum SubtitleMediaSortKey { defaultSort, title, year }
+
 class SubtitleManualUploadFormController extends GetxController
     implements PluginFormAdapter {
   SubtitleManualUploadFormController({required this.formMode});
@@ -73,6 +75,9 @@ class SubtitleManualUploadFormController extends GetxController
   final rootTab = 'match'.obs;
   final searchKeyword = ''.obs;
   final mediaType = 'all'.obs;
+  final mediaSortKey = SubtitleMediaSortKey.defaultSort.obs;
+  final mediaSortAscending = true.obs;
+  final mediaSearching = false.obs;
   final mediaPage = 1.obs;
   final mediaTotal = 0.obs;
   final mediaHasMore = false.obs;
@@ -100,6 +105,7 @@ class SubtitleManualUploadFormController extends GetxController
   final timelineWorking = false.obs;
   final onlineSearching = false.obs;
   final onlineDownloading = false.obs;
+  final onlineApplying = false.obs;
   final queueDialogOpen = false.obs;
   final uploadDialogOpen = false.obs;
   final onlineDialogOpen = false.obs;
@@ -272,6 +278,7 @@ class SubtitleManualUploadFormController extends GetxController
   }
 
   Future<void> runSearch({bool reset = true, bool silent = false}) async {
+    mediaSearching.value = true;
     await _guard(
       () async {
         if (reset) {
@@ -307,6 +314,48 @@ class SubtitleManualUploadFormController extends GetxController
       fallback: '搜索本地资源失败',
       silent: silent,
     );
+    mediaSearching.value = false;
+  }
+
+  bool get hasActiveMediaFilters => mediaType.value != 'all';
+
+  List<Map<String, dynamic>> get visibleMedias {
+    if (mediaSortKey.value == SubtitleMediaSortKey.defaultSort) {
+      return medias;
+    }
+    final list = List<Map<String, dynamic>>.from(medias);
+    list.sort((a, b) {
+      final cmp = switch (mediaSortKey.value) {
+        SubtitleMediaSortKey.title => mediaLabel(a).compareTo(mediaLabel(b)),
+        SubtitleMediaSortKey.year =>
+          asInt(a['year'], 0).compareTo(asInt(b['year'], 0)),
+        SubtitleMediaSortKey.defaultSort => 0,
+      };
+      if (cmp == 0) return 0;
+      return mediaSortAscending.value ? cmp : -cmp;
+    });
+    return list;
+  }
+
+  void updateMediaKeyword(String value) {
+    searchKeyword.value = value.trim();
+    runSearch(reset: true);
+  }
+
+  void updateMediaType(String value) {
+    if (mediaType.value == value) return;
+    mediaType.value = value;
+    runSearch(reset: true);
+  }
+
+  void updateMediaSortKey(SubtitleMediaSortKey key) {
+    mediaSortKey.value = key;
+    medias.refresh();
+  }
+
+  void toggleMediaSortDirection() {
+    mediaSortAscending.value = !mediaSortAscending.value;
+    medias.refresh();
   }
 
   Future<void> loadMoreMedia() async {
@@ -681,13 +730,14 @@ class SubtitleManualUploadFormController extends GetxController
     onlineSearching.value = false;
   }
 
-  Future<void> downloadOnlinePreview({bool submitAi = false}) async {
+  Future<bool> downloadOnlinePreview({bool submitAi = false}) async {
     final selected = selectedOnlineResults;
     if (selected.isEmpty) {
       ToastUtil.error('请先选择在线字幕结果');
-      return;
+      return false;
     }
     onlineDownloading.value = true;
+    var ok = false;
     await _guard(() async {
       final payload = {
         ...onlinePayload(),
@@ -706,16 +756,75 @@ class SubtitleManualUploadFormController extends GetxController
         messageText.value = result.message ?? '已提交在线字幕 AI 翻译';
         onlineDialogOpen.value = false;
         _startAiPolling();
+        ok = true;
       } else {
         final data = asMap(result.data) ?? {};
         _normalizePreviewSelection(data);
+        data['source'] = 'online';
         uploadPreview.value = data;
-        onlineDialogOpen.value = false;
-        uploadDialogOpen.value = true;
         messageText.value = result.message ?? '已下载在线字幕并生成预览';
+        ok = true;
       }
     }, fallback: submitAi ? '提交 AI 翻译失败' : '在线字幕下载失败');
     onlineDownloading.value = false;
+    return ok;
+  }
+
+  Future<bool> applyOnlineDirect() async {
+    final selected = selectedOnlineResults;
+    if (selected.isEmpty) {
+      ToastUtil.error('请先选择在线字幕结果');
+      return false;
+    }
+    onlineApplying.value = true;
+    var ok = false;
+    await _guard(() async {
+      final previewResult = await _service.postJsonAction(
+        'online_download_preview',
+        {
+          ...onlinePayload(),
+          'results': selected,
+          'submit_ai_translate': false,
+          'allow_risky_offset': timelineNeedsRiskyConfirm,
+        },
+        _requireToken(),
+        timeout: 240,
+      );
+      final preview = asMap(previewResult.data) ?? {};
+      _normalizePreviewSelection(preview);
+      final items = asMapList(
+        preview['items'],
+      ).where((item) => item['selected'] != false).toList();
+      if (items.isEmpty) {
+        throw const SubtitleManualUploadApiException('没有可写入的字幕项', 400);
+      }
+      final applyResult = await _service.applyUpload({
+        'session_id': preview['session_id'],
+        'fix_timeline': fixTimeline.value && timelineAvailable,
+        'allow_risky_offset': fixTimeline.value && timelineNeedsRiskyConfirm,
+        'locked_target_ids': lockedTargetIds.toList(),
+        'items': items
+            .map(
+              (item) => {
+                'upload_id': item['upload_id'],
+                'target_id': item['target_id'],
+                'ext': item['ext'],
+                'language_suffix': item['language_suffix'],
+              },
+            )
+            .toList(),
+      }, _requireToken());
+      final data = asMap(applyResult.data) ?? {};
+      lastWritten.assignAll(asMapList(data['written']));
+      uploadPreview.value = null;
+      onlineSelectedResultKeys.clear();
+      messageText.value =
+          applyResult.message ?? previewResult.message ?? '字幕写入完成';
+      await loadTargets();
+      ok = true;
+    }, fallback: '在线字幕写入失败');
+    onlineApplying.value = false;
+    return ok;
   }
 
   void toggleOnlineResult(Map<String, dynamic> item, bool selected) {
@@ -727,6 +836,7 @@ class SubtitleManualUploadFormController extends GetxController
     } else {
       onlineSelectedResultKeys.remove(key);
     }
+    onlineSelectedResultKeys.refresh();
   }
 
   Future<void> submitAiForTargets([Map<String, dynamic>? target]) async {

@@ -147,6 +147,8 @@ class MultifunctionController extends GetxController {
   final pluginDataReady = false.obs;
   final userDataReady = false.obs;
   final siteDataReady = false.obs;
+  final sidebarNavItems = <PluginSidebarNavItem>[].obs;
+  final sidebarNavDataReady = false.obs;
   final calendarSegment = 'today'.obs;
   Timer? _downloaderPollingTimer;
   var _isRefreshingDownloader = false;
@@ -187,6 +189,7 @@ class MultifunctionController extends GetxController {
       pluginDataReady.value = false;
       userDataReady.value = false;
       siteDataReady.value = false;
+      sidebarNavDataReady.value = false;
 
       List<Map<String, dynamic>> subscribes = const [];
       if (canAccessSubscribe) {
@@ -225,11 +228,15 @@ class MultifunctionController extends GetxController {
           _loadSiteInfo()
               .then((ok) => siteDataReady.value = ok)
               .catchError((_) => siteDataReady.value = false),
+          _loadSidebarNav()
+              .then((ok) => sidebarNavDataReady.value = ok)
+              .catchError((_) => sidebarNavDataReady.value = false),
         ]);
       } else {
         pluginInstalledCount.value = 0;
         userCount.value = 0;
         siteInfo.value = const SiteDashboardInfo();
+        sidebarNavItems.clear();
       }
       await Future.wait(dashboardTasks);
     } finally {
@@ -240,6 +247,31 @@ class MultifunctionController extends GetxController {
 
   Future<void> handleTap(MultifunctionItem item) async {
     await handleRouteTap(item.route, title: item.title);
+  }
+
+  Future<void> handleSidebarNavTap(PluginSidebarNavItem item) async {
+    if (!canAccessManage) {
+      ToastUtil.info(_appService.accessDeniedMessage('/plugin'));
+      return;
+    }
+    if (item.pluginId.isEmpty) {
+      ToastUtil.info('${item.title} 暂未开放');
+      return;
+    }
+    final route = item.navKey == 'form'
+        ? '/plugin/dynamic-form/form'
+        : '/plugin/dynamic-form/page';
+    if (!_appService.canAccessRoute(route)) {
+      ToastUtil.info(_appService.accessDeniedMessage(route));
+      return;
+    }
+    await Get.toNamed(
+      route,
+      arguments: {'id': item.pluginId, 'title': item.title},
+    );
+    if (!isClosed) {
+      await refreshDashboard();
+    }
   }
 
   Future<void> handleRouteTap(String? route, {String? title}) async {
@@ -322,9 +354,8 @@ class MultifunctionController extends GetxController {
   String? _latestProfileUsername() {
     if (!Get.isRegistered<HiveService>()) return null;
     try {
-      final profiles =
-          Get.find<HiveService>().loginProfileBox.values.toList()
-            ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+      final profiles = Get.find<HiveService>().loginProfileBox.values.toList()
+        ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
       if (profiles.isEmpty) return null;
       return _normalizeUsername(profiles.first.username);
     } catch (_) {
@@ -593,6 +624,38 @@ class MultifunctionController extends GetxController {
     return false;
   }
 
+  Future<bool> _loadSidebarNav() async {
+    if (!canAccessManage) {
+      sidebarNavItems.clear();
+      return false;
+    }
+    final response = await _apiClient.get<dynamic>(
+      '/api/v1/plugin/sidebar_nav',
+    );
+    if ((response.statusCode ?? 0) >= 400) {
+      sidebarNavItems.clear();
+      return false;
+    }
+    final raw = response.data;
+    if (raw is! List) {
+      sidebarNavItems.clear();
+      return false;
+    }
+    final items =
+        raw
+            .whereType<Map<String, dynamic>>()
+            .map(PluginSidebarNavItem.fromJson)
+            .where((item) {
+              if (item.pluginId.isEmpty || item.title.isEmpty) return false;
+              if (item.permission == 'manage') return canAccessManage;
+              return true;
+            })
+            .toList()
+          ..sort((a, b) => a.order.compareTo(b.order));
+    sidebarNavItems.assignAll(items);
+    return true;
+  }
+
   Future<bool> _loadSiteInfo() async {
     if (!canAccessManage) {
       siteInfo.value = const SiteDashboardInfo();
@@ -748,7 +811,7 @@ class MultifunctionController extends GetxController {
             route: route,
             icon: item.icon,
             accent: item.accent,
-            primaryText: '已安装 ${pluginInstalledCount.value}',
+            primaryText: '',
             secondaryText: '插件中心与扩展能力',
             hasData: pluginDataReady.value,
           );

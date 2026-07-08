@@ -167,6 +167,15 @@ class DynamicFormController extends GetxController {
         return;
       }
 
+      if (pluginKey != null &&
+          pluginKey.isNotEmpty &&
+          PluginFormAdapterRegistry.hasAdapter(pluginKey) &&
+          !isAppLitePushPlugin) {
+        await _loadViaAdapter();
+        _syncSpecialPluginState();
+        return;
+      }
+
       final fetchPath =
           isAppLitePushPlugin && pluginKey != null && pluginKey.isNotEmpty
           ? '/api/v1/plugin/form/$pluginKey'
