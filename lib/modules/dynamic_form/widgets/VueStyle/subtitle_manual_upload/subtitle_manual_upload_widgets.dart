@@ -1,11 +1,18 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:file_picker/file_picker.dart' as fp;
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:moviepilot_mobile/modules/dynamic_form/adapters/plugin_form_adapter_registry.dart';
 import 'package:moviepilot_mobile/modules/dynamic_form/adapters/subtitle_manual_upload_form_controller.dart';
+import 'package:moviepilot_mobile/modules/settings/models/settings_enums.dart';
+import 'package:moviepilot_mobile/modules/settings/models/settings_field_config.dart';
+import 'package:moviepilot_mobile/modules/settings/state/settings_field_state.dart';
+import 'package:moviepilot_mobile/modules/settings/state/settings_form_manager.dart';
+import 'package:moviepilot_mobile/modules/settings/state/settings_form_row_builder.dart';
 import 'package:moviepilot_mobile/theme/section.dart';
+import 'package:moviepilot_mobile/utils/open_url.dart';
 import 'package:moviepilot_mobile/widgets/section_header.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 void registerSubtitleManualUploadRenderer() {
   PluginFormAdapterRegistry.registerRenderer('SubtitleManualUpload', (
@@ -60,8 +67,6 @@ class _SubtitlePageView extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
         children: [
           _FeedbackBanner(controller: controller),
-          _HomeHeader(controller: controller),
-          const SizedBox(height: 12),
           _StatusSection(controller: controller),
           const SizedBox(height: 12),
           _QuickActions(controller: controller),
@@ -95,29 +100,9 @@ class _HomeHeader extends StatelessWidget {
                 color: colors.primaryContainer,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(Icons.subtitles_outlined, color: colors.primary),
+              child: Icon(Icons.subtitles_outlined, color: Colors.white),
             ),
             const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '字幕匹配',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '选择资源，匹配字幕，确认后写入媒体目录',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colors.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
             _StatusDot(label: enabled ? '运行中' : '未启用', active: enabled),
           ],
         ),
@@ -539,7 +524,8 @@ class _TargetSummaryPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final selectedCount = controller.selectedTargetIds.length;
     final targetCount = controller.targets.length;
-    return _Panel(
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(2, 0, 2, 2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -569,14 +555,10 @@ class _TargetSummaryPanel extends StatelessWidget {
                   ],
                 ),
               ),
-              _StatusDot(
-                label: selectedCount == 0 ? '未选择' : '已选择',
-                active: selectedCount > 0,
-              ),
             ],
           ),
           if (controller.seasons.isNotEmpty) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
@@ -600,77 +582,64 @@ class _TargetSummaryPanel extends StatelessWidget {
               ),
             ),
           ],
-          const SizedBox(height: 12),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _ActionPill(
-                  icon: Icons.upload_file,
-                  label: '上传',
-                  primary: true,
-                  onTap: () {
-                    controller.openBatchUpload();
-                    _push(
-                      context,
-                      controller.uploadTitle.value,
-                      (_) => _UploadPanel(controller: controller),
-                    );
-                  },
+          const SizedBox(height: 10),
+          _TargetSummaryActions(
+            controller: controller,
+            onUpload: () {
+              controller.openBatchUpload();
+              _push(
+                context,
+                controller.uploadTitle.value,
+                (_) => _UploadPanel(controller: controller),
+              );
+            },
+            onOnline: () {
+              _push(
+                context,
+                '在线字幕',
+                (_) => _OnlinePanelLoader(
+                  controller: controller,
+                  start: controller.openBatchOnlineSearch,
                 ),
-                _ActionPill(
-                  icon: Icons.travel_explore,
-                  label: '在线',
-                  onTap: () {
-                    _push(
-                      context,
-                      '在线字幕',
-                      (_) => _OnlinePanelLoader(
-                        controller: controller,
-                        start: controller.openBatchOnlineSearch,
-                      ),
-                    );
-                  },
-                ),
-                _ActionPill(
-                  icon: Icons.auto_awesome,
-                  label: 'AI',
-                  confirm: true,
-                  onTap: controller.aiAvailable
-                      ? () => controller.submitAiForTargets()
-                      : null,
-                ),
-                _ActionPill(
-                  icon: Icons.graphic_eq,
-                  label: '调轴',
-                  confirm: true,
-                  onTap: controller.timelineAvailable
-                      ? () => controller.fixTimelineForTargets()
-                      : null,
-                ),
-                _ActionPill(
-                  icon: Icons.delete_sweep_outlined,
-                  label: '清空',
-                  confirm: true,
-                  destructive: true,
-                  onTap: controller.clearSelectedSubtitles,
-                ),
-                _ActionPill(
-                  icon: Icons.cancel_outlined,
-                  label: '取消 AI',
-                  confirm: true,
-                  onTap: controller.cancelAiForTargets,
-                ),
-                _ActionPill(
-                  icon: Icons.select_all,
-                  label: '全选',
-                  onTap: controller.toggleSelectAll,
-                ),
-              ],
-            ),
+              );
+            },
           ),
         ],
       ),
+    );
+  }
+}
+
+class _TargetSummaryActions extends StatelessWidget {
+  const _TargetSummaryActions({
+    required this.controller,
+    required this.onUpload,
+    required this.onOnline,
+  });
+
+  final SubtitleManualUploadFormController controller;
+  final VoidCallback onUpload;
+  final VoidCallback onOnline;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _TargetDirectActionButton(
+                icon: Icons.travel_explore,
+                label: '在线搜索',
+                primary: true,
+                onTap: onOnline,
+              ),
+            ),
+            const SizedBox(width: 8),
+            _TargetMoreMenuButton(controller: controller, onUpload: onUpload),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -747,8 +716,7 @@ class _TargetCard extends StatelessWidget {
                       children: [
                         _TargetSelectMark(
                           selected: selected,
-                          onTap: () =>
-                              controller.toggleTarget(id, !selected),
+                          onTap: () => controller.toggleTarget(id, !selected),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
@@ -762,22 +730,22 @@ class _TargetCard extends StatelessWidget {
                                       controller.compactTargetName(target),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style:
-                                          theme.textTheme.titleSmall?.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                        height: 1.25,
-                                      ),
+                                      style: theme.textTheme.titleSmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w500,
+                                            height: 1.25,
+                                          ),
                                     ),
                                   ),
                                   if (subtitles.isNotEmpty) ...[
                                     const SizedBox(width: 6),
                                     Text(
                                       '${subtitles.length}',
-                                      style:
-                                          theme.textTheme.labelSmall?.copyWith(
-                                        color: colors.primary,
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                      style: theme.textTheme.labelSmall
+                                          ?.copyWith(
+                                            color: colors.primary,
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                     ),
                                   ],
                                   Icon(
@@ -820,44 +788,45 @@ class _TargetCard extends StatelessWidget {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.only(left: 26),
+                padding: const EdgeInsets.only(left: 36),
                 child: Row(
                   children: [
                     Expanded(
-                      child: _TargetCardAction(
-                        icon: Icons.upload_file,
-                        label: '上传',
+                      child: _TargetDirectActionButton(
+                        icon: Icons.travel_explore,
+                        label: '在线字幕',
                         primary: true,
-                        onTap: disabled
-                            ? null
-                            : () {
-                                controller.openSingleUpload(target);
-                                _push(
-                                  context,
-                                  controller.uploadTitle.value,
-                                  (_) => _UploadPanel(controller: controller),
-                                );
-                              },
+                        compact: true,
+                        enabled: !disabled,
+                        onTap: () {
+                          _push(
+                            context,
+                            '在线字幕',
+                            (_) => _OnlinePanelLoader(
+                              controller: controller,
+                              start: () =>
+                                  controller.openSingleOnlineSearch(target),
+                            ),
+                          );
+                        },
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Expanded(
-                      child: _TargetCardAction(
-                        icon: Icons.travel_explore,
-                        label: '在线',
-                        onTap: disabled
-                            ? null
-                            : () {
-                                _push(
-                                  context,
-                                  '在线字幕',
-                                  (_) => _OnlinePanelLoader(
-                                    controller: controller,
-                                    start: () => controller
-                                        .openSingleOnlineSearch(target),
-                                  ),
-                                );
-                              },
+                    SizedBox(
+                      width: 92,
+                      child: _TargetDirectActionButton(
+                        icon: Icons.upload_file,
+                        label: '上传',
+                        compact: true,
+                        enabled: !disabled,
+                        onTap: () {
+                          controller.openSingleUpload(target);
+                          _push(
+                            context,
+                            controller.uploadTitle.value,
+                            (_) => _UploadPanel(controller: controller),
+                          );
+                        },
                       ),
                     ),
                   ],
@@ -865,7 +834,10 @@ class _TargetCard extends StatelessWidget {
               ),
               if (expanded || subtitles.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                Divider(height: 1, color: colors.outline.withValues(alpha: 0.2)),
+                Divider(
+                  height: 1,
+                  color: colors.outline.withValues(alpha: 0.2),
+                ),
                 if (subtitles.isEmpty)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(12, 12, 12, 2),
@@ -905,11 +877,11 @@ class _TargetSelectMark extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
-        width: 18,
-        height: 18,
+        width: 28,
+        height: 28,
         child: Icon(
           selected ? Icons.check_circle : Icons.circle_outlined,
-          size: 18,
+          size: 20,
           color: selected ? colors.primary : colors.outline,
         ),
       ),
@@ -917,92 +889,231 @@ class _TargetSelectMark extends StatelessWidget {
   }
 }
 
-class _TargetCardAction extends StatelessWidget {
-  const _TargetCardAction({
+class _TargetDirectActionButton extends StatelessWidget {
+  const _TargetDirectActionButton({
     required this.icon,
     required this.label,
-    this.onTap,
+    required this.onTap,
     this.primary = false,
+    this.compact = false,
+    this.enabled = true,
   });
 
   final IconData icon;
   final String label;
-  final VoidCallback? onTap;
+  final VoidCallback onTap;
   final bool primary;
+  final bool compact;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final shape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(10),
+    final fg = colors.primary;
+    final bg = colors.surfaceContainerHighest.withValues(
+      alpha: primary ? 0.42 : 0.28,
     );
-    final compactStyle = ButtonStyle(
-      minimumSize: const WidgetStatePropertyAll(Size(0, 40)),
-      padding: const WidgetStatePropertyAll(
-        EdgeInsets.symmetric(horizontal: 12),
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      behavior: HitTestBehavior.opaque,
+      child: _TargetMenuButtonSurface(
+        icon: icon,
+        label: label,
+        foreground: enabled ? fg : theme.disabledColor.withValues(alpha: 0.70),
+        background: enabled
+            ? bg
+            : colors.surfaceContainerHighest.withValues(alpha: 0.20),
+        borderColor: enabled
+            ? colors.primary.withValues(alpha: primary ? 0.28 : 0.16)
+            : colors.outlineVariant.withValues(alpha: 0.42),
+        minHeight: compact ? 38 : 42,
+        textStyle:
+            (compact ? theme.textTheme.labelMedium : theme.textTheme.labelLarge)
+                ?.copyWith(
+                  color: enabled
+                      ? fg
+                      : theme.disabledColor.withValues(alpha: 0.72),
+                  fontWeight: FontWeight.w600,
+                ),
       ),
-      visualDensity: VisualDensity.compact,
-      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      shape: WidgetStatePropertyAll(shape),
     );
+  }
+}
 
-    if (primary) {
-      return FilledButton.icon(
-        style: compactStyle.copyWith(
-          backgroundColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.disabled)) {
-              return colors.surfaceContainerHighest.withValues(alpha: 0.7);
-            }
-            return colors.primary;
-          }),
-          foregroundColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.disabled)) {
-              return colors.onSurface.withValues(alpha: 0.38);
-            }
-            return colors.onPrimary;
-          }),
+class _TargetMoreMenuButton extends StatelessWidget {
+  const _TargetMoreMenuButton({
+    required this.controller,
+    required this.onUpload,
+  });
+
+  final SubtitleManualUploadFormController controller;
+  final VoidCallback onUpload;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    return PopupMenuButton<String>(
+      tooltip: '更多操作',
+      onSelected: (value) {
+        switch (value) {
+          case 'upload':
+            onUpload();
+            break;
+          case 'ai':
+            _confirmAction(
+              context,
+              title: 'AI',
+              onConfirm: () async => controller.submitAiForTargets(),
+            );
+            break;
+          case 'timeline':
+            _confirmAction(
+              context,
+              title: '调轴',
+              onConfirm: () async => controller.fixTimelineForTargets(),
+            );
+            break;
+          case 'clear':
+            _confirmAction(
+              context,
+              title: '清空',
+              destructive: true,
+              onConfirm: () async => controller.clearSelectedSubtitles(),
+            );
+            break;
+          case 'cancel_ai':
+            _confirmAction(
+              context,
+              title: '取消 AI',
+              onConfirm: () async => controller.cancelAiForTargets(),
+            );
+            break;
+          case 'select_all':
+            controller.toggleSelectAll();
+            break;
+        }
+      },
+      itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: 'upload',
+          child: ListTile(
+            leading: Icon(Icons.upload_file),
+            title: Text('上传文件'),
+            contentPadding: EdgeInsets.zero,
+          ),
         ),
-        onPressed: onTap,
-        icon: Icon(icon, size: 17),
-        label: Text(
-          label,
-          style: theme.textTheme.labelLarge?.copyWith(
+        const PopupMenuDivider(),
+        PopupMenuItem(
+          value: 'ai',
+          enabled: controller.aiAvailable,
+          child: const ListTile(
+            leading: Icon(Icons.auto_awesome),
+            title: Text('AI 生成'),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+        PopupMenuItem(
+          value: 'timeline',
+          enabled: controller.timelineAvailable,
+          child: const ListTile(
+            leading: Icon(Icons.graphic_eq),
+            title: Text('智能调轴'),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+        const PopupMenuItem(
+          value: 'select_all',
+          child: ListTile(
+            leading: Icon(Icons.select_all),
+            title: Text('全选'),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+        const PopupMenuDivider(),
+        const PopupMenuItem(
+          value: 'cancel_ai',
+          child: ListTile(
+            leading: Icon(Icons.cancel_outlined),
+            title: Text('取消 AI'),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+        PopupMenuItem(
+          value: 'clear',
+          child: ListTile(
+            leading: Icon(Icons.delete_sweep_outlined, color: colors.error),
+            title: Text('清空字幕', style: TextStyle(color: colors.error)),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+      ],
+      child: SizedBox(
+        width: 116,
+        child: _TargetMenuButtonSurface(
+          icon: Icons.more_horiz,
+          label: '更多',
+          foreground: colors.onSurfaceVariant,
+          background: colors.surfaceContainerHighest.withValues(alpha: 0.22),
+          borderColor: colors.outlineVariant.withValues(alpha: 0.62),
+          minHeight: 42,
+          textStyle: theme.textTheme.labelLarge?.copyWith(
+            color: colors.onSurfaceVariant,
             fontWeight: FontWeight.w600,
           ),
         ),
-      );
-    }
-
-    return OutlinedButton.icon(
-      style: compactStyle.copyWith(
-        side: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.disabled)) {
-            return BorderSide(
-              color: colors.outline.withValues(alpha: 0.25),
-            );
-          }
-          return BorderSide(color: colors.outline.withValues(alpha: 0.55));
-        }),
-        foregroundColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.disabled)) {
-            return colors.onSurface.withValues(alpha: 0.38);
-          }
-          return colors.primary;
-        }),
-        backgroundColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.disabled)) {
-            return colors.surfaceContainerHighest.withValues(alpha: 0.35);
-          }
-          return colors.surface.withValues(alpha: 0.72);
-        }),
       ),
-      onPressed: onTap,
-      icon: Icon(icon, size: 17),
-      label: Text(
-        label,
-        style: theme.textTheme.labelLarge?.copyWith(
-          fontWeight: FontWeight.w600,
+    );
+  }
+}
+
+class _TargetMenuButtonSurface extends StatelessWidget {
+  const _TargetMenuButtonSurface({
+    required this.icon,
+    required this.label,
+    required this.foreground,
+    required this.background,
+    required this.borderColor,
+    required this.minHeight,
+    this.textStyle,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color foreground;
+  final Color background;
+  final Color borderColor;
+  final double minHeight;
+  final TextStyle? textStyle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: background,
+      borderRadius: BorderRadius.circular(10),
+      clipBehavior: Clip.antiAlias,
+      child: Container(
+        constraints: BoxConstraints(minHeight: minHeight),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: borderColor),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 18, color: foreground),
+            const SizedBox(width: 7),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: textStyle,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1377,6 +1488,14 @@ class _OnlinePanel extends StatelessWidget {
     return Obx(() {
       final results = controller.filteredOnlineResults;
       final selectedCount = controller.onlineSelectedResultKeys.length;
+      final manualLinkCount = controller.onlineManualLinks.fold<int>(
+        0,
+        (sum, provider) =>
+            sum +
+            SubtitleManualUploadFormController.asMapList(
+              provider['links'],
+            ).length,
+      );
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1388,132 +1507,374 @@ class _OnlinePanel extends StatelessWidget {
                   title: controller.onlineTitle.value,
                   icon: Icons.travel_explore,
                 ),
-                TextField(
-                  decoration: _fieldDecoration(
-                    context,
-                    label: '关键词',
-                    icon: Icons.search,
-                  ),
-                  onChanged: (value) => controller.onlineKeyword.value = value,
-                  onSubmitted: (_) => controller.runOnlineSearch(),
-                ),
-                const SizedBox(height: 10),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
+                _OnlineControlGroup(
+                  title: '搜索条件',
+                  icon: Icons.tune,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      for (final provider in const [
-                        'subhd',
-                        'zimuku',
-                        'assrt',
-                        'opensubtitles',
-                      ])
-                        _ProviderChip(
-                          label: _providerName(provider),
-                          selected: controller.onlineSelectedProviders.contains(
-                            provider,
-                          ),
-                          onTap: () {
-                            if (controller.onlineSelectedProviders.contains(
-                              provider,
-                            )) {
-                              controller.onlineSelectedProviders.remove(
-                                provider,
-                              );
-                            } else {
-                              controller.onlineSelectedProviders.add(provider);
-                            }
-                          },
+                      TextField(
+                        decoration: _fieldDecoration(
+                          context,
+                          label: '关键词',
+                          icon: Icons.search,
                         ),
+                        onChanged: (value) =>
+                            controller.onlineKeyword.value = value,
+                        onSubmitted: (_) => controller.runOnlineSearch(),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        '字幕源',
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final provider in const [
+                            'subhd',
+                            'zimuku',
+                            'assrt',
+                            'opensubtitles',
+                          ])
+                            _ProviderChip(
+                              label: _providerName(provider),
+                              selected: controller.onlineSelectedProviders
+                                  .contains(provider),
+                              onTap: () {
+                                if (controller.onlineSelectedProviders.contains(
+                                  provider,
+                                )) {
+                                  controller.onlineSelectedProviders.remove(
+                                    provider,
+                                  );
+                                } else {
+                                  controller.onlineSelectedProviders.add(
+                                    provider,
+                                  );
+                                }
+                              },
+                            ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 12),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _ActionPill(
-                        icon: Icons.search,
-                        label: '搜索',
-                        primary: true,
-                        onTap: controller.onlineSearching.value
-                            ? null
-                            : controller.runOnlineSearch,
-                      ),
-                      _ActionPill(
-                        icon: Icons.download,
-                        label: selectedCount == 0
-                            ? '下载预览'
-                            : '预览 $selectedCount',
-                        onTap: () async {
-                          await controller.downloadOnlinePreview();
-                          if (!context.mounted ||
-                              controller.uploadPreview.value == null) {
-                            return;
-                          }
-                          _push(
-                            context,
-                            controller.uploadTitle.value,
-                            (_) => _UploadPanel(controller: controller),
-                          );
-                        },
-                      ),
-                      _ActionPill(
-                        icon: Icons.auto_awesome,
-                        label: 'AI 翻译',
-                        confirm: true,
-                        onTap: controller.aiAvailable
-                            ? () => controller.downloadOnlinePreview(
-                                submitAi: true,
-                              )
-                            : null,
-                      ),
-                    ],
+                _OnlineControlGroup(
+                  title: '操作',
+                  icon: Icons.bolt_outlined,
+                  accent: true,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final itemWidth = constraints.maxWidth >= 300
+                          ? (constraints.maxWidth - 16) / 3
+                          : (constraints.maxWidth - 8) / 2;
+                      return Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          SizedBox(
+                            width: itemWidth,
+                            child: _OnlineCommandButton(
+                              icon: Icons.search,
+                              label: controller.onlineSearching.value
+                                  ? '搜索中'
+                                  : '搜索',
+                              primary: true,
+                              onTap: controller.onlineSearching.value
+                                  ? null
+                                  : controller.runOnlineSearch,
+                            ),
+                          ),
+                          SizedBox(
+                            width: itemWidth,
+                            child: _OnlineCommandButton(
+                              icon: Icons.download,
+                              label: selectedCount == 0
+                                  ? '下载预览'
+                                  : '预览 $selectedCount',
+                              onTap: () async {
+                                await controller.downloadOnlinePreview();
+                                if (!context.mounted ||
+                                    controller.uploadPreview.value == null) {
+                                  return;
+                                }
+                                _push(
+                                  context,
+                                  controller.uploadTitle.value,
+                                  (_) => _UploadPanel(controller: controller),
+                                );
+                              },
+                            ),
+                          ),
+                          SizedBox(
+                            width: itemWidth,
+                            child: _OnlineCommandButton(
+                              icon: Icons.auto_awesome,
+                              label: 'AI 翻译',
+                              confirm: true,
+                              onTap: controller.aiAvailable
+                                  ? () => controller.downloadOnlinePreview(
+                                      submitAi: true,
+                                    )
+                                  : null,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ),
               ],
             ),
           ),
-          if (controller.onlineManualLinks.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            _Panel(
+          const SizedBox(height: 12),
+          _OnlineSegmentContainer(
+            child: CupertinoSlidingSegmentedControl<String>(
+              groupValue: controller.onlineView.value,
+              backgroundColor: Colors.transparent,
+              thumbColor: Theme.of(context).colorScheme.surface,
+              padding: const EdgeInsets.all(3),
+              children: {
+                'results': _OnlineSegmentLabel(
+                  icon: Icons.subtitles_outlined,
+                  label: '搜索结果',
+                  count: results.length,
+                  selected: controller.onlineView.value == 'results',
+                ),
+                'manual': _OnlineSegmentLabel(
+                  icon: Icons.open_in_new,
+                  label: '手动搜索',
+                  count: manualLinkCount,
+                  selected: controller.onlineView.value == 'manual',
+                ),
+              },
+              onValueChanged: (next) {
+                if (next == null) return;
+                controller.onlineView.value = next;
+              },
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (controller.onlineView.value == 'manual')
+            _ManualSearchPanel(controller: controller)
+          else ...[
+            _SectionHeader(
+              title: '搜索结果',
+              trailing: controller.onlineSearching.value
+                  ? '搜索中'
+                  : '${results.length} 条',
+            ),
+            const SizedBox(height: 8),
+            if (controller.onlineSearching.value)
+              const _LoadingPanel(text: '正在搜索在线字幕')
+            else if (results.isEmpty)
+              const _EmptyPanel(text: '暂无在线字幕结果，可调整关键词或使用手动搜索链接。')
+            else
+              for (final item in results)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _OnlineResultCard(controller: controller, item: item),
+                ),
+          ],
+        ],
+      );
+    });
+  }
+}
+
+class _OnlineSegmentContainer extends StatelessWidget {
+  const _OnlineSegmentContainer({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(
+          alpha: theme.brightness == Brightness.dark ? 0.42 : 0.58,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.28),
+        ),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _OnlineSegmentLabel extends StatelessWidget {
+  const _OnlineSegmentLabel({
+    required this.icon,
+    required this.label,
+    required this.count,
+    required this.selected,
+  });
+
+  final IconData icon;
+  final String label;
+  final int count;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final color = selected ? scheme.primary : scheme.onSurfaceVariant;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: color,
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            count.toString(),
+            style: TextStyle(
+              color: color.withValues(alpha: selected ? 0.9 : 0.72),
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ManualSearchPanel extends StatelessWidget {
+  const _ManualSearchPanel({required this.controller});
+
+  final SubtitleManualUploadFormController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final providers = controller.onlineManualLinks;
+    final keywords = controller.onlineManualKeywords;
+    if (providers.isEmpty) {
+      return const _EmptyPanel(text: '暂无手动搜索链接');
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (keywords.isNotEmpty) ...[
+          _Panel(
+            child: _OnlineControlGroup(
+              title: '推荐关键词',
+              icon: Icons.manage_search,
+              compact: true,
               child: Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  for (final link in controller.onlineManualLinks)
+                  for (final keyword in keywords) _MetaChip(label: keyword),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        _SectionHeader(title: '手动搜索', trailing: '${providers.length} 个字幕源'),
+        const SizedBox(height: 8),
+        for (final provider in providers)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: _ManualProviderCard(provider: provider),
+          ),
+      ],
+    );
+  }
+}
+
+class _ManualProviderCard extends StatelessWidget {
+  const _ManualProviderCard({required this.provider});
+
+  final Map<String, dynamic> provider;
+
+  @override
+  Widget build(BuildContext context) {
+    final links = SubtitleManualUploadFormController.asMapList(
+      provider['links'],
+    );
+    final name = '${provider['name'] ?? provider['provider'] ?? '字幕源'}';
+    final host = '${provider['host'] ?? provider['root_url'] ?? ''}'.trim();
+    return _ListCard(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.public,
+                  size: 18,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    name,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                if (host.isNotEmpty)
+                  Text(
+                    host,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+              ],
+            ),
+            if (links.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final link in links)
                     _ManualLinkChip(
-                      label: Text(
-                        '${link['title'] ?? link['provider'] ?? '手动搜索'}',
-                      ),
+                      label: Text('${link['keyword'] ?? '打开搜索'}'),
                       onTap: () => _launch('${link['url'] ?? ''}'),
                     ),
                 ],
               ),
-            ),
+            ],
           ],
-          const SizedBox(height: 12),
-          _SectionHeader(
-            title: '搜索结果',
-            trailing: controller.onlineSearching.value
-                ? '搜索中'
-                : '${results.length} 条',
-          ),
-          const SizedBox(height: 8),
-          if (controller.onlineSearching.value)
-            const _LoadingPanel(text: '正在搜索在线字幕')
-          else if (results.isEmpty)
-            const _EmptyPanel(text: '暂无在线字幕结果，可调整关键词或使用手动搜索链接。')
-          else
-            for (final item in results)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _OnlineResultCard(controller: controller, item: item),
-              ),
-        ],
-      );
-    });
+        ),
+      ),
+    );
   }
 }
 
@@ -1623,171 +1984,410 @@ class _AutoQueuePanelLoaderState extends State<_AutoQueuePanelLoader> {
   }
 }
 
-class _SubtitleConfigView extends StatelessWidget {
+const _subtitleBasicFields = <SettingsFieldConfig>[
+  SettingsFieldConfig(
+    label: '启用插件',
+    envKey: 'enabled',
+    type: SettingsFieldType.toggle,
+    icon: Icons.power_settings_new,
+  ),
+  SettingsFieldConfig(
+    label: '显示侧边栏入口',
+    envKey: 'show_sidebar_nav',
+    type: SettingsFieldType.toggle,
+    icon: Icons.view_sidebar_outlined,
+  ),
+  SettingsFieldConfig(
+    label: '启用 AI 字幕联动',
+    envKey: 'ai_link_enabled',
+    type: SettingsFieldType.toggle,
+    icon: Icons.auto_awesome,
+  ),
+  SettingsFieldConfig(
+    label: '写入前繁体转简体',
+    envKey: 'traditional_to_simplified',
+    type: SettingsFieldType.toggle,
+    icon: Icons.translate,
+  ),
+  SettingsFieldConfig(
+    label: '入库后自动搜索匹配字幕',
+    envKey: 'auto_search_on_transfer',
+    type: SettingsFieldType.toggle,
+    icon: Icons.manage_search,
+  ),
+  SettingsFieldConfig(
+    label: '入库自动处理跳过中文资源',
+    envKey: 'auto_skip_chinese_media_on_transfer',
+    type: SettingsFieldType.toggle,
+    icon: Icons.skip_next,
+  ),
+  SettingsFieldConfig(
+    label: '信任整理历史路径',
+    envKey: 'trust_transfer_history_paths',
+    type: SettingsFieldType.toggle,
+    icon: Icons.verified_user_outlined,
+  ),
+  SettingsFieldConfig(
+    label: '入库后字幕处理策略',
+    envKey: 'auto_transfer_subtitle_strategy',
+    type: SettingsFieldType.select,
+    enumKey: 'SMU_AUTO_TRANSFER_STRATEGY',
+    icon: Icons.rule,
+  ),
+  SettingsFieldConfig(
+    label: '自动多字幕处理',
+    envKey: 'auto_multi_subtitle_mode',
+    type: SettingsFieldType.select,
+    enumKey: 'SMU_MULTI_SUBTITLE_MODE',
+    icon: Icons.library_add_check_outlined,
+  ),
+  SettingsFieldConfig(
+    label: '英文 ASS 转临时 SRT 后提交 AI',
+    envKey: 'auto_ass_to_srt_for_ai',
+    type: SettingsFieldType.toggle,
+    icon: Icons.closed_caption_outlined,
+  ),
+];
+
+const _subtitleOnlineFields = <SettingsFieldConfig>[
+  SettingsFieldConfig(
+    label: 'API 搜索和下载使用系统代理',
+    envKey: 'online_use_proxy',
+    type: SettingsFieldType.toggle,
+    icon: Icons.vpn_lock_outlined,
+  ),
+  SettingsFieldConfig(
+    label: 'SubHD 站点地址',
+    envKey: 'subhd_url',
+    type: SettingsFieldType.text,
+    icon: Icons.link,
+  ),
+  SettingsFieldConfig(
+    label: 'Zimuku 站点地址',
+    envKey: 'zimuku_url',
+    type: SettingsFieldType.text,
+    icon: Icons.link,
+  ),
+  SettingsFieldConfig(
+    label: '射手网(伪) 手动搜索地址',
+    envKey: 'assrt_url',
+    type: SettingsFieldType.text,
+    icon: Icons.link,
+  ),
+  SettingsFieldConfig(
+    label: '射手网(伪) API 地址',
+    envKey: 'assrt_api_url',
+    type: SettingsFieldType.text,
+    icon: Icons.api,
+  ),
+  SettingsFieldConfig(
+    label: '射手网(伪) API Key',
+    envKey: 'assrt_api_key',
+    type: SettingsFieldType.text,
+    obscureText: true,
+    icon: Icons.key,
+  ),
+  SettingsFieldConfig(
+    label: 'OpenSubtitles 手动搜索地址',
+    envKey: 'opensubtitles_url',
+    type: SettingsFieldType.text,
+    icon: Icons.link,
+  ),
+  SettingsFieldConfig(
+    label: 'OpenSubtitles API 地址',
+    envKey: 'opensubtitles_api_url',
+    type: SettingsFieldType.text,
+    icon: Icons.api,
+  ),
+  SettingsFieldConfig(
+    label: 'OpenSubtitles API Key',
+    envKey: 'opensubtitles_api_key',
+    type: SettingsFieldType.text,
+    obscureText: true,
+    icon: Icons.key,
+  ),
+  SettingsFieldConfig(
+    label: 'OpenSubtitles 用户名',
+    envKey: 'opensubtitles_username',
+    type: SettingsFieldType.text,
+    icon: Icons.person_outline,
+  ),
+  SettingsFieldConfig(
+    label: 'OpenSubtitles 密码',
+    envKey: 'opensubtitles_password',
+    type: SettingsFieldType.text,
+    obscureText: true,
+    icon: Icons.password,
+  ),
+];
+
+const _subtitleTimelineFields = <SettingsFieldConfig>[
+  SettingsFieldConfig(
+    label: '智能调轴最大偏移秒数',
+    envKey: 'timeline_max_offset_seconds',
+    type: SettingsFieldType.number,
+    unit: '秒',
+    step: 1,
+    icon: Icons.timer_outlined,
+  ),
+  SettingsFieldConfig(
+    label: '最小应用阈值',
+    envKey: 'timeline_min_offset_seconds',
+    type: SettingsFieldType.number,
+    unit: '秒',
+    step: 1,
+    icon: Icons.timer,
+  ),
+  SettingsFieldConfig(
+    label: '音频 VAD 模式',
+    envKey: 'timeline_vad_mode',
+    type: SettingsFieldType.select,
+    enumKey: 'SMU_TIMELINE_VAD_MODE',
+    icon: Icons.graphic_eq,
+  ),
+  SettingsFieldConfig(
+    label: '全局允许高风险偏移',
+    envKey: 'timeline_allow_risky_offset',
+    type: SettingsFieldType.toggle,
+    icon: Icons.warning_amber_rounded,
+  ),
+];
+
+const _subtitleRarFields = <SettingsFieldConfig>[
+  SettingsFieldConfig(
+    label: '压缩包解压器处理方式',
+    envKey: 'rar_dependency_mode',
+    type: SettingsFieldType.select,
+    enumKey: 'SMU_RAR_DEPENDENCY_MODE',
+    icon: Icons.archive_outlined,
+  ),
+  SettingsFieldConfig(
+    label: '容器内映射路径',
+    envKey: 'rar_tool_path',
+    type: SettingsFieldType.text,
+    icon: Icons.folder_outlined,
+    conditionKey: 'rar_dependency_mode',
+    conditionValue: 'mapped_binary',
+  ),
+];
+
+const _subtitleConfigFields = <SettingsFieldConfig>[
+  ..._subtitleBasicFields,
+  ..._subtitleOnlineFields,
+  ..._subtitleTimelineFields,
+  ..._subtitleRarFields,
+];
+
+const _subtitleConfigOptions = <String, List<SettingsEnumOption>>{
+  'SMU_AUTO_TRANSFER_STRATEGY': [
+    SettingsEnumOption(value: 'online_then_ai_source', label: '在线优先，AI 兜底'),
+    SettingsEnumOption(value: 'online_source_only', label: '只用在线匹配'),
+    SettingsEnumOption(value: 'ai_source_only', label: '只用 AI 生成'),
+  ],
+  'SMU_MULTI_SUBTITLE_MODE': [
+    SettingsEnumOption(value: 'best', label: '按偏好选择最佳'),
+    SettingsEnumOption(value: 'chinese_all', label: '中文/双语全部入库'),
+    SettingsEnumOption(value: 'all', label: '全部入库'),
+  ],
+  'SMU_TIMELINE_VAD_MODE': [
+    SettingsEnumOption(value: 'webrtc', label: 'WebRTC VAD'),
+    SettingsEnumOption(value: 'rms', label: 'RMS 能量阈值'),
+  ],
+  'SMU_RAR_DEPENDENCY_MODE': [
+    SettingsEnumOption(value: 'none', label: '不处理，仅检测'),
+    SettingsEnumOption(value: 'container_install', label: '加载插件时尝试安装'),
+    SettingsEnumOption(value: 'mapped_binary', label: '使用宿主机映射文件'),
+  ],
+};
+
+const _subtitleMultiOptions = <String, Map<String, String>>{
+  'language_priority': {
+    'bilingual': '双语',
+    'chi': '简中',
+    'cht': '繁中',
+    'eng': '英文',
+    'jpn': '日文',
+  },
+  'format_priority': {'ass': 'ASS', 'srt': 'SRT', 'ssa': 'SSA', 'vtt': 'VTT'},
+  'online_providers': {
+    'subhd': 'SubHD',
+    'zimuku': 'Zimuku',
+    'assrt': '射手网(伪)',
+    'opensubtitles': 'OpenSubtitles',
+  },
+};
+
+class _SubtitleConfigView extends StatefulWidget {
   const _SubtitleConfigView({required this.controller});
 
   final SubtitleManualUploadFormController controller;
 
   @override
+  State<_SubtitleConfigView> createState() => _SubtitleConfigViewState();
+}
+
+class _SubtitleConfigViewState extends State<_SubtitleConfigView> {
+  late final SettingsFormManager _form = SettingsFormManager(
+    fields: _subtitleConfigFields,
+  );
+  final List<Worker> _workers = [];
+  final Map<TextEditingController, VoidCallback> _textListeners = {};
+  bool _hydrating = false;
+
+  SubtitleManualUploadFormController get controller => widget.controller;
+
+  @override
+  void initState() {
+    super.initState();
+    for (final field in _subtitleConfigFields) {
+      final state = _form.stateFor(field);
+      switch (state) {
+        case SettingsTextFieldState():
+          void listener() => _syncFormModelFromForm();
+          state.controller.addListener(listener);
+          _textListeners[state.controller] = listener;
+          break;
+        case SettingsNumberFieldState():
+          void listener() => _syncFormModelFromForm();
+          state.controller.addListener(listener);
+          _textListeners[state.controller] = listener;
+          break;
+        case SettingsToggleFieldState():
+          _workers.add(
+            ever<bool>(state.value, (_) => _syncFormModelFromForm()),
+          );
+          break;
+        case SettingsSelectFieldState():
+          _workers.add(
+            ever<String>(state.value, (_) => _syncFormModelFromForm()),
+          );
+          break;
+        case SettingsFieldState():
+          break;
+      }
+    }
+    _hydrateFromModel(controller.formModel.value);
+  }
+
+  @override
+  void dispose() {
+    for (final entry in _textListeners.entries) {
+      entry.key.removeListener(entry.value);
+    }
+    for (final worker in _workers) {
+      worker.dispose();
+    }
+    _form.dispose();
+    super.dispose();
+  }
+
+  void _hydrateFromModel(Map<String, dynamic> model) {
+    _hydrating = true;
+    _form.hydrateAll((key) => model[key]);
+    _hydrating = false;
+  }
+
+  void _syncFormModelFromForm() {
+    if (_hydrating) return;
+    final next = Map<String, dynamic>.from(controller.formModel.value);
+    for (final field in _subtitleConfigFields) {
+      next[field.envKey] = _form.effectiveValue(field.envKey);
+    }
+    controller.formModel.value = next;
+  }
+
+  List<SettingsFieldConfig> _visibleFields(List<SettingsFieldConfig> fields) {
+    return fields
+        .where(
+          (field) =>
+              _form.shouldShow(field, (key) => _form.effectiveValue(key)),
+        )
+        .toList();
+  }
+
+  Widget _buildSection(
+    BuildContext context, {
+    required String title,
+    required List<SettingsFieldConfig> fields,
+    required SettingsFormRowBuilder rowBuilder,
+    List<Widget> extras = const [],
+  }) {
+    final visibleFields = _visibleFields(fields);
+    return Section(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+      header: SectionHeader(title: title),
+      children: [
+        for (final field in visibleFields)
+          rowBuilder.buildRow(
+            context,
+            field,
+            editMode: true,
+            readValue: (key) => controller.formModel.value[key],
+          ),
+        ...extras,
+      ],
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Obx(() {
       final model = controller.formModel.value;
+      _hydrateFromModel(model);
+      final rowBuilder = SettingsFormRowBuilder(
+        form: _form,
+        optionsOf: (key) => _subtitleConfigOptions[key] ?? const [],
+      );
       return ListView(
-        key: ValueKey(model),
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
         children: [
           _FeedbackBanner(controller: controller),
-          _ConfigSection(
+          _buildSection(
+            context,
             title: '基础与自动处理',
-            children: [
-              _SwitchField(controller, 'enabled', '启用插件'),
-              _SwitchField(controller, 'show_sidebar_nav', '显示侧边栏入口'),
-              _SwitchField(controller, 'ai_link_enabled', '启用 AI 字幕联动'),
-              _SwitchField(controller, 'traditional_to_simplified', '写入前繁体转简体'),
-              _SwitchField(
-                controller,
-                'auto_search_on_transfer',
-                '入库后自动搜索匹配字幕',
+            fields: _subtitleBasicFields,
+            rowBuilder: rowBuilder,
+            extras: [
+              _ConfigMultiSelectField(
+                controller: controller,
+                name: 'auto_subtitle_language_priority',
+                label: '语言优先级',
+                options: _subtitleMultiOptions['language_priority']!,
               ),
-              _SwitchField(
-                controller,
-                'auto_skip_chinese_media_on_transfer',
-                '入库自动处理跳过中文资源',
-              ),
-              _SwitchField(
-                controller,
-                'trust_transfer_history_paths',
-                '信任整理历史路径',
-              ),
-              _SelectField(
-                controller,
-                'auto_transfer_subtitle_strategy',
-                '入库后字幕处理策略',
-                const {
-                  'online_then_ai_source': '在线优先，AI 兜底',
-                  'online_source_only': '只用在线匹配',
-                  'ai_source_only': '只用 AI 生成',
-                },
-              ),
-              _SelectField(
-                controller,
-                'auto_multi_subtitle_mode',
-                '自动多字幕处理',
-                const {
-                  'best': '按偏好选择最佳',
-                  'chinese_all': '中文/双语全部入库',
-                  'all': '全部入库',
-                },
-              ),
-              _ChipListField(
-                controller,
-                'auto_subtitle_language_priority',
-                '语言优先级',
-                const {
-                  'bilingual': '双语',
-                  'chi': '简中',
-                  'cht': '繁中',
-                  'eng': '英文',
-                  'jpn': '日文',
-                },
-              ),
-              _ChipListField(
-                controller,
-                'auto_subtitle_format_priority',
-                '格式优先级',
-                const {'ass': 'ASS', 'srt': 'SRT', 'ssa': 'SSA', 'vtt': 'VTT'},
-              ),
-              _SwitchField(
-                controller,
-                'auto_ass_to_srt_for_ai',
-                '英文 ASS 转临时 SRT 后提交 AI',
+              _ConfigMultiSelectField(
+                controller: controller,
+                name: 'auto_subtitle_format_priority',
+                label: '格式优先级',
+                options: _subtitleMultiOptions['format_priority']!,
               ),
             ],
           ),
-          _ConfigSection(
+          _buildSection(
+            context,
             title: '在线字幕搜索',
-            children: [
-              _ChipListField(controller, 'online_providers', '启用字幕源', const {
-                'subhd': 'SubHD',
-                'zimuku': 'Zimuku',
-                'assrt': '射手网(伪)',
-                'opensubtitles': 'OpenSubtitles',
-              }),
-              _SwitchField(controller, 'online_use_proxy', 'API 搜索和下载使用系统代理'),
-              _TextField(controller, 'subhd_url', 'SubHD 站点地址'),
-              _TextField(controller, 'zimuku_url', 'Zimuku 站点地址'),
-              _TextField(controller, 'assrt_url', '射手网(伪) 手动搜索地址'),
-              _TextField(controller, 'assrt_api_url', '射手网(伪) API 地址'),
-              _TextField(
-                controller,
-                'assrt_api_key',
-                '射手网(伪) API Key',
-                obscure: true,
-              ),
-              _TextField(
-                controller,
-                'opensubtitles_url',
-                'OpenSubtitles 手动搜索地址',
-              ),
-              _TextField(
-                controller,
-                'opensubtitles_api_url',
-                'OpenSubtitles API 地址',
-              ),
-              _TextField(
-                controller,
-                'opensubtitles_api_key',
-                'OpenSubtitles API Key',
-                obscure: true,
-              ),
-              _TextField(
-                controller,
-                'opensubtitles_username',
-                'OpenSubtitles 用户名',
-              ),
-              _TextField(
-                controller,
-                'opensubtitles_password',
-                'OpenSubtitles 密码',
-                obscure: true,
+            fields: _subtitleOnlineFields,
+            rowBuilder: rowBuilder,
+            extras: [
+              _ConfigMultiSelectField(
+                controller: controller,
+                name: 'online_providers',
+                label: '启用字幕源',
+                options: _subtitleMultiOptions['online_providers']!,
               ),
             ],
           ),
-          _ConfigSection(
+          _buildSection(
+            context,
             title: '智能调轴',
-            children: [
-              _NumberField(
-                controller,
-                'timeline_max_offset_seconds',
-                '智能调轴最大偏移秒数',
-              ),
-              _NumberField(controller, 'timeline_min_offset_seconds', '最小应用阈值'),
-              _SelectField(controller, 'timeline_vad_mode', '音频 VAD 模式', const {
-                'webrtc': 'WebRTC VAD',
-                'rms': 'RMS 能量阈值',
-              }),
-              _SwitchField(
-                controller,
-                'timeline_allow_risky_offset',
-                '全局允许高风险偏移',
-              ),
-            ],
+            fields: _subtitleTimelineFields,
+            rowBuilder: rowBuilder,
           ),
-          _ConfigSection(
+          _buildSection(
+            context,
             title: 'RAR / 7Z 解压器',
-            children: [
-              _SelectField(
-                controller,
-                'rar_dependency_mode',
-                '压缩包解压器处理方式',
-                const {
-                  'none': '不处理，仅检测',
-                  'container_install': '加载插件时尝试安装',
-                  'mapped_binary': '使用宿主机映射文件',
-                },
-              ),
-              _TextField(controller, 'rar_tool_path', '容器内映射路径'),
-            ],
+            fields: _subtitleRarFields,
+            rowBuilder: rowBuilder,
           ),
         ],
       );
@@ -1795,128 +2395,13 @@ class _SubtitleConfigView extends StatelessWidget {
   }
 }
 
-class _ConfigSection extends StatelessWidget {
-  const _ConfigSection({required this.title, required this.children});
-
-  final String title;
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return Section(
-      margin: const EdgeInsets.only(bottom: 20),
-      padding: const EdgeInsets.all(12),
-      header: SectionHeader(title: title),
-      separatorBuilder: (_) => const SizedBox(height: 10),
-      children: children,
-    );
-  }
-}
-
-class _SwitchField extends StatelessWidget {
-  const _SwitchField(this.controller, this.name, this.label);
-
-  final SubtitleManualUploadFormController controller;
-  final String name;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return SwitchListTile(
-      contentPadding: EdgeInsets.zero,
-      value: controller.formModel.value[name] == true,
-      onChanged: (value) => controller.formModel.value = {
-        ...controller.formModel.value,
-        name: value,
-      },
-      title: Text(label),
-    );
-  }
-}
-
-class _TextField extends StatelessWidget {
-  const _TextField(
-    this.controller,
-    this.name,
-    this.label, {
-    this.obscure = false,
+class _ConfigMultiSelectField extends StatelessWidget {
+  const _ConfigMultiSelectField({
+    required this.controller,
+    required this.name,
+    required this.label,
+    required this.options,
   });
-
-  final SubtitleManualUploadFormController controller;
-  final String name;
-  final String label;
-  final bool obscure;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextFormField(
-      key: ValueKey(name),
-      initialValue: '${controller.formModel.value[name] ?? ''}',
-      obscureText: obscure,
-      decoration: _fieldDecoration(context, label: label),
-      onChanged: (value) => controller.formModel.value = {
-        ...controller.formModel.value,
-        name: value,
-      },
-    );
-  }
-}
-
-class _NumberField extends StatelessWidget {
-  const _NumberField(this.controller, this.name, this.label);
-
-  final SubtitleManualUploadFormController controller;
-  final String name;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextFormField(
-      key: ValueKey(name),
-      initialValue: '${controller.formModel.value[name] ?? ''}',
-      keyboardType: TextInputType.number,
-      decoration: _fieldDecoration(context, label: label),
-      onChanged: (value) => controller.formModel.value = {
-        ...controller.formModel.value,
-        name: num.tryParse(value) ?? value,
-      },
-    );
-  }
-}
-
-class _SelectField extends StatelessWidget {
-  const _SelectField(this.controller, this.name, this.label, this.options);
-
-  final SubtitleManualUploadFormController controller;
-  final String name;
-  final String label;
-  final Map<String, String> options;
-
-  @override
-  Widget build(BuildContext context) {
-    final value = '${controller.formModel.value[name] ?? options.keys.first}';
-    return DropdownButtonFormField<String>(
-      initialValue: options.containsKey(value) ? value : options.keys.first,
-      decoration: _fieldDecoration(context, label: label),
-      items: options.entries
-          .map(
-            (entry) =>
-                DropdownMenuItem(value: entry.key, child: Text(entry.value)),
-          )
-          .toList(),
-      onChanged: (value) {
-        if (value == null) return;
-        controller.formModel.value = {
-          ...controller.formModel.value,
-          name: value,
-        };
-      },
-    );
-  }
-}
-
-class _ChipListField extends StatelessWidget {
-  const _ChipListField(this.controller, this.name, this.label, this.options);
 
   final SubtitleManualUploadFormController controller;
   final String name;
@@ -1926,46 +2411,115 @@ class _ChipListField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selected = controller.asStringList(controller.formModel.value[name]);
+    final colors = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 10, 16, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
+              color: Theme.of(context).textTheme.bodyMedium?.color,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final entry in options.entries)
+                FilterChip(
+                  label: Text(entry.value),
+                  selected: selected.contains(entry.key),
+                  selectedColor: colors.primary.withValues(alpha: 0.14),
+                  checkmarkColor: colors.primary,
+                  side: BorderSide(
+                    color: selected.contains(entry.key)
+                        ? colors.primary.withValues(alpha: 0.35)
+                        : colors.outlineVariant,
+                  ),
+                  labelStyle: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: selected.contains(entry.key)
+                        ? colors.primary
+                        : colors.onSurfaceVariant,
+                    fontWeight: selected.contains(entry.key)
+                        ? FontWeight.w600
+                        : FontWeight.w500,
+                  ),
+                  onSelected: (checked) {
+                    final next = selected.toList();
+                    if (checked) {
+                      if (!next.contains(entry.key)) next.add(entry.key);
+                    } else {
+                      next.remove(entry.key);
+                    }
+                    controller.formModel.value = {
+                      ...controller.formModel.value,
+                      name: next,
+                    };
+                  },
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OnlineControlGroup extends StatelessWidget {
+  const _OnlineControlGroup({
+    required this.title,
+    required this.icon,
+    required this.child,
+    this.accent = false,
+    this.compact = false,
+  });
+
+  final String title;
+  final IconData icon;
+  final Widget child;
+  final bool accent;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final tint = accent ? colors.primary : colors.onSurfaceVariant;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: Theme.of(context).textTheme.labelLarge),
-        const SizedBox(height: 6),
-        Wrap(
-          spacing: 8,
+        Row(
           children: [
-            for (final entry in options.entries)
-              FilterChip(
-                label: Text(entry.value),
-                selected: selected.contains(entry.key),
-                onSelected: (checked) {
-                  final next = selected.toList();
-                  if (checked) {
-                    if (!next.contains(entry.key)) next.add(entry.key);
-                  } else {
-                    next.remove(entry.key);
-                  }
-                  controller.formModel.value = {
-                    ...controller.formModel.value,
-                    name: next,
-                  };
-                },
+            Icon(icon, size: 15, color: tint),
+            const SizedBox(width: 6),
+            Text(
+              title,
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: tint,
+                fontWeight: FontWeight.w600,
               ),
+            ),
           ],
         ),
+        SizedBox(height: compact ? 8 : 10),
+        child,
       ],
     );
   }
 }
 
-class _ActionPill extends StatelessWidget {
-  const _ActionPill({
+class _OnlineCommandButton extends StatelessWidget {
+  const _OnlineCommandButton({
     required this.icon,
     required this.label,
     this.onTap,
     this.primary = false,
     this.confirm = false,
-    this.destructive = false,
   });
 
   final IconData icon;
@@ -1973,65 +2527,71 @@ class _ActionPill extends StatelessWidget {
   final VoidCallback? onTap;
   final bool primary;
   final bool confirm;
-  final bool destructive;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = theme.colorScheme;
     final enabled = onTap != null;
-    final fg = primary ? Colors.white : theme.primaryColor;
-    final bg = primary
-        ? theme.primaryColor
-        : theme.primaryColor.withValues(alpha: 0.10);
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: Material(
-        color: enabled
-            ? bg
-            : Theme.of(context).disabledColor.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(18),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: enabled
-              ? () {
-                  if (!confirm) {
-                    onTap?.call();
-                    return;
-                  }
-                  _confirmAction(
-                    context,
-                    title: label,
-                    destructive: destructive,
-                    onConfirm: () async => onTap?.call(),
-                  );
+    final foreground = primary ? colors.onPrimary : colors.primary;
+    final background = primary ? colors.primary : colors.surface;
+    final disabled = theme.disabledColor;
+    return Material(
+      color: enabled
+          ? background
+          : colors.surfaceContainerHighest.withValues(alpha: 0.52),
+      borderRadius: BorderRadius.circular(10),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: enabled
+            ? () {
+                if (!confirm) {
+                  onTap?.call();
+                  return;
                 }
-              : null,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  icon,
-                  size: 18,
-                  color: enabled
-                      ? fg
-                      : Theme.of(context).disabledColor.withValues(alpha: 0.55),
-                ),
-                const SizedBox(width: 6),
-                Text(
+                _confirmAction(
+                  context,
+                  title: label,
+                  onConfirm: () async => onTap?.call(),
+                );
+              }
+            : null,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 44),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: enabled
+                  ? (primary
+                        ? colors.primary
+                        : colors.outline.withValues(alpha: 0.36))
+                  : colors.outlineVariant.withValues(alpha: 0.45),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 18,
+                color: enabled ? foreground : disabled.withValues(alpha: 0.62),
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
                   label,
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelMedium?.copyWith(
                     color: enabled
-                        ? fg
-                        : Theme.of(
-                            context,
-                          ).disabledColor.withValues(alpha: 0.65),
-                    fontWeight: FontWeight.w500,
+                        ? foreground
+                        : disabled.withValues(alpha: 0.70),
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -2083,41 +2643,40 @@ class _ProviderChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final fg = selected
-        ? Colors.white
-        : Theme.of(context).colorScheme.onSurfaceVariant;
-    final bg = selected ? theme.primaryColor : theme.cardColor;
+    final colors = Theme.of(context).colorScheme;
+    final fg = selected ? theme.primaryColor : colors.onSurfaceVariant;
+    final bg = selected
+        ? theme.primaryColor.withValues(alpha: 0.11)
+        : colors.surface;
     final borderColor = selected
-        ? theme.primaryColor
-        : Theme.of(context).dividerColor.withValues(alpha: 0.9);
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
+        ? theme.primaryColor.withValues(alpha: 0.50)
+        : colors.outline.withValues(alpha: 0.34);
+    return IntrinsicWidth(
       child: Material(
         color: bg,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(8),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
           child: Container(
-            constraints: const BoxConstraints(minHeight: 36),
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            constraints: const BoxConstraints(minHeight: 34),
+            padding: const EdgeInsets.symmetric(horizontal: 11),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: borderColor, width: 0.7),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: borderColor, width: 0.8),
             ),
-            alignment: Alignment.center,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (selected) ...[
-                  const Icon(Icons.check, size: 14, color: Colors.white),
+                  Icon(Icons.check, size: 14, color: fg),
                   const SizedBox(width: 4),
                 ],
                 Text(
                   label,
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     color: fg,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
                   ),
                 ),
               ],
@@ -2350,20 +2909,44 @@ class _IconAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IconButton(
-      tooltip: tooltip,
-      visualDensity: VisualDensity.compact,
-      constraints: const BoxConstraints.tightFor(width: 44, height: 44),
-      padding: EdgeInsets.zero,
-      onPressed: onTap == null
-          ? null
-          : () => _confirmAction(
-              context,
-              title: tooltip,
-              destructive: tooltip.contains('删除'),
-              onConfirm: () async => onTap?.call(),
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final enabled = onTap != null;
+    final destructive = tooltip.contains('删除');
+    final accent = destructive ? colors.error : colors.onSurfaceVariant;
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Tooltip(
+        message: tooltip,
+        child: Material(
+          color: enabled
+              ? colors.surfaceContainerHighest.withValues(alpha: 0.42)
+              : colors.surfaceContainerHighest.withValues(alpha: 0.18),
+          borderRadius: BorderRadius.circular(9),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap == null
+                ? null
+                : () => _confirmAction(
+                    context,
+                    title: tooltip,
+                    destructive: destructive,
+                    onConfirm: () async => onTap?.call(),
+                  ),
+            child: SizedBox(
+              width: 40,
+              height: 40,
+              child: Icon(
+                icon,
+                size: 19,
+                color: enabled
+                    ? accent
+                    : theme.disabledColor.withValues(alpha: 0.58),
+              ),
             ),
-      icon: Icon(icon, size: 20),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -2437,10 +3020,7 @@ class _ListCard extends StatelessWidget {
         child: DecoratedBox(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: borderColor,
-              width: selected ? 1.2 : 0.6,
-            ),
+            border: Border.all(color: borderColor, width: selected ? 1.2 : 0.6),
           ),
           child: child,
         ),
@@ -2636,12 +3216,12 @@ class _Poster extends StatelessWidget {
     }
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
-      child: Image.network(
-        url,
+      child: CachedNetworkImage(
+        imageUrl: url,
         width: 48,
         height: 64,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Container(
+        placeholder: (context, url) => Container(
           width: 48,
           height: 64,
           decoration: BoxDecoration(
@@ -2777,25 +3357,10 @@ Future<void> _confirmAction(
 }) async {
   final confirmed = await showDialog<bool>(
     context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: Text(title),
-      content: Text(message ?? '确认执行此操作？'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text('取消'),
-        ),
-        FilledButton(
-          style: destructive
-              ? FilledButton.styleFrom(
-                  backgroundColor: Theme.of(dialogContext).colorScheme.error,
-                  foregroundColor: Theme.of(dialogContext).colorScheme.onError,
-                )
-              : null,
-          onPressed: () => Navigator.of(dialogContext).pop(true),
-          child: const Text('确认'),
-        ),
-      ],
+    builder: (dialogContext) => _SubtitleConfirmDialog(
+      title: title,
+      message: message ?? '确认执行此操作？',
+      destructive: destructive,
     ),
   );
   if (confirmed != true || !context.mounted) return;
@@ -2803,9 +3368,7 @@ Future<void> _confirmAction(
 }
 
 Future<void> _launch(String rawUrl) async {
-  final uri = Uri.tryParse(rawUrl);
-  if (uri == null) return;
-  await launchUrl(uri, mode: LaunchMode.externalApplication);
+  await WebUtil.open(url: rawUrl);
 }
 
 Future<T?> _push<T>(
@@ -2813,17 +3376,196 @@ Future<T?> _push<T>(
   String title,
   WidgetBuilder childBuilder,
 ) {
-  return Navigator.of(context).push<T>(
-    MaterialPageRoute(
-      builder: (context) => Scaffold(
-        appBar: AppBar(title: Text(title)),
-        body: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-            children: [childBuilder(context)],
-          ),
-        ),
+  return showModalBottomSheet<T>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    isDismissible: true,
+    enableDrag: true,
+    showDragHandle: false,
+    backgroundColor: Colors.transparent,
+    builder: (sheetContext) => DraggableScrollableSheet(
+      initialChildSize: 0.92,
+      minChildSize: 0.36,
+      maxChildSize: 1,
+      expand: false,
+      builder: (contentContext, scrollController) => _SubtitleBottomSheet(
+        title: title,
+        scrollController: scrollController,
+        childBuilder: childBuilder,
       ),
     ),
   );
+}
+
+class _SubtitleConfirmDialog extends StatelessWidget {
+  const _SubtitleConfirmDialog({
+    required this.title,
+    required this.message,
+    required this.destructive,
+  });
+
+  final String title;
+  final String message;
+  final bool destructive;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final accent = destructive ? colors.error : colors.primary;
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    destructive
+                        ? Icons.warning_amber_rounded
+                        : Icons.help_outline_rounded,
+                    color: accent,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        message,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colors.onSurfaceVariant,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: const Text('取消'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: accent,
+                      foregroundColor: destructive
+                          ? colors.onError
+                          : colors.onPrimary,
+                    ),
+                    onPressed: () => Navigator.of(context).pop(true),
+                    child: const Text('确认'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SubtitleBottomSheet extends StatelessWidget {
+  const _SubtitleBottomSheet({
+    required this.title,
+    required this.scrollController,
+    required this.childBuilder,
+  });
+
+  final String title;
+  final ScrollController scrollController;
+  final WidgetBuilder childBuilder;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      child: Material(
+        color: colors.surface,
+        child: Column(
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 38,
+              height: 4,
+              decoration: BoxDecoration(
+                color: colors.outlineVariant.withValues(alpha: 0.9),
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 8, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: '关闭',
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+            ),
+            Divider(height: 1, color: colors.outlineVariant),
+            Expanded(
+              child: CustomScrollView(
+                controller: scrollController,
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                slivers: [
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(16, 12, 16, 24 + bottomInset),
+                    sliver: SliverToBoxAdapter(child: childBuilder(context)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

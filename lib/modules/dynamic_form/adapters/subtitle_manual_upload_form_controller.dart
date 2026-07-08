@@ -117,6 +117,8 @@ class SubtitleManualUploadFormController extends GetxController
   final onlineTargets = <Map<String, dynamic>>[].obs;
   final onlineResults = <Map<String, dynamic>>[].obs;
   final onlineMessages = <Map<String, dynamic>>[].obs;
+  final onlineView = 'results'.obs;
+  final onlineManualKeywords = <String>[].obs;
   final onlineManualLinks = <Map<String, dynamic>>[].obs;
   final onlineSelectedProviders = <String>['assrt', 'opensubtitles'].obs;
   final onlineSelectedResultKeys = <String>[].obs;
@@ -627,6 +629,8 @@ class SubtitleManualUploadFormController extends GetxController
     onlineKeyword.value = '';
     onlineResults.clear();
     onlineMessages.clear();
+    onlineView.value = 'results';
+    onlineManualKeywords.clear();
     onlineManualLinks.clear();
     onlineSelectedResultKeys.clear();
     onlineLanguageFilter.value = 'all';
@@ -651,6 +655,7 @@ class SubtitleManualUploadFormController extends GetxController
           _requireToken(),
         );
         final data = asMap(result.data) ?? {};
+        onlineManualKeywords.assignAll(asStringList(data['keywords']));
         onlineManualLinks.assignAll(asMapList(data['links']));
       },
       fallback: '生成手动搜索链接失败',
