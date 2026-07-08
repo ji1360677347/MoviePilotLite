@@ -96,6 +96,7 @@ class SubtitleManualUploadFormController extends GetxController
   final matchHistoryPage = 1.obs;
   final matchHistoryTotal = 0.obs;
   final matchHistoryHasMore = false.obs;
+  final matchHistoryLoading = false.obs;
   final expandedHistoryIds = <String>[].obs;
   final messageText = RxnString();
   final preparing = false.obs;
@@ -988,6 +989,7 @@ class SubtitleManualUploadFormController extends GetxController
     bool reset = true,
     bool silent = false,
   }) async {
+    matchHistoryLoading.value = true;
     await _guard(
       () async {
         final page = reset ? 1 : matchHistoryPage.value + 1;
@@ -1012,6 +1014,7 @@ class SubtitleManualUploadFormController extends GetxController
       fallback: '加载匹配历史失败',
       silent: silent,
     );
+    matchHistoryLoading.value = false;
   }
 
   Future<void> loadMoreMatchHistory() async {

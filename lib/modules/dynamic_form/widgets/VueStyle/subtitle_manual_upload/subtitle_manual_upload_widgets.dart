@@ -15,6 +15,7 @@ import 'package:moviepilot_mobile/modules/settings/state/settings_form_row_build
 import 'package:moviepilot_mobile/modules/search_result/widgets/sort_pull_down_widget.dart';
 import 'package:moviepilot_mobile/theme/section.dart';
 import 'package:moviepilot_mobile/utils/open_url.dart';
+import 'package:moviepilot_mobile/widgets/load_more_footer.dart';
 import 'package:moviepilot_mobile/widgets/section_header.dart';
 
 void registerSubtitleManualUploadRenderer() {
@@ -788,11 +789,13 @@ class _MediaResults extends StatelessWidget {
                     },
                   ),
                 ),
-            if (hasMore)
-              OutlinedButton.icon(
-                onPressed: controller.loadMoreMedia,
-                icon: const Icon(Icons.expand_more),
-                label: Text('加载更多 · 共 $total'),
+            if (medias.isNotEmpty)
+              LoadMoreFooter(
+                hasMore: hasMore,
+                total: total,
+                isLoading:
+                    controller.mediaSearching.value && medias.isNotEmpty,
+                onLoadMore: controller.loadMoreMedia,
               ),
           ],
         ),
@@ -1642,12 +1645,13 @@ class _HistoryPanel extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 8),
               child: _HistoryCard(controller: controller, item: item),
             ),
-          if (controller.matchHistoryHasMore.value)
-            OutlinedButton.icon(
-              onPressed: controller.loadMoreMatchHistory,
-              icon: const Icon(Icons.expand_more),
-              label: Text('加载更多 · 共 ${controller.matchHistoryTotal.value}'),
-            ),
+          LoadMoreFooter(
+            hasMore: controller.matchHistoryHasMore.value,
+            hasItems: controller.matchHistoryItems.isNotEmpty,
+            total: controller.matchHistoryTotal.value,
+            isLoading: controller.matchHistoryLoading.value,
+            onLoadMore: controller.loadMoreMatchHistory,
+          ),
         ],
       );
     });
