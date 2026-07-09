@@ -25,8 +25,7 @@ private let appWidgetLog = Logger(subsystem: "com.altman.moviepilot", category: 
     if let url = launchOptions?[.url] as? URL {
       pendingWidgetRoute = widgetRoute(from: url)
     }
-    if
-      pendingWidgetRoute == nil,
+    if pendingWidgetRoute == nil,
       let userInfo = launchOptions?[.remoteNotification] as? [AnyHashable: Any]
     {
       pendingWidgetRoute = appRoute(fromNotificationUserInfo: userInfo)
@@ -45,7 +44,8 @@ private let appWidgetLog = Logger(subsystem: "com.altman.moviepilot", category: 
             let server = arguments["server"] as? String,
             let accessToken = arguments["accessToken"] as? String
           else {
-            result(FlutterError(code: "bad_args", message: "Missing session arguments", details: nil))
+            result(
+              FlutterError(code: "bad_args", message: "Missing session arguments", details: nil))
             return
           }
           self.saveSharedSession(server: server, accessToken: accessToken)
@@ -58,7 +58,8 @@ private let appWidgetLog = Logger(subsystem: "com.altman.moviepilot", category: 
             let arguments = call.arguments as? [String: Any],
             let payload = arguments["payload"] as? String
           else {
-            result(FlutterError(code: "bad_args", message: "Missing site widget payload", details: nil))
+            result(
+              FlutterError(code: "bad_args", message: "Missing site widget payload", details: nil))
             return
           }
           self.saveSiteWidgetPayload(payload)
@@ -206,14 +207,14 @@ private let appWidgetLog = Logger(subsystem: "com.altman.moviepilot", category: 
   private func firstMoviePilotRoute(in value: Any) -> String? {
     if let string = value as? String {
       let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
-      if
-        trimmed.lowercased().hasPrefix("moviepilot://"),
+      if trimmed.lowercased().hasPrefix("moviepilot://"),
         let url = URL(string: trimmed)
       {
         return widgetRoute(from: url)
       }
       if let data = trimmed.data(using: .utf8),
-         let json = try? JSONSerialization.jsonObject(with: data) {
+        let json = try? JSONSerialization.jsonObject(with: data)
+      {
         return firstMoviePilotRoute(in: json)
       }
       return nil
@@ -246,12 +247,15 @@ private let appWidgetLog = Logger(subsystem: "com.altman.moviepilot", category: 
 
   private func hasSystemMessageHint(in value: Any) -> Bool {
     let keys: Set<String> = ["page", "open_page", "target_page", "type", "route"]
-    let values: Set<String> = ["system_message", "system-message", "systemmessage", "/system-message"]
+    let values: Set<String> = [
+      "system_message", "system-message", "systemmessage", "/system-message",
+    ]
 
     if let string = value as? String {
       let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
       if let data = trimmed.data(using: .utf8),
-         let json = try? JSONSerialization.jsonObject(with: data) {
+        let json = try? JSONSerialization.jsonObject(with: data)
+      {
         return hasSystemMessageHint(in: json)
       }
       return values.contains(trimmed.lowercased())

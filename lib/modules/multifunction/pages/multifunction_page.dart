@@ -111,10 +111,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
                         const SizedBox(height: 16),
                       ],
                       if (modulesByRoute['/downloader'] != null) ...[
-                        _buildDownloaderSection(
-                          pageWidth: pageWidth,
-                          module: modulesByRoute['/downloader']!,
-                        ),
+                        _buildDownloaderSection(pageWidth: pageWidth),
                         const SizedBox(height: 16),
                       ],
                       if (controller.canAccessManage) ...[
@@ -820,53 +817,60 @@ class MultifunctionPage extends GetView<MultifunctionController> {
     );
   }
 
-  Widget _buildDownloaderSection({
-    required double pageWidth,
-    required DashboardModuleViewModel module,
-  }) {
+  Widget _buildDownloaderSection({required double pageWidth}) {
     final info = controller.downloaderInfo.value;
+    final clients = info.clients;
     final isCompact = pageWidth < 360;
+    final ready = controller.downloaderDataReady.value;
 
     return _glassCard(
-      onTap: () => controller.handleRouteTap(module.route, title: module.title),
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(Icons.cloud_download_rounded, color: _primary, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  '下载器',
-                  style: TextStyle(
-                    color: _textPrimary,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -0.4,
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: controller.openDownloaderList,
+            child: Row(
+              children: [
+                Icon(Icons.cloud_download_rounded, color: _primary, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '下载器',
+                    style: TextStyle(
+                      color: _textPrimary,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.4,
+                    ),
                   ),
                 ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _primary.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: _primary.withValues(alpha: 0.20)),
-                ),
-                child: Text(
-                  '${info.clients.length} 个活跃',
-                  style: TextStyle(
-                    color: _primary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w400,
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _primary.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: _primary.withValues(alpha: 0.20)),
+                  ),
+                  child: Text(
+                    ready ? '${clients.length} 个' : '加载中',
+                    style: TextStyle(
+                      color: _primary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w400,
+                    ),
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 4),
+                Icon(Icons.chevron_right_rounded, size: 20, color: _textMuted),
+              ],
+            ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
@@ -890,9 +894,111 @@ class MultifunctionPage extends GetView<MultifunctionController> {
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          if (!ready)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Center(child: CupertinoActivityIndicator(color: _primary)),
+            )
+          else if (clients.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                '暂无下载器',
+                style: TextStyle(color: _textMuted, fontSize: 13),
+              ),
+            )
+          else
+            for (var i = 0; i < clients.length; i++) ...[
+              if (i > 0) const SizedBox(height: 8),
+              _buildDownloaderClientRow(clients[i]),
+            ],
         ],
       ),
     );
+  }
+
+  Widget _buildDownloaderClientRow(DownloaderClientInfo client) {
+    final typeLabel = _downloaderTypeLabel(client.type);
+    return Material(
+      color: _surfaceHighest.withValues(alpha: _isDark ? 0.34 : 0.72),
+      borderRadius: BorderRadius.circular(10),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => controller.openDownloaderClient(client),
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: _primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.download_for_offline_outlined,
+                  size: 18,
+                  color: _primary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      client.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: _textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      [
+                        if (typeLabel.isNotEmpty) typeLabel,
+                        '↓ ${_formatSpeedText(client.downloadSpeed)}',
+                        '↑ ${_formatSpeedText(client.uploadSpeed)}',
+                      ].join(' · '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: _textMuted,
+                        fontSize: 12,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, size: 18, color: _textMuted),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _downloaderTypeLabel(String type) {
+    switch (type.toLowerCase()) {
+      case 'qbittorrent':
+        return 'qB';
+      case 'transmission':
+        return 'TR';
+      default:
+        return type.trim();
+    }
+  }
+
+  String _formatSpeedText(double value) {
+    final parts = _sizeParts(value);
+    return '${parts.$1} ${parts.$2}/s';
   }
 
   Widget _downloaderMetricCard({
@@ -995,7 +1101,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
                 children: [
                   Expanded(
                     child: Text(
-                      '插件入口',
+                      '插件中心',
                       style: TextStyle(
                         color: _textPrimary,
                         fontSize: 18,
@@ -1048,8 +1154,8 @@ class MultifunctionPage extends GetView<MultifunctionController> {
 
   Widget _pluginSidebarCard(PluginSidebarNavItem item, {required int index}) {
     final accent = _sidebarAccent(item.section, index);
-    final icon = VuetifyMappings.iconFromMdi(item.icon) ??
-        Icons.extension_outlined;
+    final icon =
+        VuetifyMappings.iconFromMdi(item.icon) ?? Icons.extension_outlined;
     final softAccent = _softUtilityAccent(accent);
     final iconBackground = _isDark
         ? accent.withValues(alpha: 0.14)
@@ -1080,9 +1186,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
                     color: iconBackground,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: accent.withValues(
-                        alpha: _isDark ? 0.08 : 0.14,
-                      ),
+                      color: accent.withValues(alpha: _isDark ? 0.08 : 0.14),
                       width: 0.5,
                     ),
                   ),
@@ -1241,11 +1345,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
                 ),
                 const SizedBox(width: 6),
               ],
-              Icon(
-                Icons.chevron_right_rounded,
-                size: 20,
-                color: _textMuted,
-              ),
+              Icon(Icons.chevron_right_rounded, size: 20, color: _textMuted),
             ],
           ),
         ),

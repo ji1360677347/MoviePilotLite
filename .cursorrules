@@ -103,8 +103,9 @@ If needed, you can further use the `web_scraper.py` file to scrape the web page 
 
 ## Done: 下载 startDownload — API detail 为 List 时 ToastUtil.error 类型错误（_downloadApiErrorMessage）
 
-## Current Task: 多功能页插件 sidebar_nav 入口
+## Current Task: 多功能页下载器区域优化
 
-[X] API /api/v1/plugin/sidebar_nav 拉取与模型
-[X] MultifunctionController 加载与跳转
-[X] MultifunctionPage 插件入口区块展示
+[X] DownloaderClientInfo 保留完整客户端信息
+[X] 点击下载器跳转对应详情/任务页
+[X] Header 进入下载器列表页
+[X] MultifunctionPage 展示下载器列表

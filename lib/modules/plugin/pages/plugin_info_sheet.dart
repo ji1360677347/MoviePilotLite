@@ -325,6 +325,9 @@ class SpecifiedPluginInstallSheet extends StatefulWidget {
 
 class _SpecifiedPluginInstallSheetState
     extends State<SpecifiedPluginInstallSheet> {
+  static const _defaultPluginRepoUrl =
+      'https://github.com/singleton-altman/MoviePilot-Plugins';
+
   final _repoController = TextEditingController();
   final _repoFocusNode = FocusNode();
   final _controller = Get.find<PluginController>();
@@ -351,14 +354,12 @@ class _SpecifiedPluginInstallSheetState
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     final bottomSafeArea = MediaQuery.paddingOf(context).bottom;
+    final sheetColor = Theme.of(context).colorScheme.surface;
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
       onTap: () => FocusScope.of(context).unfocus(),
       child: Material(
-        color: CupertinoDynamicColor.resolve(
-          CupertinoColors.systemBackground,
-          context,
-        ),
+        color: sheetColor,
         child: SafeArea(
           top: false,
           bottom: false,
@@ -421,7 +422,20 @@ class _SpecifiedPluginInstallSheetState
             textInputAction: TextInputAction.go,
             onSubmitted: (_) => _loadRepoPlugins(),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: _isLoading ? null : _fillDefaultPluginRepo,
+              icon: const Icon(Icons.auto_fix_high_outlined, size: 16),
+              label: const Text('APPLitePush'),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
@@ -480,7 +494,8 @@ class _SpecifiedPluginInstallSheetState
     if (_resolvedRepoUrl == null) {
       return Section(
         child: Text(
-          '支持公开 GitHub 仓库，仅读取仓库根目录的 package.json 和 package.v2.json。',
+          '支持公开 GitHub 插件市场仓库，仅读取根目录 package.json / package.v2.json。'
+          '请勿填写 MoviePilotLite 等 App 源码仓库。',
           style: TextStyle(
             color: Theme.of(
               context,
@@ -677,6 +692,15 @@ class _SpecifiedPluginInstallSheetState
     });
   }
 
+  void _fillDefaultPluginRepo() {
+    _repoController
+      ..text = _defaultPluginRepoUrl
+      ..selection = TextSelection.collapsed(
+        offset: _defaultPluginRepoUrl.length,
+      );
+    _repoFocusNode.requestFocus();
+  }
+
   Future<void> _loadRepoPlugins() async {
     FocusScope.of(context).unfocus();
     final repoUrl = _repoController.text.trim();
@@ -708,7 +732,7 @@ class _SpecifiedPluginInstallSheetState
       setState(() {
         _resolvedRepoUrl = null;
         _items = const [];
-        _errorText = e.toString().replaceFirst('Exception: ', '');
+        _errorText = _friendlyRepoError(e);
       });
     } finally {
       if (mounted) {
@@ -779,7 +803,11 @@ class _SpecifiedPluginInstallSheetState
         : _mapPackageItems(resolvedRepo, mergedPackageData);
 
     if (items.isEmpty) {
-      throw Exception('仓库根目录未找到可用的 package.json 或 package.v2.json 插件清单');
+      throw Exception(
+        '仓库根目录未找到可用的 package.json / package.v2.json。'
+        '请使用插件市场仓库（例如 MoviePilot-Plugins），'
+        '而不是 App 源码仓库（如 MoviePilotLite）。',
+      );
     }
 
     items.sort(
@@ -812,15 +840,32 @@ class _SpecifiedPluginInstallSheetState
       return null;
     }
 
-    final decoded = utf8.decode(base64Decode(content.replaceAll('\n', '')));
-    final json = jsonDecode(decoded);
-    if (json is Map<String, dynamic>) {
-      return json;
+    try {
+      final normalized = content.replaceAll(RegExp(r'\s'), '');
+      final decoded = utf8.decode(base64Decode(normalized));
+      final json = jsonDecode(decoded);
+      if (json is Map<String, dynamic>) {
+        return json;
+      }
+      if (json is Map) {
+        return Map<String, dynamic>.from(json);
+      }
+      return null;
+    } on FormatException {
+      throw Exception('插件清单解析失败，请确认 package.json / package.v2.json 内容有效');
     }
-    if (json is Map) {
-      return Map<String, dynamic>.from(json);
+  }
+
+  String _friendlyRepoError(Object error) {
+    if (error is FormatException) {
+      return '插件清单解析失败，请确认仓库根目录的 package.json / package.v2.json 格式正确';
     }
-    return null;
+    final text = error.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
+    if (text.contains('FormatException') ||
+        text.contains('Unexpected character')) {
+      return '插件清单解析失败，请确认仓库根目录的 package.json / package.v2.json 格式正确';
+    }
+    return text;
   }
 
   List<PluginItem> _mapPackageItems(

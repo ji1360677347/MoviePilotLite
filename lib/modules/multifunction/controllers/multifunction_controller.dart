@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:altman_downloader_control/controller/downloader_config.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -51,11 +52,19 @@ class DashboardCalendarEntry {
 class DownloaderClientInfo {
   const DownloaderClientInfo({
     required this.name,
+    this.type = '',
+    this.host = '',
+    this.username = '',
+    this.password = '',
     this.downloadSpeed = 0,
     this.uploadSpeed = 0,
   });
 
   final String name;
+  final String type;
+  final String host;
+  final String username;
+  final String password;
   final double downloadSpeed;
   final double uploadSpeed;
 }
@@ -301,6 +310,85 @@ class MultifunctionController extends GetxController {
     return '/downloader';
   }
 
+  Future<void> openDownloaderList() async {
+    await handleRouteTap(downloaderRoute(), title: '下载器');
+  }
+
+  Future<void> openDownloaderClient(DownloaderClientInfo client) async {
+    if (!_appService.canAccessRoute('/downloader') &&
+        !_appService.canAccessRoute('/downloader-config')) {
+      ToastUtil.info(_appService.accessDeniedMessage('/downloader'));
+      return;
+    }
+    if (_appService.enableDownloaderManager.value) {
+      final type = _downloaderDetailType(client.type);
+      if (type == null) {
+        ToastUtil.warning('下载器类型不支持');
+        return;
+      }
+      var host = client.host.trim();
+      var username = client.username;
+      var password = client.password;
+      if (host.isEmpty) {
+        final settings = await _loadDownloaderSettingsByName();
+        final setting = settings[client.name];
+        final settingConfig = setting?['config'] is Map
+            ? Map<String, dynamic>.from(setting!['config'] as Map)
+            : const <String, dynamic>{};
+        host = _firstNonEmpty([
+          settingConfig['host'],
+          setting?['host'],
+        ]);
+        username = _firstNonEmpty([
+          username,
+          settingConfig['username'],
+          setting?['username'],
+        ]);
+        password = _firstNonEmpty([
+          password,
+          settingConfig['password'],
+          setting?['password'],
+        ]);
+      }
+      if (host.isEmpty) {
+        ToastUtil.warning('下载器地址为空，请先在下载器配置中完善连接信息');
+        return;
+      }
+      await Get.toNamed(
+        '/downloader-detail',
+        arguments: {
+          'config': {
+            'id': client.name,
+            'url': host,
+            'username': username,
+            'password': password,
+            'type': type,
+            'name': client.name,
+          },
+        },
+      );
+    } else {
+      await Get.toNamed(
+        '/downloader',
+        parameters: {'name': client.name},
+      );
+    }
+    if (!isClosed) {
+      await refreshDownloaderSection();
+    }
+  }
+
+  DownloaderType? _downloaderDetailType(String type) {
+    switch (type.toLowerCase()) {
+      case 'qbittorrent':
+        return DownloaderType.qbittorrent;
+      case 'transmission':
+        return DownloaderType.transmission;
+      default:
+        return null;
+    }
+  }
+
   Future<void> setCalendarSegment(String segment) async {
     if (segment != 'today' && segment != 'week') return;
     calendarSegment.value = segment;
@@ -540,33 +628,69 @@ class MultifunctionController extends GetxController {
       return false;
     }
     final clients = clientsResp.data!
-        .whereType<Map<String, dynamic>>()
-        .map((e) => (e['name']?.toString() ?? '').trim())
-        .where((name) => name.isNotEmpty)
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .where((e) => (e['name']?.toString() ?? '').trim().isNotEmpty)
         .toList();
+    final settingsByName = await _loadDownloaderSettingsByName();
     final info = <DownloaderClientInfo>[];
     var totalDownSpeed = 0.0;
     var totalUpSpeed = 0.0;
     var totalDownSize = 0.0;
     var totalUpSize = 0.0;
-    for (final name in clients) {
+    for (final client in clients) {
+      final name = (client['name']?.toString() ?? '').trim();
+      final setting = settingsByName[name];
+      final clientConfig = client['config'] is Map
+          ? Map<String, dynamic>.from(client['config'] as Map)
+          : const <String, dynamic>{};
+      final settingConfig = setting?['config'] is Map
+          ? Map<String, dynamic>.from(setting!['config'] as Map)
+          : const <String, dynamic>{};
+      final type = _firstNonEmpty([
+        client['type'],
+        setting?['type'],
+      ]);
+      final host = _firstNonEmpty([
+        clientConfig['host'],
+        settingConfig['host'],
+        client['host'],
+        setting?['host'],
+      ]);
+      final username = _firstNonEmpty([
+        clientConfig['username'],
+        settingConfig['username'],
+        client['username'],
+        setting?['username'],
+      ]);
+      final password = _firstNonEmpty([
+        clientConfig['password'],
+        settingConfig['password'],
+        client['password'],
+        setting?['password'],
+      ]);
       final resp = await _apiClient.get<Map<String, dynamic>>(
         '/api/v1/dashboard/downloader',
         queryParameters: {'name': name},
       );
-      if ((resp.statusCode ?? 0) >= 400 || resp.data == null) continue;
-      final data = resp.data!;
-      final downSpeed = _asDouble(data['download_speed']);
-      final upSpeed = _asDouble(data['upload_speed']);
-      final downSize = _asDouble(data['download_size']);
-      final upSize = _asDouble(data['upload_size']);
-      totalDownSpeed += downSpeed;
-      totalUpSpeed += upSpeed;
-      totalDownSize += downSize;
-      totalUpSize += upSize;
+      var downSpeed = 0.0;
+      var upSpeed = 0.0;
+      if ((resp.statusCode ?? 0) < 400 && resp.data != null) {
+        final data = resp.data!;
+        downSpeed = _asDouble(data['download_speed']);
+        upSpeed = _asDouble(data['upload_speed']);
+        totalDownSpeed += downSpeed;
+        totalUpSpeed += upSpeed;
+        totalDownSize += _asDouble(data['download_size']);
+        totalUpSize += _asDouble(data['upload_size']);
+      }
       info.add(
         DownloaderClientInfo(
           name: name,
+          type: type,
+          host: host,
+          username: username,
+          password: password,
           downloadSpeed: downSpeed,
           uploadSpeed: upSpeed,
         ),
@@ -581,6 +705,40 @@ class MultifunctionController extends GetxController {
     );
     refresh();
     return true;
+  }
+
+  Future<Map<String, Map<String, dynamic>>> _loadDownloaderSettingsByName() async {
+    try {
+      final response = await _apiClient.get<dynamic>(
+        '/api/v1/system/setting/Downloaders',
+      );
+      if ((response.statusCode ?? 0) >= 400 || response.data is! Map) {
+        return const {};
+      }
+      final root = Map<String, dynamic>.from(response.data as Map);
+      final data = root['data'];
+      final value = data is Map ? data['value'] : null;
+      if (value is! List) return const {};
+      final result = <String, Map<String, dynamic>>{};
+      for (final item in value) {
+        if (item is! Map) continue;
+        final map = Map<String, dynamic>.from(item);
+        final name = (map['name']?.toString() ?? '').trim();
+        if (name.isEmpty) continue;
+        result[name] = map;
+      }
+      return result;
+    } catch (_) {
+      return const {};
+    }
+  }
+
+  String _firstNonEmpty(List<dynamic> values) {
+    for (final value in values) {
+      final text = value?.toString().trim() ?? '';
+      if (text.isNotEmpty) return text;
+    }
+    return '';
   }
 
   Future<bool> _loadPluginCount() async {
