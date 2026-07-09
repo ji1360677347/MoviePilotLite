@@ -150,8 +150,11 @@ Future<void> main() async {
   try {
     Get.put(AppLog());
     await Get.putAsync(() => HiveService().init(), permanent: true);
-    Get.put(IosWidgetNavigationService(), permanent: true);
-    Get.put(JPushService(), permanent: true);
+    await Get.putAsync(
+      () => IosWidgetNavigationService().init(),
+      permanent: true,
+    );
+    await Get.putAsync(() => JPushService().init(), permanent: true);
     Get.put(IosSharedSessionService(), permanent: true);
     Get.put(AppService());
     Get.put(ApiClient());
