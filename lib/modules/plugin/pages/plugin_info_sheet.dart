@@ -11,7 +11,6 @@ import 'package:moviepilot_mobile/theme/section.dart';
 import 'package:moviepilot_mobile/utils/image_util.dart';
 import 'package:moviepilot_mobile/utils/toast_util.dart';
 import 'package:moviepilot_mobile/widgets/cached_image.dart';
-import 'package:moviepilot_mobile/widgets/section_header.dart';
 
 import '../controllers/plugin_controller.dart';
 
@@ -55,6 +54,89 @@ class PluginInfoSheet extends StatefulWidget {
 
 enum PluginInfoSheetState { normal, installing, installed }
 
+class _PluginSheetHeader extends StatelessWidget {
+  const _PluginSheetHeader({required this.title, required this.onClose});
+
+  final String title;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: cs.surface,
+        border: Border(
+          bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.45)),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 12, 10),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 38,
+              height: 4,
+              decoration: BoxDecoration(
+                color: cs.onSurfaceVariant.withValues(alpha: 0.28),
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style:
+                            theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: cs.onSurface,
+                            ) ??
+                            TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: cs.onSurface,
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Material(
+                  color: cs.surfaceContainerHighest.withValues(alpha: 0.72),
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: onClose,
+                    child: SizedBox(
+                      width: 36,
+                      height: 36,
+                      child: Icon(
+                        Icons.close_rounded,
+                        size: 19,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _PluginInfoSheetState extends State<PluginInfoSheet> {
   final controller = Get.find<PluginController>();
   final isInstalling = PluginInfoSheetState.normal.obs;
@@ -91,17 +173,9 @@ class _PluginInfoSheetState extends State<PluginInfoSheet> {
         padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: SectionHeader(
-                title: widget.item.pluginName,
-                trailing: IconButton(
-                  icon: Icon(Icons.close, color: colorScheme.primary),
-                  onPressed: () {
-                    Get.back();
-                  },
-                ),
-              ),
+            _PluginSheetHeader(
+              title: widget.item.pluginName,
+              onClose: Get.back,
             ),
             Expanded(
               child: ListView(
@@ -235,9 +309,14 @@ class _PluginInfoSheetState extends State<PluginInfoSheet> {
 }
 
 class SpecifiedPluginInstallSheet extends StatefulWidget {
-  const SpecifiedPluginInstallSheet({super.key, this.initialRepoUrl = ''});
+  const SpecifiedPluginInstallSheet({
+    super.key,
+    this.initialRepoUrl = '',
+    this.scrollController,
+  });
 
   final String initialRepoUrl;
+  final ScrollController? scrollController;
 
   @override
   State<SpecifiedPluginInstallSheet> createState() =>
@@ -246,6 +325,9 @@ class SpecifiedPluginInstallSheet extends StatefulWidget {
 
 class _SpecifiedPluginInstallSheetState
     extends State<SpecifiedPluginInstallSheet> {
+  static const _defaultPluginRepoUrl =
+      'https://github.com/singleton-altman/MoviePilot-Plugins';
+
   final _repoController = TextEditingController();
   final _repoFocusNode = FocusNode();
   final _controller = Get.find<PluginController>();
@@ -271,38 +353,36 @@ class _SpecifiedPluginInstallSheetState
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-    return AnimatedPadding(
-      duration: const Duration(milliseconds: 180),
-      curve: Curves.easeOut,
-      padding: EdgeInsets.only(bottom: bottomInset),
+    final bottomSafeArea = MediaQuery.paddingOf(context).bottom;
+    final sheetColor = Theme.of(context).colorScheme.surface;
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: () => FocusScope.of(context).unfocus(),
       child: Material(
-        color: Colors.transparent,
-        child: Container(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(context).height * 0.9,
-          ),
-          decoration: BoxDecoration(
-            color: CupertinoDynamicColor.resolve(
-              CupertinoColors.systemBackground,
-              context,
-            ),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
+        color: sheetColor,
+        child: SafeArea(
+          top: false,
+          bottom: false,
           child: Column(
             children: [
-              SectionHeader(
+              _PluginSheetHeader(
                 title: '指定仓库安装',
-                trailing: IconButton(
-                  icon: Icon(
-                    Icons.close,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  onPressed: () => Get.back(),
-                ),
+                onClose: () {
+                  FocusScope.of(context).unfocus();
+                  Get.back();
+                },
               ),
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                  controller: widget.scrollController,
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    0,
+                    16,
+                    20 + bottomSafeArea + bottomInset,
+                  ),
                   children: [
                     _buildInputSection(context),
                     const SizedBox(height: 16),
@@ -342,7 +422,20 @@ class _SpecifiedPluginInstallSheetState
             textInputAction: TextInputAction.go,
             onSubmitted: (_) => _loadRepoPlugins(),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: _isLoading ? null : _fillDefaultPluginRepo,
+              icon: const Icon(Icons.auto_fix_high_outlined, size: 16),
+              label: const Text('APPLitePush'),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
@@ -401,7 +494,8 @@ class _SpecifiedPluginInstallSheetState
     if (_resolvedRepoUrl == null) {
       return Section(
         child: Text(
-          '支持公开 GitHub 仓库，仅读取仓库根目录的 package.json 和 package.v2.json。',
+          '支持公开 GitHub 插件市场仓库，仅读取根目录 package.json / package.v2.json。'
+          '请勿填写 MoviePilotLite 等 App 源码仓库。',
           style: TextStyle(
             color: Theme.of(
               context,
@@ -598,6 +692,15 @@ class _SpecifiedPluginInstallSheetState
     });
   }
 
+  void _fillDefaultPluginRepo() {
+    _repoController
+      ..text = _defaultPluginRepoUrl
+      ..selection = TextSelection.collapsed(
+        offset: _defaultPluginRepoUrl.length,
+      );
+    _repoFocusNode.requestFocus();
+  }
+
   Future<void> _loadRepoPlugins() async {
     FocusScope.of(context).unfocus();
     final repoUrl = _repoController.text.trim();
@@ -629,7 +732,7 @@ class _SpecifiedPluginInstallSheetState
       setState(() {
         _resolvedRepoUrl = null;
         _items = const [];
-        _errorText = e.toString().replaceFirst('Exception: ', '');
+        _errorText = _friendlyRepoError(e);
       });
     } finally {
       if (mounted) {
@@ -700,7 +803,11 @@ class _SpecifiedPluginInstallSheetState
         : _mapPackageItems(resolvedRepo, mergedPackageData);
 
     if (items.isEmpty) {
-      throw Exception('仓库根目录未找到可用的 package.json 或 package.v2.json 插件清单');
+      throw Exception(
+        '仓库根目录未找到可用的 package.json / package.v2.json。'
+        '请使用插件市场仓库（例如 MoviePilot-Plugins），'
+        '而不是 App 源码仓库（如 MoviePilotLite）。',
+      );
     }
 
     items.sort(
@@ -733,15 +840,32 @@ class _SpecifiedPluginInstallSheetState
       return null;
     }
 
-    final decoded = utf8.decode(base64Decode(content.replaceAll('\n', '')));
-    final json = jsonDecode(decoded);
-    if (json is Map<String, dynamic>) {
-      return json;
+    try {
+      final normalized = content.replaceAll(RegExp(r'\s'), '');
+      final decoded = utf8.decode(base64Decode(normalized));
+      final json = jsonDecode(decoded);
+      if (json is Map<String, dynamic>) {
+        return json;
+      }
+      if (json is Map) {
+        return Map<String, dynamic>.from(json);
+      }
+      return null;
+    } on FormatException {
+      throw Exception('插件清单解析失败，请确认 package.json / package.v2.json 内容有效');
     }
-    if (json is Map) {
-      return Map<String, dynamic>.from(json);
+  }
+
+  String _friendlyRepoError(Object error) {
+    if (error is FormatException) {
+      return '插件清单解析失败，请确认仓库根目录的 package.json / package.v2.json 格式正确';
     }
-    return null;
+    final text = error.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
+    if (text.contains('FormatException') ||
+        text.contains('Unexpected character')) {
+      return '插件清单解析失败，请确认仓库根目录的 package.json / package.v2.json 格式正确';
+    }
+    return text;
   }
 
   List<PluginItem> _mapPackageItems(

@@ -41,9 +41,7 @@ class PluginPage extends GetView<PluginController> {
     }
     final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: theme.scaffoldBackgroundColor,
         surfaceTintColor: Colors.transparent,
         title: Text(
           '已安装插件',
@@ -54,32 +52,18 @@ class PluginPage extends GetView<PluginController> {
         ),
         centerTitle: false,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add_box_outlined),
+          _buildAppBarActionButton(
+            context,
+            icon: Icons.add_rounded,
             tooltip: '指定仓库安装',
             onPressed: () => _openRepoInstallSheet(context),
           ),
-          IconButton(
-            icon: const Icon(Icons.store_outlined),
+          _buildAppBarActionButton(
+            context,
+            icon: Icons.storefront_rounded,
             tooltip: '插件列表',
             onPressed: () => Get.toNamed('/plugin-list'),
           ),
-          Obx(() {
-            if (!controller.isLoading.value) return const SizedBox.shrink();
-            return Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Center(
-                child: SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                ),
-              ),
-            );
-          }),
         ],
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
@@ -111,6 +95,34 @@ class PluginPage extends GetView<PluginController> {
     );
   }
 
+  Widget _buildAppBarActionButton(
+    BuildContext context, {
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onPressed,
+  }) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Tooltip(
+        message: tooltip,
+        child: Material(
+          color: cs.surfaceContainerHighest.withValues(alpha: 0.62),
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: onPressed,
+            child: SizedBox(
+              width: 38,
+              height: 38,
+              child: Icon(icon, size: 20, color: cs.onSurface),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildOverviewHeader(BuildContext context) {
     return Obx(() {
       final items = controller.items;
@@ -129,8 +141,24 @@ class PluginPage extends GetView<PluginController> {
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
+      isDismissible: true,
+      showDragHandle: false,
       backgroundColor: Colors.transparent,
-      builder: (_) => const SpecifiedPluginInstallSheet(),
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.92,
+        minChildSize: 0.36,
+        maxChildSize: 1,
+        expand: false,
+        builder: (context, scrollController) {
+          return ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            child: SpecifiedPluginInstallSheet(
+              scrollController: scrollController,
+            ),
+          );
+        },
+      ),
     );
   }
 

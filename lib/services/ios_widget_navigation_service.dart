@@ -5,8 +5,11 @@ import 'package:moviepilot_mobile/utils/deep_link_route.dart';
 
 class IosWidgetNavigationService extends GetxService {
   static const _channel = MethodChannel('org.moviepilot/widget_navigation');
+  static const _duplicateWindow = Duration(milliseconds: 800);
 
   DeepLinkTarget? _pendingRoute;
+  String? _lastNavigationKey;
+  DateTime? _lastNavigationAt;
 
   Future<IosWidgetNavigationService> init() async {
     if (!_isIos) return this;
@@ -56,6 +59,17 @@ class IosWidgetNavigationService extends GetxService {
     if (kIsWeb) return;
     final target = _pendingRoute;
     if (target == null || target.route.isEmpty) return;
+    final navigationKey = _navigationKeyFor(target);
+    final now = DateTime.now();
+    final lastAt = _lastNavigationAt;
+    if (_lastNavigationKey == navigationKey &&
+        lastAt != null &&
+        now.difference(lastAt) < _duplicateWindow) {
+      _pendingRoute = null;
+      return;
+    }
+    _lastNavigationKey = navigationKey;
+    _lastNavigationAt = now;
     _pendingRoute = null;
     Future.microtask(() {
       if (Get.currentRoute == target.route) return;
@@ -66,6 +80,12 @@ class IosWidgetNavigationService extends GetxService {
     });
   }
 
-  bool get _isIos =>
-      !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+  bool get _isIos => !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+
+  String _navigationKeyFor(DeepLinkTarget target) {
+    if (target.parameters.isEmpty) return target.route;
+    final keys = target.parameters.keys.toList()..sort();
+    final params = keys.map((k) => '$k=${target.parameters[k]}').join('&');
+    return '${target.route}?$params';
+  }
 }

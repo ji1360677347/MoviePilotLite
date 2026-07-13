@@ -14,6 +14,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// 推荐分类列表控制器，支持分页加载
 class RecommendCategoryListController extends GetxController {
   static const _viewModePrefKey = 'recommend_category_list_view_mode';
+  static const _routeImageCacheMaximumSize = 40;
+  static const _routeImageCacheMaximumSizeBytes = 16 * 1024 * 1024;
 
   RecommendCategoryListController({
     required String key,
@@ -34,6 +36,8 @@ class RecommendCategoryListController extends GetxController {
 
   static const String _basePath = '/api/v1/recommend/';
   bool _cookieRefreshTriggered = false;
+  int? _previousImageCacheMaximumSize;
+  int? _previousImageCacheMaximumSizeBytes;
 
   String get categoryTitle => _title;
 
@@ -49,7 +53,14 @@ class RecommendCategoryListController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    _tightenImageCacheForLongList();
     unawaited(_restoreViewModePref());
+  }
+
+  @override
+  void onClose() {
+    _restoreImageCacheLimits();
+    super.onClose();
   }
 
   SearchResultViewMode resolvedViewMode({required bool isNarrowScreen}) {
@@ -141,8 +152,10 @@ class RecommendCategoryListController extends GetxController {
 
       if (append) {
         items.addAll(parsed);
+        _trimInactiveDecodedImages();
       } else {
         items.assignAll(parsed);
+        _trimInactiveDecodedImages();
       }
       currentPage.value = page;
       _updatePagination(payload, page, parsed.length, append);
@@ -247,5 +260,35 @@ class RecommendCategoryListController extends GetxController {
     if (matched.isNotEmpty) {
       preferredViewMode.value = matched.first;
     }
+  }
+
+  void _tightenImageCacheForLongList() {
+    final cache = PaintingBinding.instance.imageCache;
+    _previousImageCacheMaximumSize = cache.maximumSize;
+    _previousImageCacheMaximumSizeBytes = cache.maximumSizeBytes;
+    if (cache.maximumSize > _routeImageCacheMaximumSize) {
+      cache.maximumSize = _routeImageCacheMaximumSize;
+    }
+    if (cache.maximumSizeBytes > _routeImageCacheMaximumSizeBytes) {
+      cache.maximumSizeBytes = _routeImageCacheMaximumSizeBytes;
+    }
+  }
+
+  void _restoreImageCacheLimits() {
+    final cache = PaintingBinding.instance.imageCache;
+    cache.clearLiveImages();
+    cache.clear();
+    final previousSize = _previousImageCacheMaximumSize;
+    final previousBytes = _previousImageCacheMaximumSizeBytes;
+    if (previousSize != null) {
+      cache.maximumSize = previousSize;
+    }
+    if (previousBytes != null) {
+      cache.maximumSizeBytes = previousBytes;
+    }
+  }
+
+  void _trimInactiveDecodedImages() {
+    PaintingBinding.instance.imageCache.clear();
   }
 }

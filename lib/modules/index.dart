@@ -287,12 +287,17 @@ class _IndexState extends State<Index> {
       builder: (context, snapshot) {
         final tabBody = _buildTabBody(coercedIndex);
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Scaffold(extendBody: true, body: tabBody);
+          return Scaffold(
+            backgroundColor: Colors.transparent,
+            extendBody: true,
+            body: tabBody,
+          );
         }
 
         final useNativeGlass = snapshot.data == true;
 
         return Scaffold(
+          backgroundColor: Colors.transparent,
           extendBody: true,
           body: useNativeGlass ? tabBody : _buildFloatingBottomBar(tabBody),
           bottomNavigationBar: useNativeGlass

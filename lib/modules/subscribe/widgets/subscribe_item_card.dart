@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:moviepilot_mobile/modules/subscribe/controllers/subscribe_controller.dart';
@@ -62,6 +64,7 @@ class SubscribeItemCard extends StatelessWidget {
               fit: StackFit.expand,
               children: [
                 _buildBackdrop(),
+                Positioned.fill(child: _buildBackdropMask()),
                 Positioned.fill(child: _buildGradientOverlay()),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
@@ -333,6 +336,45 @@ class SubscribeItemCard extends StatelessWidget {
     );
   }
 
+  Widget _buildBackdropMask() {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ShaderMask(
+          blendMode: BlendMode.dstIn,
+          shaderCallback: (rect) {
+            return const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Colors.transparent, Colors.black, Colors.black],
+              stops: [0.30, 0.74, 1],
+            ).createShader(rect);
+          },
+          child: ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 2.4, sigmaY: 2.4),
+              child: const SizedBox.expand(),
+            ),
+          ),
+        ),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.white.withValues(alpha: 0.025),
+                Colors.black.withValues(alpha: 0.12),
+                Colors.black.withValues(alpha: 0.42),
+              ],
+              stops: const [0, 0.56, 1],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildGradientOverlay() {
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -550,7 +592,11 @@ class SubscribeItemCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(999),
           border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
         ),
-        child: Icon(Icons.more_horiz, size: compact ? 18 : 16, color: Colors.white),
+        child: Icon(
+          Icons.more_horiz,
+          size: compact ? 18 : 16,
+          color: Colors.white,
+        ),
       ),
     );
   }

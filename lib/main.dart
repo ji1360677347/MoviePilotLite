@@ -29,6 +29,7 @@ import 'package:moviepilot_mobile/services/jpush_service.dart';
 import 'package:moviepilot_mobile/l10n/app_localizations.dart';
 import 'package:moviepilot_mobile/services/app_service.dart';
 import 'package:moviepilot_mobile/services/hive_service.dart';
+import 'package:moviepilot_mobile/utils/image_cache_manager.dart';
 import 'package:moviepilot_mobile/utils/image_util.dart';
 import 'package:moviepilot_mobile/utils/web_view_screen.dart';
 import 'package:moviepilot_mobile/widgets/agent_floating_entry.dart';
@@ -43,6 +44,7 @@ import 'modules/dashboard/pages/dashboard_page.dart';
 import 'modules/dashboard/pages/background_task_list_page.dart';
 import 'modules/login/pages/login_page.dart';
 import 'theme/app_theme.dart';
+import 'theme/app_scaffold_background.dart';
 import 'modules/profile/controllers/profile_controller.dart';
 import 'modules/profile/pages/profile_page.dart';
 import 'modules/network_test/controllers/network_test_controller.dart';
@@ -91,9 +93,11 @@ import 'modules/plugin/services/plugin_palette_cache.dart';
 import 'modules/dynamic_form/adapters/plugin_form_adapter_registry.dart';
 import 'modules/dynamic_form/adapters/p115_strm_helper_form_controller.dart';
 import 'modules/dynamic_form/adapters/proxmox_ve_backup_form_controller.dart';
+import 'modules/dynamic_form/adapters/subtitle_manual_upload_form_controller.dart';
 import 'modules/dynamic_form/adapters/trash_clean_form_controller.dart';
 import 'modules/dynamic_form/widgets/VueStyle/applitepush/app_lite_push_widgets.dart';
 import 'modules/dynamic_form/widgets/VueStyle/proxmox_ve/proxmox_ve_backup_widgets.dart';
+import 'modules/dynamic_form/widgets/VueStyle/subtitle_manual_upload/subtitle_manual_upload_widgets.dart';
 import 'modules/dynamic_form/controllers/dynamic_form_controller.dart';
 import 'modules/dynamic_form/pages/dynamic_form_page.dart';
 import 'modules/site/controllers/site_controller.dart';
@@ -142,11 +146,15 @@ List<GetMiddleware> permissionGuards([String? permissionRoute]) => [
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  AppImageCacheManager.configureGlobalDecodedCache();
   try {
     Get.put(AppLog());
     await Get.putAsync(() => HiveService().init(), permanent: true);
-    Get.put(IosWidgetNavigationService(), permanent: true);
-    Get.put(JPushService(), permanent: true);
+    await Get.putAsync(
+      () => IosWidgetNavigationService().init(),
+      permanent: true,
+    );
+    await Get.putAsync(() => JPushService().init(), permanent: true);
     Get.put(IosSharedSessionService(), permanent: true);
     Get.put(AppService());
     Get.put(ApiClient());
@@ -168,11 +176,17 @@ Future<void> main() async {
       ({required formMode}) =>
           ProxmoxVEBackupFormController(formMode: formMode),
     );
+    PluginFormAdapterRegistry.register(
+      'SubtitleManualUpload',
+      ({required formMode}) =>
+          SubtitleManualUploadFormController(formMode: formMode),
+    );
   } catch (e) {
     debugPrint('Error initializing app: $e');
   }
   registerProxmoxVeBackupRenderer();
   registerAppLitePushRenderer();
+  registerSubtitleManualUploadRenderer();
   runApp(const MyApp());
 }
 
@@ -893,11 +907,16 @@ class MyApp extends StatelessWidget {
         ],
         // 配置错误处理
         builder: (context, child) {
-          return TalkerWrapper(
-            talker: talker.talker,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [child!, const AgentFloatingEntry()],
+          return AppScaffoldBackground(
+            child: TalkerWrapper(
+              talker: talker.talker,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  child ?? const SizedBox.shrink(),
+                  const AgentFloatingEntry(),
+                ],
+              ),
             ),
           );
         },

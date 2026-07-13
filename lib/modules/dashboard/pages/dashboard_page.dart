@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -30,6 +29,7 @@ import 'package:moviepilot_mobile/services/app_service.dart';
 import 'package:moviepilot_mobile/utils/open_url.dart';
 import 'package:moviepilot_mobile/utils/size_formatter.dart';
 import 'package:moviepilot_mobile/widgets/constrained_page_content.dart';
+import 'package:moviepilot_mobile/widgets/dashboard_scaffold.dart';
 
 import '../controllers/dashboard_controller.dart';
 
@@ -40,139 +40,30 @@ class DashboardPage extends GetView<DashboardController> {
 
   @override
   Widget build(BuildContext context) {
-    final appService = Get.find<AppService>();
-    return Obx(() {
-      final hasDashboardBackground =
-          appService.backgroundImageEnabled.value &&
-          appService.backgroundImageBytes.value != null;
-      final topInset = MediaQuery.paddingOf(context).top + kToolbarHeight;
+    final topInset = MediaQuery.paddingOf(context).top + kToolbarHeight;
 
-      return Scaffold(
-        extendBodyBehindAppBar: true,
-        appBar: _buildNavigationBar(context),
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            Positioned.fill(
-              child: _buildPageBackground(
-                appService,
-                includeImage: hasDashboardBackground,
+    return DashboardScaffold(
+      appBar: _buildNavigationBar(context),
+      body: Padding(
+        padding: EdgeInsets.only(top: topInset),
+        child: CustomScrollView(
+          controller: scrollController,
+          slivers: [
+            CupertinoSliverRefreshControl(
+              onRefresh: () async {
+                await controller.refreshData();
+              },
+            ),
+            SliverToBoxAdapter(
+              child: ConstrainedPageContent(
+                padding: const EdgeInsets.only(top: 20),
+                child: _buildStitchLayout(context),
               ),
             ),
-            Padding(
-              padding: EdgeInsets.only(top: topInset),
-              child: CustomScrollView(
-                controller: scrollController,
-                slivers: [
-                  CupertinoSliverRefreshControl(
-                    onRefresh: () async {
-                      await controller.refreshData();
-                    },
-                  ),
-                  SliverToBoxAdapter(
-                    child: ConstrainedPageContent(
-                      padding: const EdgeInsets.only(top: 20),
-                      child: _buildStitchLayout(context),
-                    ),
-                  ),
-                  SliverToBoxAdapter(
-                    child: SizedBox(height: _bottomSpacer(context)),
-                  ),
-                ],
-              ),
-            ),
+            SliverToBoxAdapter(child: SizedBox(height: _bottomSpacer(context))),
           ],
         ),
-      );
-    });
-  }
-
-  Widget _buildBackgroundImage(AppService appService) {
-    return IgnorePointer(
-      child: Obx(() {
-        final bytes = appService.backgroundImageBytes.value;
-        if (bytes == null) return const SizedBox.shrink();
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            Opacity(
-              opacity: appService.backgroundImageOpacity.value,
-              child: Image.memory(
-                bytes,
-                fit: BoxFit.cover,
-                alignment: Alignment.center,
-              ),
-            ),
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      appService.backgroundImageGradientTop.value,
-                      appService.backgroundImageGradientBottom.value,
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-      }),
-    );
-  }
-
-  Widget _buildPageBackground(
-    AppService appService, {
-    required bool includeImage,
-  }) {
-    final palette = DashboardPalette.of(Get.context!);
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Container(color: palette.pageBackground),
-        if (includeImage) _buildBackgroundImage(appService),
-        Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  palette.overlay.withValues(
-                    alpha: palette.isDark ? 0.18 : 0.08,
-                  ),
-                  palette.pageBackgroundAlt,
-                  palette.pageBackground,
-                ],
-                stops: const [0, 0.68, 1],
-              ),
-            ),
-          ),
-        ),
-        Positioned(
-          top: -120,
-          right: -80,
-          child: IgnorePointer(
-            child: Container(
-              width: 280,
-              height: 280,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    palette.primary.withValues(
-                      alpha: palette.isDark ? 0.18 : 0.10,
-                    ),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
@@ -370,7 +261,6 @@ class DashboardPage extends GetView<DashboardController> {
             _buildMediaBrowseSection(context, visible),
           if (visible.contains('最近入库'))
             _buildCardSection(
-              accentColor: DashboardPalette.of(context).warningAccent,
               child: const RecentAddedWidget(),
               onTapMore: () => Get.toNamed('/media-organize'),
             ),
@@ -384,16 +274,11 @@ class DashboardPage extends GetView<DashboardController> {
           if (visible.contains('网络流量') && !visible.contains('实时速率'))
             _buildCardSection(
               title: '网络流量',
-              accentColor: DashboardPalette.of(context).coolAccent,
               child: const NetworkTrafficWidget(),
               showBorder: false,
             ),
           if (visible.contains('媒体统计') && !visible.contains('存储空间'))
-            _buildCardSection(
-              title: '媒体统计',
-              accentColor: DashboardPalette.of(context).warningAccent,
-              child: const MediaStatsWidget(),
-            ),
+            _buildCardSection(title: '媒体统计', child: const MediaStatsWidget()),
         ],
       );
     });
@@ -569,7 +454,12 @@ class DashboardPage extends GetView<DashboardController> {
     final palette = DashboardPalette.of(context);
     final cards = <Widget>[];
     if (visible.contains('实时速率')) {
-      cards.add(const RealTimeSpeedWidget(compact: true));
+      cards.add(
+        InkWell(
+          child: const RealTimeSpeedWidget(compact: true),
+          onTap: () => Get.toNamed('/downloader-config'),
+        ),
+      );
     }
     if (visible.contains('存储空间')) {
       cards.add(
@@ -630,102 +520,72 @@ class DashboardPage extends GetView<DashboardController> {
 
       return Padding(
         padding: const EdgeInsets.only(bottom: 32),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: palette.tileBorder),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    palette.surface,
-                    Color.alphaBlend(
-                      palette.primary.withValues(
-                        alpha: palette.isDark ? 0.06 : 0.05,
-                      ),
-                      palette.pageBackgroundAlt,
-                    ),
-                  ],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: palette.shadow,
-                    blurRadius: 24,
-                    offset: const Offset(0, 12),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        child: DashboardMetricCard(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  Row(
-                    children: [
-                      Text(
-                        '媒体库容量',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 2,
-                          color: palette.mutedText,
-                        ),
-                      ),
-                      const Spacer(),
-                      Icon(
-                        CupertinoIcons.chart_bar_square_fill,
-                        color: palette.primary,
-                        size: 20,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
                   Text(
-                    totalStorage > 0
-                        ? SizeFormatter.formatSize(totalStorage, 1)
-                        : '0 B',
+                    '媒体库容量',
                     style: TextStyle(
-                      fontSize: 40,
-                      fontWeight: FontWeight.w800,
-                      color: palette.titleText,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 2,
+                      color: palette.mutedText,
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  Container(height: 1, color: palette.divider),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: DashboardMiniStat(
-                          label: '电影',
-                          value: '$movieCount',
-                          valueColor: palette.titleText,
-                        ),
-                      ),
-                      Expanded(
-                        child: DashboardMiniStat(
-                          label: '剧集',
-                          value: '$tvCount',
-                          valueColor: palette.titleText,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                        ),
-                      ),
-                      Expanded(
-                        child: DashboardMiniStat(
-                          label: '集数',
-                          value: '$episodeCount',
-                          valueColor: palette.titleText,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                        ),
-                      ),
-                    ],
+                  const Spacer(),
+                  Icon(
+                    CupertinoIcons.chart_bar_square_fill,
+                    color: palette.primary,
+                    size: 20,
                   ),
                 ],
               ),
-            ),
+              const SizedBox(height: 14),
+              Text(
+                totalStorage > 0
+                    ? SizeFormatter.formatSize(totalStorage, 1)
+                    : '0 B',
+                style: TextStyle(
+                  fontSize: 40,
+                  fontWeight: FontWeight.w800,
+                  color: palette.titleText,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(height: 1, color: palette.divider),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: DashboardMiniStat(
+                      label: '电影',
+                      value: '$movieCount',
+                      valueColor: palette.titleText,
+                    ),
+                  ),
+                  Expanded(
+                    child: DashboardMiniStat(
+                      label: '剧集',
+                      value: '$tvCount',
+                      valueColor: palette.titleText,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                    ),
+                  ),
+                  Expanded(
+                    child: DashboardMiniStat(
+                      label: '集数',
+                      value: '$episodeCount',
+                      valueColor: palette.titleText,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       );
@@ -770,12 +630,10 @@ class DashboardPage extends GetView<DashboardController> {
 
   Widget _buildCardSection({
     String title = '',
-    required Color accentColor,
     required Widget child,
     VoidCallback? onTapMore,
     bool showBorder = true,
   }) {
-    final palette = DashboardPalette.of(Get.context!);
     return GestureDetector(
       onTap: onTapMore,
       child: Padding(
@@ -788,39 +646,9 @@ class DashboardPage extends GetView<DashboardController> {
               const SizedBox(height: 16),
             ],
             if (showBorder)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(24),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: palette.tileBorder),
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          palette.surface,
-                          Color.alphaBlend(
-                            accentColor.withValues(
-                              alpha: palette.isDark ? 0.05 : 0.04,
-                            ),
-                            palette.pageBackgroundAlt,
-                          ),
-                        ],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: palette.shadow,
-                          blurRadius: 22,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    child: child,
-                  ),
-                ),
+              DashboardMetricCard(
+                padding: const EdgeInsets.all(16),
+                child: child,
               ),
             if (!showBorder) child,
           ],

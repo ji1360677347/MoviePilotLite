@@ -68,18 +68,31 @@ class CachedImage extends StatelessWidget {
   /// Cookie
   final String? cookie;
 
+  static const double _decodeOverscan = 1.35;
+  static const int _minAutoCacheExtent = 64;
+  static const int _maxAutoCacheExtent = 1600;
+
   @override
   Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) => _buildImage(context, constraints),
+    );
+  }
+
+  Widget _buildImage(BuildContext context, BoxConstraints constraints) {
     final manager = cacheManager ?? AppImageCacheManager.instance;
+    final autoCacheExtents = _autoCacheExtents(context, constraints);
+    final effectiveMemCacheWidth = memCacheWidth ?? autoCacheExtents.width;
+    final effectiveMemCacheHeight = memCacheHeight ?? autoCacheExtents.height;
     if (kIsWeb) {
-      return CachedNetworkImage(
+      final imageWidget = CachedNetworkImage(
         imageUrl: imageUrl,
         width: width,
         height: height,
         fit: fit,
         cacheManager: manager,
-        memCacheWidth: memCacheWidth,
-        memCacheHeight: memCacheHeight,
+        memCacheWidth: effectiveMemCacheWidth,
+        memCacheHeight: effectiveMemCacheHeight,
         fadeInDuration: fadeInDuration,
         fadeOutDuration: fadeOutDuration,
         errorListener: (_) {},
@@ -89,6 +102,7 @@ class CachedImage extends StatelessWidget {
         progressIndicatorBuilder: (context, url, progress) =>
             placeholder ?? _buildProgressIndicator(progress),
       );
+      return _clipIfNeeded(imageWidget);
     }
 
     final headers = buildImageRequestHeaders(imageUrl, cookie: cookie);
@@ -102,8 +116,8 @@ class CachedImage extends StatelessWidget {
       height: height,
       fit: fit,
       cacheManager: manager,
-      memCacheWidth: memCacheWidth,
-      memCacheHeight: memCacheHeight,
+      memCacheWidth: effectiveMemCacheWidth,
+      memCacheHeight: effectiveMemCacheHeight,
       fadeInDuration: fadeInDuration,
       fadeOutDuration: fadeOutDuration,
       errorListener: (_) => _evictBrokenImage(manager, cacheKey),
@@ -115,11 +129,45 @@ class CachedImage extends StatelessWidget {
       httpHeaders: headers.isNotEmpty ? headers : null,
     );
 
-    if (borderRadius != null) {
-      imageWidget = ClipRRect(borderRadius: borderRadius!, child: imageWidget);
-    }
+    return _clipIfNeeded(imageWidget);
+  }
 
-    return imageWidget;
+  ({int? width, int? height}) _autoCacheExtents(
+    BuildContext context,
+    BoxConstraints constraints,
+  ) {
+    final logicalWidth =
+        _finiteExtent(width) ?? _finiteExtent(constraints.maxWidth);
+    final logicalHeight =
+        _finiteExtent(height) ?? _finiteExtent(constraints.maxHeight);
+    final cacheWidth = _scaledCacheExtent(context, logicalWidth);
+    final cacheHeight = _scaledCacheExtent(context, logicalHeight);
+
+    if (cacheWidth == null) return (width: null, height: cacheHeight);
+    if (cacheHeight == null) return (width: cacheWidth, height: null);
+    if (fit == BoxFit.cover && cacheHeight > cacheWidth) {
+      return (width: null, height: cacheHeight);
+    }
+    return (width: cacheWidth, height: null);
+  }
+
+  int? _scaledCacheExtent(BuildContext context, double? logicalExtent) {
+    if (logicalExtent == null || logicalExtent <= 0) return null;
+    final raw =
+        logicalExtent *
+        MediaQuery.devicePixelRatioOf(context) *
+        _decodeOverscan;
+    return raw.ceil().clamp(_minAutoCacheExtent, _maxAutoCacheExtent);
+  }
+
+  double? _finiteExtent(double? value) {
+    if (value == null || !value.isFinite) return null;
+    return value;
+  }
+
+  Widget _clipIfNeeded(Widget child) {
+    if (borderRadius == null) return child;
+    return ClipRRect(borderRadius: borderRadius!, child: child);
   }
 
   void _evictBrokenImage(CacheManager manager, String cacheKey) {
@@ -135,63 +183,16 @@ class CachedImage extends StatelessWidget {
     } else if (progress is double) {
       progressValue = progress;
     }
-    return SizedBox(
+    return _ImageStateSurface(
       width: width,
       height: height,
-
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const CupertinoActivityIndicator(color: Colors.white),
-            if (progressValue != null) ...[
-              const SizedBox(height: 12),
-              SizedBox(
-                width: 60,
-                child: CupertinoActivityIndicator.partiallyRevealed(
-                  progress: progressValue,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '${(progressValue * 100).toInt()}%',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: CupertinoColors.systemGrey,
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
+      progress: progressValue,
     );
   }
 
   /// 构建默认错误占位符（iOS 风格）
   Widget _buildDefaultErrorWidget(Object error) {
-    return Container(
-      width: width,
-      height: height,
-      color: CupertinoColors.systemGrey6,
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              CupertinoIcons.photo,
-              size: 48,
-              color: CupertinoColors.systemGrey3,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '加载失败 ${error.toString()}',
-              style: TextStyle(fontSize: 12, color: CupertinoColors.systemGrey),
-            ),
-          ],
-        ),
-      ),
-    );
+    return _ImageStateSurface(width: width, height: height, isError: true);
   }
 
   String _buildCacheKey(String url) {
@@ -208,6 +209,269 @@ class CachedImage extends StatelessWidget {
       return inner;
     }
     return url;
+  }
+}
+
+class _ImageStateSurface extends StatefulWidget {
+  const _ImageStateSurface({
+    this.width,
+    this.height,
+    this.progress,
+    this.isError = false,
+  });
+
+  final double? width;
+  final double? height;
+  final double? progress;
+  final bool isError;
+
+  @override
+  State<_ImageStateSurface> createState() => _ImageStateSurfaceState();
+}
+
+class _ImageStateSurfaceState extends State<_ImageStateSurface>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _sheenController;
+
+  @override
+  void initState() {
+    super.initState();
+    _sheenController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1450),
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncAnimation();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ImageStateSurface oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncAnimation();
+  }
+
+  void _syncAnimation() {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    if (widget.isError || reduceMotion) {
+      _sheenController.stop();
+      return;
+    }
+    if (!_sheenController.isAnimating) {
+      _sheenController.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _sheenController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final surface = isDark ? const Color(0xFF1C1C22) : const Color(0xFFF2F2F7);
+    final surfaceHigh = isDark
+        ? Colors.white.withValues(alpha: 0.070)
+        : Colors.white.withValues(alpha: 0.72);
+    final border = isDark
+        ? Colors.white.withValues(alpha: 0.075)
+        : Colors.black.withValues(alpha: 0.050);
+    final iconColor = widget.isError
+        ? CupertinoColors.systemGrey.resolveFrom(context)
+        : theme.colorScheme.primary.withValues(alpha: isDark ? 0.58 : 0.46);
+
+    return SizedBox(
+      width: widget.width,
+      height: widget.height,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: surface,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [surfaceHigh, surface, surface.withValues(alpha: 0.92)],
+          ),
+          border: Border.all(color: border, width: 0.7),
+        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final maxSide = _maxFiniteSide(constraints);
+            final compact = maxSide < 88;
+            final iconSize = compact ? 20.0 : 30.0;
+            final showText = !compact && constraints.maxHeight >= 92;
+            final showProgress =
+                !widget.isError && widget.progress != null && showText;
+
+            return AnimatedBuilder(
+              animation: _sheenController,
+              builder: (context, child) {
+                return CustomPaint(
+                  foregroundPainter: widget.isError
+                      ? null
+                      : _LoadingSheenPainter(
+                          progress: _sheenController.value,
+                          isDark: isDark,
+                        ),
+                  child: child,
+                );
+              },
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: compact ? 36 : 48,
+                      height: compact ? 36 : 48,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withValues(
+                          alpha: isDark ? 0.060 : 0.72,
+                        ),
+                        border: Border.all(color: border, width: 0.7),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.white.withValues(
+                              alpha: isDark ? 0.018 : 0.34,
+                            ),
+                            blurRadius: 14,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Icon(
+                          widget.isError
+                              ? CupertinoIcons.photo
+                              : CupertinoIcons.photo_on_rectangle,
+                          size: iconSize,
+                          color: iconColor,
+                        ),
+                      ),
+                    ),
+                    if (showText) ...[
+                      const SizedBox(height: 9),
+                      Text(
+                        widget.isError ? '图片加载失败' : '加载图片中',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant.withValues(
+                            alpha: isDark ? 0.72 : 0.66,
+                          ),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                    if (showProgress) ...[
+                      const SizedBox(height: 8),
+                      _ProgressPill(progress: widget.progress!.clamp(0.0, 1.0)),
+                    ],
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  double _maxFiniteSide(BoxConstraints constraints) {
+    final width = constraints.maxWidth.isFinite ? constraints.maxWidth : 120.0;
+    final height = constraints.maxHeight.isFinite
+        ? constraints.maxHeight
+        : 120.0;
+    return width < height ? width : height;
+  }
+}
+
+class _LoadingSheenPainter extends CustomPainter {
+  const _LoadingSheenPainter({required this.progress, required this.isDark});
+
+  final double progress;
+  final bool isDark;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) return;
+
+    final bandWidth = size.width * 0.34;
+    final left = -bandWidth + (size.width + bandWidth * 2) * progress;
+    final rect = Rect.fromLTWH(left, 0, bandWidth, size.height);
+    final paint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.centerLeft,
+        end: Alignment.centerRight,
+        colors: [
+          Colors.transparent,
+          Colors.white.withValues(alpha: isDark ? 0.060 : 0.34),
+          Colors.white.withValues(alpha: isDark ? 0.12 : 0.58),
+          Colors.white.withValues(alpha: isDark ? 0.060 : 0.34),
+          Colors.transparent,
+        ],
+        stops: const [0, 0.28, 0.50, 0.72, 1],
+      ).createShader(rect)
+      ..blendMode = isDark ? BlendMode.plus : BlendMode.softLight;
+
+    canvas.save();
+    canvas.translate(left + bandWidth / 2, size.height / 2);
+    canvas.rotate(-0.28);
+    canvas.translate(-left - bandWidth / 2, -size.height / 2);
+    canvas.drawRect(rect.inflate(size.height * 0.28), paint);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _LoadingSheenPainter oldDelegate) {
+    return oldDelegate.progress != progress || oldDelegate.isDark != isDark;
+  }
+}
+
+class _ProgressPill extends StatelessWidget {
+  const _ProgressPill({required this.progress});
+
+  final double progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SizedBox(
+      width: 78,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 3,
+              backgroundColor: theme.colorScheme.onSurface.withValues(
+                alpha: 0.08,
+              ),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                theme.colorScheme.primary.withValues(alpha: 0.72),
+              ),
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            '${(progress * 100).round()}%',
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.62),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -249,26 +513,136 @@ class CachedAvatar extends StatelessWidget {
       height: radius * 2,
       fit: BoxFit.cover,
       borderRadius: BorderRadius.circular(radius),
-      placeholder: placeholder ?? _buildDefaultPlaceholder(),
-      errorWidget: errorWidget ?? _buildDefaultErrorPlaceholder(),
+      placeholder: placeholder ?? _buildDefaultPlaceholder(context),
+      errorWidget: errorWidget ?? _buildDefaultErrorPlaceholder(context),
       cacheManager: cacheManager,
       cookie: cookie,
     );
   }
 
-  Widget _buildDefaultPlaceholder() {
-    return CircleAvatar(
-      radius: radius,
-      backgroundColor: CupertinoColors.systemGrey5,
-      child: Icon(CupertinoIcons.person, color: CupertinoColors.systemGrey),
+  Widget _buildDefaultPlaceholder(BuildContext context) {
+    return _buildAvatarState(context, isError: false);
+  }
+
+  Widget _buildDefaultErrorPlaceholder(BuildContext context) {
+    return _buildAvatarState(context, isError: true);
+  }
+
+  Widget _buildAvatarState(BuildContext context, {required bool isError}) {
+    return _AvatarStateSurface(radius: radius, isError: isError);
+  }
+}
+
+class _AvatarStateSurface extends StatefulWidget {
+  const _AvatarStateSurface({required this.radius, required this.isError});
+
+  final double radius;
+  final bool isError;
+
+  @override
+  State<_AvatarStateSurface> createState() => _AvatarStateSurfaceState();
+}
+
+class _AvatarStateSurfaceState extends State<_AvatarStateSurface>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _sheenController;
+
+  @override
+  void initState() {
+    super.initState();
+    _sheenController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1450),
     );
   }
 
-  Widget _buildDefaultErrorPlaceholder() {
-    return CircleAvatar(
-      radius: radius,
-      backgroundColor: CupertinoColors.systemGrey5,
-      child: Icon(CupertinoIcons.person, color: CupertinoColors.systemGrey),
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncAnimation();
+  }
+
+  @override
+  void didUpdateWidget(covariant _AvatarStateSurface oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncAnimation();
+  }
+
+  void _syncAnimation() {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    if (widget.isError || reduceMotion) {
+      _sheenController.stop();
+      return;
+    }
+    if (!_sheenController.isAnimating) {
+      _sheenController.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _sheenController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final foreground = widget.isError
+        ? CupertinoColors.systemGrey.resolveFrom(context)
+        : theme.colorScheme.primary.withValues(alpha: isDark ? 0.58 : 0.46);
+
+    return ClipOval(
+      child: AnimatedBuilder(
+        animation: _sheenController,
+        builder: (context, child) {
+          return CustomPaint(
+            foregroundPainter: widget.isError
+                ? null
+                : _LoadingSheenPainter(
+                    progress: _sheenController.value,
+                    isDark: isDark,
+                  ),
+            child: child,
+          );
+        },
+        child: Container(
+          width: widget.radius * 2,
+          height: widget.radius * 2,
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1C1C22) : const Color(0xFFF2F2F7),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: isDark
+                  ? [
+                      Colors.white.withValues(alpha: 0.075),
+                      const Color(0xFF1C1C22),
+                    ]
+                  : [
+                      Colors.white.withValues(alpha: 0.78),
+                      const Color(0xFFF2F2F7),
+                    ],
+            ),
+            border: Border.all(
+              color: (isDark ? Colors.white : Colors.black).withValues(
+                alpha: isDark ? 0.08 : 0.05,
+              ),
+              width: 0.7,
+            ),
+          ),
+          child: Center(
+            child: Icon(
+              widget.isError
+                  ? CupertinoIcons.person_crop_circle
+                  : CupertinoIcons.person_fill,
+              color: foreground,
+              size: (widget.radius * 0.64).clamp(18.0, 30.0),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

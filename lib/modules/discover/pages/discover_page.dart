@@ -25,10 +25,6 @@ class DiscoverPage extends GetView<DiscoverController> {
   static const double _gridPadding = 0;
   static const double _cardAspectRatio = 0.72;
   static const double _wideBreakpoint = ConstrainedPageContent.wideBreakpoint;
-  static const Color _cinemaBlack = Color(0xFF050506);
-  static const Color _surfaceSoft = Color(0xFF1D1D21);
-  static const Color _netflixRed = Color(0xFFE50914);
-  static const Color _gold = Color(0xFFFFC46B);
 
   @override
   Widget build(BuildContext context) {
@@ -37,13 +33,11 @@ class DiscoverPage extends GetView<DiscoverController> {
     });
     final appService = Get.find<AppService>();
     return Obx(() {
-      final theme = Theme.of(context);
-      final isDark = theme.brightness == Brightness.dark;
       final hasPageBackground =
           appService.backgroundImageEnabled.value &&
           appService.backgroundImageBytes.value != null;
       return Scaffold(
-        backgroundColor: isDark ? _cinemaBlack : const Color(0xFFF4F7FB),
+        backgroundColor: Colors.transparent,
         extendBodyBehindAppBar: true,
         appBar: _buildNavigationBar(context),
         body: Stack(
@@ -52,7 +46,7 @@ class DiscoverPage extends GetView<DiscoverController> {
             if (hasPageBackground)
               Positioned.fill(child: _buildBackgroundImage(context, appService))
             else
-              const Positioned.fill(child: _CinematicAtmosphere()),
+              const Positioned.fill(child: _DiscoverAtmosphere()),
             CustomScrollView(
               controller: scrollController,
               physics: const BouncingScrollPhysics(
@@ -167,6 +161,7 @@ class DiscoverPage extends GetView<DiscoverController> {
 
   Widget _buildBackgroundImage(BuildContext context, AppService appService) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colorScheme = Theme.of(context).colorScheme;
     final bytes = appService.backgroundImageBytes.value;
     if (bytes == null) return const SizedBox.shrink();
     return IgnorePointer(
@@ -195,9 +190,9 @@ class DiscoverPage extends GetView<DiscoverController> {
           ),
           DecoratedBox(
             decoration: BoxDecoration(
-              color: isDark
-                  ? const Color(0xBB050501)
-                  : Colors.white.withValues(alpha: 0.54),
+              color: colorScheme.surface.withValues(
+                alpha: isDark ? 0.62 : 0.34,
+              ),
             ),
           ),
         ],
@@ -210,9 +205,7 @@ class DiscoverPage extends GetView<DiscoverController> {
     final isLoading = controller.isLoading();
     final hero = items.isNotEmpty ? items.first : null;
     final imageUrl = _imageUrl(hero, preferBackdrop: true);
-    final title = hero == null
-        ? 'Cinematic Discovery'
-        : _bestTitle(hero) ?? 'Untitled';
+    final title = hero == null ? '探索发现' : _bestTitle(hero) ?? 'Untitled';
     final source = controller.selectedSource.value;
     final subtitle = isLoading && hero == null
         ? '正在校准片库雷达'
@@ -221,6 +214,9 @@ class DiscoverPage extends GetView<DiscoverController> {
         : '从 ${source.label} 中发现下一部值得停留的作品';
     final meta = _compactHeroMeta(hero, source);
     final heroHeight = isWide ? 340.0 : 310.0;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -230,15 +226,23 @@ class DiscoverPage extends GetView<DiscoverController> {
           height: heroHeight,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(30),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+            border: Border.all(
+              color: colorScheme.outlineVariant.withValues(
+                alpha: isDark ? 0.36 : 0.56,
+              ),
+            ),
             boxShadow: [
               BoxShadow(
-                color: _netflixRed.withValues(alpha: 0.12),
-                blurRadius: 32,
+                color: colorScheme.primary.withValues(
+                  alpha: isDark ? 0.20 : 0.12,
+                ),
+                blurRadius: 34,
                 offset: const Offset(0, 18),
               ),
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.45),
+                color: colorScheme.shadow.withValues(
+                  alpha: isDark ? 0.42 : 0.16,
+                ),
                 blurRadius: 28,
                 offset: const Offset(0, 18),
               ),
@@ -295,7 +299,10 @@ class DiscoverPage extends GetView<DiscoverController> {
             gradient: RadialGradient(
               center: Alignment(-0.95, -0.85),
               radius: 1.05,
-              colors: [_netflixRed.withValues(alpha: 0.16), Colors.transparent],
+              colors: [
+                Theme.of(context).colorScheme.primary.withValues(alpha: 0.18),
+                Colors.transparent,
+              ],
             ),
           ),
         ),
@@ -409,7 +416,7 @@ class DiscoverPage extends GetView<DiscoverController> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _buildFilterLeadingIcon(),
+                  _buildFilterLeadingIcon(context),
                   const SizedBox(width: 12),
                   Expanded(
                     child: isWide
@@ -454,13 +461,19 @@ class DiscoverPage extends GetView<DiscoverController> {
     );
   }
 
-  Widget _buildFilterLeadingIcon() {
+  Widget _buildFilterLeadingIcon(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       width: 38,
       height: 38,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [_netflixRed, Color(0xFFFF6B35)],
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            colorScheme.primary,
+            Color.lerp(colorScheme.primary, colorScheme.secondary, 0.58)!,
+          ],
         ),
         borderRadius: BorderRadius.circular(14),
       ),
@@ -503,6 +516,7 @@ class DiscoverPage extends GetView<DiscoverController> {
     required String title,
     required String subtitle,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.fromLTRB(2, 18, 0, 14),
       child: Row(
@@ -511,10 +525,10 @@ class DiscoverPage extends GetView<DiscoverController> {
             width: 4,
             height: 34,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
+              gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [_netflixRed, _gold],
+                colors: [colorScheme.primary, colorScheme.secondary],
               ),
               borderRadius: BorderRadius.circular(999),
             ),
@@ -623,7 +637,7 @@ class DiscoverPage extends GetView<DiscoverController> {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    _netflixRed.withValues(alpha: 0.42),
+                    colorScheme.primary.withValues(alpha: 0.34),
                     colorScheme.surfaceContainerHighest,
                   ],
                 ),
@@ -860,6 +874,12 @@ class _PrimaryActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final accent = Color.lerp(
+      colorScheme.primary,
+      colorScheme.secondary,
+      0.36,
+    )!;
     return GestureDetector(
       onTap: enabled ? onTap : null,
       child: AnimatedOpacity(
@@ -869,13 +889,15 @@ class _PrimaryActionButton extends StatelessWidget {
           height: compact ? 40 : 46,
           padding: EdgeInsets.symmetric(horizontal: compact ? 16 : 0),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [DiscoverPage._netflixRed, Color(0xFFFF4B2B)],
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [colorScheme.primary, accent],
             ),
             borderRadius: BorderRadius.circular(999),
             boxShadow: [
               BoxShadow(
-                color: DiscoverPage._netflixRed.withValues(alpha: 0.34),
+                color: colorScheme.primary.withValues(alpha: 0.28),
                 blurRadius: 24,
                 offset: const Offset(0, 12),
               ),
@@ -907,24 +929,22 @@ class _PrimaryActionButton extends StatelessWidget {
   }
 }
 
-class _CinematicAtmosphere extends StatelessWidget {
-  const _CinematicAtmosphere();
+class _DiscoverAtmosphere extends StatelessWidget {
+  const _DiscoverAtmosphere();
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final base = isDark ? DiscoverPage._cinemaBlack : const Color(0xFFF4F7FB);
-    final surface = isDark
-        ? DiscoverPage._surfaceSoft
-        : const Color(0xFFE8EEF6);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     return DecoratedBox(
       decoration: BoxDecoration(
         gradient: RadialGradient(
           center: const Alignment(-0.72, -0.92),
           radius: 1.25,
           colors: [
-            DiscoverPage._netflixRed.withValues(alpha: isDark ? 0.18 : 0.08),
-            base,
+            colorScheme.primary.withValues(alpha: isDark ? 0.16 : 0.10),
+            Colors.transparent,
           ],
         ),
       ),
@@ -936,7 +956,7 @@ class _CinematicAtmosphere extends StatelessWidget {
             colors: [
               Colors.white.withValues(alpha: isDark ? 0.035 : 0.32),
               Colors.transparent,
-              surface.withValues(alpha: isDark ? 0.32 : 0.56),
+              colorScheme.surface.withValues(alpha: isDark ? 0.18 : 0.28),
             ],
           ),
         ),
@@ -950,16 +970,18 @@ class _HeroPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     return DecoratedBox(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            isDark ? DiscoverPage._surfaceSoft : const Color(0xFFE2E8F0),
-            DiscoverPage._netflixRed.withValues(alpha: 0.42),
-            isDark ? DiscoverPage._cinemaBlack : const Color(0xFFCBD5E1),
+            colorScheme.surfaceContainerHighest,
+            colorScheme.primary.withValues(alpha: isDark ? 0.34 : 0.22),
+            colorScheme.surface.withValues(alpha: isDark ? 0.90 : 0.72),
           ],
         ),
       ),

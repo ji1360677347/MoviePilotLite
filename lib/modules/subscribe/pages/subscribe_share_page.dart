@@ -239,7 +239,26 @@ class SubscribeSharePage extends GetView<SubscribeShareController> {
   ) {
     showModalBottomSheet<void>(
       context: context,
-      builder: (ctx) => SharedSubscribeDetailSheet(item: item),
+      isScrollControlled: true,
+      useSafeArea: true,
+      isDismissible: true,
+      showDragHandle: false,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.92,
+        minChildSize: 0.36,
+        maxChildSize: 1,
+        expand: false,
+        builder: (context, scrollController) {
+          return ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            child: SharedSubscribeDetailSheet(
+              item: item,
+              scrollController: scrollController,
+            ),
+          );
+        },
+      ),
     );
   }
 }

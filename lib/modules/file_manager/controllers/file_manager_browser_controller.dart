@@ -515,7 +515,10 @@ class FileManagerBrowserController extends GetxController {
       return const FileActionResult(success: false, message: '缺少源存储或目标存储');
     }
 
-    final normalizedTransferType = transferType.trim();
+    final normalizedTransferType = switch (transferType.trim()) {
+      'hardlink' => 'link',
+      final value => value,
+    };
     final normalizedTargetPath = targetPath.trim();
     final normalizedTmdbId = tmdbId.trim();
     final normalizedPart = part.trim();

@@ -96,13 +96,7 @@ class CpuWidget extends StatelessWidget {
     return Obx(() {
       final cpuUsage = controller.cpuUsage.value;
       final chartData = controller.cpuChartData;
-      return Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: palette.tileSurface,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: palette.tileBorder),
-        ),
+      return DashboardMetricCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

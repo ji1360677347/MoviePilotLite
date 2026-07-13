@@ -139,6 +139,30 @@ class DynamicFormPage extends GetView<DynamicFormController> {
             }
             return const SizedBox.shrink();
           }),
+          Obx(() {
+            controller.isLoading.value;
+            if (controller.formMode.value) return const SizedBox.shrink();
+            if (controller.isAppLitePushPlugin) return const SizedBox.shrink();
+            final showEntry =
+                controller.pluginAdapter?.supportsFormEntry ?? true;
+            if (!showEntry) return const SizedBox.shrink();
+            return IconButton(
+              icon: Icon(
+                Icons.settings_outlined,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              tooltip: '插件配置',
+              onPressed: () {
+                Get.toNamed(
+                  '/plugin/dynamic-form/form',
+                  arguments: {
+                    'id': controller.pluginId,
+                    'title': controller.pageTitle,
+                  },
+                );
+              },
+            );
+          }),
         ],
       ),
       body: Obx(() {
@@ -230,30 +254,6 @@ class DynamicFormPage extends GetView<DynamicFormController> {
               child: _buildItem(context, item),
             );
           },
-        );
-      }),
-      floatingActionButton: Obx(() {
-        // 依赖 isLoading，以便 adapter 异步注入后能重新计算是否显示入口
-        controller.isLoading.value;
-        if (controller.formMode.value) return const SizedBox.shrink();
-        if (controller.isAppLitePushPlugin) return const SizedBox.shrink();
-        final showEntry = controller.pluginAdapter?.supportsFormEntry ?? true;
-        if (!showEntry) return const SizedBox.shrink();
-        return Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primary,
-            borderRadius: BorderRadius.circular(100),
-          ),
-          child: IconButton.filled(
-            icon: const Icon(Icons.settings, color: CupertinoColors.white),
-            onPressed: () {
-              final args = {
-                'id': controller.pluginId,
-                'title': controller.pageTitle,
-              };
-              Get.toNamed('/plugin/dynamic-form/form', arguments: args);
-            },
-          ),
         );
       }),
     );
