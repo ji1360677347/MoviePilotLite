@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:moviepilot_mobile/modules/dashboard/widgets/dashboard_widget_styles.dart';
 import 'package:moviepilot_mobile/modules/multifunction/controllers/multifunction_controller.dart';
 import 'package:moviepilot_mobile/modules/multifunction/models/multifunction_models.dart';
 import 'package:moviepilot_mobile/modules/dynamic_form/utils/vuetify_mappings.dart';
@@ -15,29 +16,21 @@ class MultifunctionPage extends GetView<MultifunctionController> {
 
   final ScrollController? scrollController;
 
-  static bool get _isDark => Get.isDarkMode;
-  static Color get _surface =>
-      _isDark ? const Color(0xE619191F) : const Color(0xF7FFFFFF);
-  static Color get _surfaceHighest =>
-      _isDark ? const Color(0xFF2B2B33) : const Color(0xFFE2E8F0);
-  static Color get _outlineSoft =>
-      _isDark ? const Color(0x14FFFFFF) : const Color(0x1F0F172A);
-  static Color get _textPrimary =>
-      _isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
-  static Color get _textSecondary =>
-      _isDark ? const Color(0xFFC7C7CC) : const Color(0xFF475569);
-  static Color get _textMuted =>
-      _isDark ? const Color(0xFF8E8E93) : const Color(0xFF64748B);
-  static Color get _primary =>
-      _isDark ? const Color(0xFF93C5FD) : const Color(0xFF2563EB);
-  static Color get _primaryStrong =>
-      _isDark ? const Color(0xFF3B82F6) : const Color(0xFF1D4ED8);
-  static Color get _secondary =>
-      _isDark ? const Color(0xFFD8B4FE) : const Color(0xFF7C3AED);
-  static Color get _secondaryStrong =>
-      _isDark ? const Color(0xFFA855F7) : const Color(0xFF6D28D9);
-  static Color get _error =>
-      _isDark ? const Color(0xFFFFB4AB) : const Color(0xFFB42318);
+  DashboardPaletteData get _palette =>
+      DashboardPalette.of(Get.context ?? Get.overlayContext!);
+
+  bool get _isDark => _palette.isDark;
+  Color get _surface => _palette.surface;
+  Color get _surfaceHighest => _palette.surfaceAlt;
+  Color get _outlineSoft => _palette.tileBorder;
+  Color get _textPrimary => _palette.titleText;
+  Color get _textSecondary => _palette.bodyText;
+  Color get _textMuted => _palette.mutedText;
+  Color get _primary => _palette.primary;
+  Color get _primaryStrong => _palette.primary;
+  Color get _secondary => _palette.coolAccent;
+  Color get _secondaryStrong => _palette.warmAccent;
+  Color get _error => _palette.warningAccent;
 
   @override
   Widget build(BuildContext context) {
@@ -97,22 +90,22 @@ class MultifunctionPage extends GetView<MultifunctionController> {
                           movieModule: modulesByRoute['/subscribe-movie'],
                           tvModule: modulesByRoute['/subscribe-tv'],
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 24),
                         _buildReleasesSection(
                           pageWidth: pageWidth,
                           segment: calendarSegment,
                           items: calendarItems,
                           module: modulesByRoute['/subscribe-calendar'],
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 24),
                       ],
                       if (modulesByRoute['/site'] != null) ...[
                         _buildSitesSection(modulesByRoute['/site']!),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 24),
                       ],
                       if (modulesByRoute['/downloader'] != null) ...[
                         _buildDownloaderSection(pageWidth: pageWidth),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 24),
                       ],
                       if (controller.canAccessManage) ...[
                         _buildPluginSidebarSection(
@@ -120,7 +113,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
                           items: sidebarNavItems,
                           pluginModule: modulesByRoute['/plugin'],
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 24),
                       ],
                       if (utilityModules.isNotEmpty)
                         _buildUtilitiesSection(modules: utilityModules),
@@ -142,25 +135,15 @@ class MultifunctionPage extends GetView<MultifunctionController> {
       elevation: 0,
       scrolledUnderElevation: 0,
       surfaceTintColor: Colors.transparent,
+      automaticallyImplyLeading: false,
       systemOverlayStyle: SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
         statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
       ),
-      titleSpacing: 0,
-      leading: Builder(
-        builder: (buttonContext) => CupertinoButton(
-          padding: EdgeInsets.zero,
-          onPressed: () {},
-          child: Icon(
-            CupertinoIcons.square_grid_2x2_fill,
-            size: 18,
-            color: _textPrimary,
-          ),
-        ),
-      ),
+      titleSpacing: 20,
       title: Text(
-        'More',
+        '更多',
         style: TextStyle(
           fontSize: 24,
           fontWeight: FontWeight.bold,
@@ -169,12 +152,78 @@ class MultifunctionPage extends GetView<MultifunctionController> {
       ),
       centerTitle: false,
       actions: [
-        CupertinoButton(
-          padding: EdgeInsets.zero,
-          onPressed: () => Get.toNamed('/settings'),
-          child: const Icon(Icons.settings_outlined),
+        Semantics(
+          button: true,
+          label: '设置',
+          child: SizedBox(
+            width: 44,
+            height: 44,
+            child: CupertinoButton(
+              padding: EdgeInsets.zero,
+              onPressed: () => Get.toNamed('/settings'),
+              child: Icon(CupertinoIcons.settings, size: 20, color: _textMuted),
+            ),
+          ),
         ),
+        const SizedBox(width: 8),
       ],
+    );
+  }
+
+  Widget _sectionHeader({
+    required String title,
+    IconData? icon,
+    Color? accent,
+    String? trailing,
+    VoidCallback? onTap,
+    Widget? trailingWidget,
+  }) {
+    final content = ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 36),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(
+                color: _textSecondary,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.2,
+                height: 1.2,
+              ),
+            ),
+          ),
+          if (trailingWidget != null) trailingWidget,
+          if (trailing != null && trailingWidget == null) ...[
+            Text(
+              trailing,
+              style: TextStyle(
+                color: _textMuted,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            if (onTap != null) ...[
+              const SizedBox(width: 2),
+              Icon(CupertinoIcons.chevron_forward, size: 14, color: _textMuted),
+            ],
+          ],
+          if (trailing == null && trailingWidget == null && onTap != null)
+            Icon(CupertinoIcons.chevron_forward, size: 14, color: _textMuted),
+        ],
+      ),
+    );
+
+    if (onTap == null) return content;
+    return Semantics(
+      button: true,
+      label: trailing == null ? title : '$title，$trailing',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: content,
+      ),
     );
   }
 
@@ -216,38 +265,33 @@ class MultifunctionPage extends GetView<MultifunctionController> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                '订阅',
-                style: TextStyle(
-                  color: _textPrimary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: -0.2,
-                ),
-              ),
-            ),
-            if (!controller.subscribeDataReady.value)
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.cloud_off_outlined, size: 14, color: _textMuted),
-                  const SizedBox(width: 5),
-                  Text(
-                    '数据暂不可用',
-                    style: TextStyle(
+        _sectionHeader(
+          title: '订阅',
+          icon: CupertinoIcons.star_fill,
+          accent: _primary,
+          trailingWidget: !controller.subscribeDataReady.value
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      CupertinoIcons.exclamationmark_circle,
+                      size: 14,
                       color: _textMuted,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
                     ),
-                  ),
-                ],
-              ),
-          ],
+                    const SizedBox(width: 5),
+                    Text(
+                      '数据暂不可用',
+                      style: TextStyle(
+                        color: _textMuted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                )
+              : null,
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         if (useColumns)
           Row(
             children: [
@@ -275,7 +319,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
       child: AppGlassCard(
         onTap: onTap,
         padding: EdgeInsets.zero,
-        borderRadius: 18,
+        borderRadius: 24,
         accentColor: accent,
         child: SizedBox(
           height: 132,
@@ -283,7 +327,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
             children: [
               ClipRRect(
                 borderRadius: const BorderRadius.horizontal(
-                  left: Radius.circular(17),
+                  left: Radius.circular(23),
                 ),
                 child: SizedBox(
                   width: 108,
@@ -444,28 +488,18 @@ class MultifunctionPage extends GetView<MultifunctionController> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                '上映日历',
-                style: TextStyle(
-                  color: _textPrimary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: -0.2,
-                ),
-              ),
-            ),
-            _segmentedControl(
-              value: segment,
-              onChanged: (next) {
-                controller.setCalendarSegment(next);
-              },
-            ),
-          ],
+        _sectionHeader(
+          title: '上映日历',
+          icon: CupertinoIcons.calendar,
+          accent: _secondary,
+          trailingWidget: _segmentedControl(
+            value: segment,
+            onChanged: (next) {
+              controller.setCalendarSegment(next);
+            },
+          ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
         SizedBox(
           key: ValueKey('release-$segment'),
           height: items.isEmpty ? 88 : 206,
@@ -555,106 +589,109 @@ class MultifunctionPage extends GetView<MultifunctionController> {
     VoidCallback? onTap,
   }) {
     final poster = controller.normalizePoster(entry.poster);
-    return GestureDetector(
-      onTap: onTap,
-      child: SizedBox(
-        width: width,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: _surfaceHighest,
-                    border: Border.all(color: _outlineSoft),
-                  ),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      if (poster.isNotEmpty)
-                        CachedImage(
-                          imageUrl: ImageUtil.convertCacheImageUrl(poster),
-                          fit: BoxFit.cover,
-                        )
-                      else
-                        Center(
-                          child: Icon(
-                            Icons.live_tv_rounded,
-                            color: _textMuted,
-                            size: 28,
+    return Semantics(
+      button: onTap != null,
+      label: [
+        entry.showName,
+        if (seasonEpisodeTag != null) seasonEpisodeTag,
+        chipText,
+      ].join('，'),
+      child: GestureDetector(
+        onTap: onTap,
+        child: SizedBox(
+          width: width,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: _surfaceHighest,
+                      border: Border.all(color: _outlineSoft),
+                    ),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        if (poster.isNotEmpty)
+                          CachedImage(
+                            imageUrl: ImageUtil.convertCacheImageUrl(poster),
+                            fit: BoxFit.cover,
+                          )
+                        else
+                          Center(
+                            child: Icon(
+                              CupertinoIcons.tv,
+                              color: _textMuted,
+                              size: 28,
+                            ),
                           ),
+                        Positioned(
+                          top: 8,
+                          left: 8,
+                          child: seasonEpisodeTag == null
+                              ? const SizedBox.shrink()
+                              : Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.55),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    seasonEpisodeTag,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
                         ),
-                      Positioned(
-                        top: 8,
-                        left: 8,
-                        child: seasonEpisodeTag == null
-                            ? const SizedBox.shrink()
-                            : Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.6),
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.10),
-                                  ),
-                                ),
-                                child: Text(
-                                  seasonEpisodeTag,
-                                  style: TextStyle(
-                                    color: _primary,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.55),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              chipText,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
                               ),
-                      ),
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.6),
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.10),
-                            ),
-                          ),
-                          child: Text(
-                            chipText,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              entry.showName,
-              style: TextStyle(
-                color: _textPrimary,
-                fontSize: 12,
-                fontWeight: FontWeight.w400,
+              const SizedBox(height: 8),
+              Text(
+                entry.showName,
+                style: TextStyle(
+                  color: _textPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  height: 1.25,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -686,16 +723,14 @@ class MultifunctionPage extends GetView<MultifunctionController> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '站点',
-          style: TextStyle(
-            color: _textPrimary,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            letterSpacing: -0.2,
-          ),
+        _sectionHeader(
+          title: '站点',
+          icon: CupertinoIcons.globe,
+          accent: _primary,
+          onTap: () =>
+              controller.handleRouteTap(module.route, title: module.title),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
         _glassCard(
           onTap: () =>
               controller.handleRouteTap(module.route, title: module.title),
@@ -823,162 +858,154 @@ class MultifunctionPage extends GetView<MultifunctionController> {
     final isCompact = pageWidth < 360;
     final ready = controller.downloaderDataReady.value;
 
-    return _glassCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: controller.openDownloaderList,
-            child: Row(
-              children: [
-                Icon(Icons.cloud_download_rounded, color: _primary, size: 20),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    '下载器',
-                    style: TextStyle(
-                      color: _textPrimary,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: -0.4,
-                    ),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _primary.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: _primary.withValues(alpha: 0.20)),
-                  ),
-                  child: Text(
-                    ready ? '${clients.length} 个' : '加载中',
-                    style: TextStyle(
-                      color: _primary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Icon(Icons.chevron_right_rounded, size: 20, color: _textMuted),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionHeader(
+          title: '下载器',
+          icon: CupertinoIcons.arrow_down_circle_fill,
+          accent: _secondary,
+          trailing: ready ? '${clients.length} 个' : '加载中',
+          onTap: controller.openDownloaderList,
+        ),
+        const SizedBox(height: 8),
+        _glassCard(
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: _downloaderMetricCard(
-                  icon: Icons.arrow_downward_rounded,
-                  label: '下载',
-                  value: _metricNumber(info.totalDownloadSpeed),
-                  unit: _metricUnit(info.totalDownloadSpeed),
-                  accent: _primary,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: _downloaderMetricCard(
+                      icon: CupertinoIcons.arrow_down_circle_fill,
+                      label: '下载',
+                      value: _metricNumber(info.totalDownloadSpeed),
+                      unit: _metricUnit(info.totalDownloadSpeed),
+                      accent: _primary,
+                    ),
+                  ),
+                  SizedBox(width: isCompact ? 8 : 12),
+                  Expanded(
+                    child: _downloaderMetricCard(
+                      icon: CupertinoIcons.arrow_up_circle_fill,
+                      label: '上传',
+                      value: _metricNumber(info.totalUploadSpeed),
+                      unit: _metricUnit(info.totalUploadSpeed),
+                      accent: _secondary,
+                    ),
+                  ),
+                ],
               ),
-              SizedBox(width: isCompact ? 8 : 12),
-              Expanded(
-                child: _downloaderMetricCard(
-                  icon: Icons.arrow_upward_rounded,
-                  label: '上传',
-                  value: _metricNumber(info.totalUploadSpeed),
-                  unit: _metricUnit(info.totalUploadSpeed),
-                  accent: _secondary,
-                ),
-              ),
+              const SizedBox(height: 12),
+              if (!ready)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: Center(child: CupertinoActivityIndicator()),
+                )
+              else if (clients.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Center(
+                    child: Text(
+                      '暂无下载器，点击上方前往配置',
+                      style: TextStyle(
+                        color: _textMuted,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                for (var i = 0; i < clients.length; i++) ...[
+                  if (i > 0) const SizedBox(height: 8),
+                  _buildDownloaderClientRow(clients[i]),
+                ],
             ],
           ),
-          const SizedBox(height: 12),
-          if (!ready)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Center(child: CupertinoActivityIndicator(color: _primary)),
-            )
-          else if (clients.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Text(
-                '暂无下载器',
-                style: TextStyle(color: _textMuted, fontSize: 13),
-              ),
-            )
-          else
-            for (var i = 0; i < clients.length; i++) ...[
-              if (i > 0) const SizedBox(height: 8),
-              _buildDownloaderClientRow(clients[i]),
-            ],
-        ],
-      ),
+        ),
+      ],
     );
   }
 
   Widget _buildDownloaderClientRow(DownloaderClientInfo client) {
     final typeLabel = _downloaderTypeLabel(client.type);
-    return Material(
-      color: _surfaceHighest.withValues(alpha: _isDark ? 0.34 : 0.72),
-      borderRadius: BorderRadius.circular(10),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => controller.openDownloaderClient(client),
-        borderRadius: BorderRadius.circular(10),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
-          child: Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: _primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  Icons.download_for_offline_outlined,
-                  size: 18,
-                  color: _primary,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      client.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: _textPrimary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
+    return Semantics(
+      button: true,
+      label:
+          '${client.name}，${typeLabel.isEmpty ? '' : '$typeLabel，'}'
+          '下载 ${_formatSpeedText(client.downloadSpeed)}，'
+          '上传 ${_formatSpeedText(client.uploadSpeed)}',
+      child: Material(
+        color: _surfaceHighest.withValues(alpha: _isDark ? 0.34 : 0.72),
+        borderRadius: BorderRadius.circular(12),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => controller.openDownloaderClient(client),
+          borderRadius: BorderRadius.circular(12),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 56),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: _primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(11),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      [
-                        if (typeLabel.isNotEmpty) typeLabel,
-                        '↓ ${_formatSpeedText(client.downloadSpeed)}',
-                        '↑ ${_formatSpeedText(client.uploadSpeed)}',
-                      ].join(' · '),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: _textMuted,
-                        fontSize: 12,
-                        height: 1.3,
-                      ),
+                    child: Icon(
+                      CupertinoIcons.arrow_down_doc,
+                      size: 18,
+                      color: _primary,
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          client.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: _textPrimary,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          [
+                            if (typeLabel.isNotEmpty) typeLabel,
+                            '↓ ${_formatSpeedText(client.downloadSpeed)}',
+                            '↑ ${_formatSpeedText(client.uploadSpeed)}',
+                          ].join(' · '),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: _textMuted,
+                            fontSize: 12,
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    CupertinoIcons.chevron_forward,
+                    size: 16,
+                    color: _textMuted,
+                  ),
+                ],
               ),
-              Icon(Icons.chevron_right_rounded, size: 18, color: _textMuted),
-            ],
+            ),
           ),
         ),
       ),
@@ -1090,49 +1117,15 @@ class MultifunctionPage extends GetView<MultifunctionController> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => controller.handleRouteTap('/plugin', title: '插件'),
-            borderRadius: BorderRadius.circular(8),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '插件中心',
-                      style: TextStyle(
-                        color: _textPrimary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                  ),
-                  if (pluginMeta.isNotEmpty) ...[
-                    Text(
-                      pluginMeta,
-                      style: TextStyle(
-                        color: _textMuted,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                  ],
-                  Icon(
-                    Icons.chevron_right_rounded,
-                    size: 22,
-                    color: _textMuted,
-                  ),
-                ],
-              ),
-            ),
-          ),
+        _sectionHeader(
+          title: '插件中心',
+          icon: CupertinoIcons.square_grid_2x2_fill,
+          accent: _palette.warmAccent,
+          trailing: pluginMeta.isEmpty ? null : pluginMeta,
+          onTap: () => controller.handleRouteTap('/plugin', title: '插件'),
         ),
         if (items.isNotEmpty) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           GridView.builder(
             padding: EdgeInsets.zero,
             itemCount: items.length,
@@ -1171,7 +1164,7 @@ class MultifunctionPage extends GetView<MultifunctionController> {
       child: AppGlassCard(
         onTap: () => controller.handleSidebarNavTap(item),
         padding: const EdgeInsets.all(14),
-        borderRadius: 18,
+        borderRadius: 24,
         accentColor: accent,
         surfaceAlpha: _isDark ? 0.54 : 0.70,
         child: Column(
@@ -1241,11 +1234,11 @@ class MultifunctionPage extends GetView<MultifunctionController> {
   Color _sidebarAccent(String section, int index) {
     switch (section) {
       case 'organize':
-        return const Color(0xFF8E44AD);
+        return _palette.warmAccent;
       case 'system':
-        return const Color(0xFF8F67FF);
+        return _palette.coolAccent;
       default:
-        return index.isEven ? _primaryStrong : _secondaryStrong;
+        return index.isEven ? _primary : _secondary;
     }
   }
 
@@ -1266,16 +1259,12 @@ class MultifunctionPage extends GetView<MultifunctionController> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '实用工具',
-          style: TextStyle(
-            color: _textPrimary,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            letterSpacing: -0.2,
-          ),
+        _sectionHeader(
+          title: '实用工具',
+          icon: CupertinoIcons.wrench_fill,
+          accent: _primary,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
         _glassCard(
           padding: EdgeInsets.zero,
           child: Column(
@@ -1299,54 +1288,67 @@ class MultifunctionPage extends GetView<MultifunctionController> {
     final title = _utilityTitle(module.title);
     final meta = module.primaryText.trim();
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () =>
-            controller.handleRouteTap(module.route, title: module.title),
-        child: Container(
-          decoration: BoxDecoration(
-            border: showDivider
-                ? Border(bottom: BorderSide(color: _outlineSoft, width: 0.5))
-                : null,
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: module.accent.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(module.icon, size: 18, color: module.accent),
+    return Semantics(
+      button: true,
+      label: meta.isEmpty ? title : '$title，$meta',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () =>
+              controller.handleRouteTap(module.route, title: module.title),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 56),
+            child: Container(
+              decoration: BoxDecoration(
+                border: showDivider
+                    ? Border(
+                        bottom: BorderSide(color: _outlineSoft, width: 0.5),
+                      )
+                    : null,
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    color: _textPrimary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -0.3,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: module.accent.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(module.icon, size: 18, color: module.accent),
                   ),
-                ),
-              ),
-              if (meta.isNotEmpty) ...[
-                Text(
-                  meta,
-                  style: TextStyle(
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: TextStyle(
+                        color: _textPrimary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                  ),
+                  if (meta.isNotEmpty) ...[
+                    Text(
+                      meta,
+                      style: TextStyle(
+                        color: _textMuted,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+                  Icon(
+                    CupertinoIcons.chevron_forward,
+                    size: 16,
                     color: _textMuted,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
                   ),
-                ),
-                const SizedBox(width: 6),
-              ],
-              Icon(Icons.chevron_right_rounded, size: 20, color: _textMuted),
-            ],
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -1361,8 +1363,9 @@ class MultifunctionPage extends GetView<MultifunctionController> {
     return AppGlassCard(
       onTap: onTap,
       padding: padding,
-      borderRadius: 18,
-      surfaceAlpha: _isDark ? 0.56 : 0.74,
+      borderRadius: 24,
+      surfaceAlpha: _isDark ? 0.52 : 0.78,
+      borderAlpha: _isDark ? 0.10 : 0.28,
       child: child,
     );
   }

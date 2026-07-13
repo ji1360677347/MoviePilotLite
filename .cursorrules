@@ -103,9 +103,13 @@ If needed, you can further use the `web_scraper.py` file to scrape the web page 
 
 ## Done: 下载 startDownload — API detail 为 List 时 ToastUtil.error 类型错误（_downloadApiErrorMessage）
 
-## Current Task: 多功能页下载器区域优化
+## Current Task: apple-design 优化 MultifunctionPage（对齐 Dashboard）
 
-[X] DownloaderClientInfo 保留完整客户端信息
-[X] 点击下载器跳转对应详情/任务页
-[X] Header 进入下载器列表页
-[X] MultifunctionPage 展示下载器列表
+[X] 审查 HIG（a11y / layout / typography / color）
+[X] AppBar：移除空 leading、标题本地化、触控目标
+[X] 分区标题与可点 header 统一 ≥44
+[X] 下载器/空态/语义标签打磨
+[X] 切换 DashboardPalette（弃用私有硬编码色）
+[X] section header 对齐 DashboardStitchSection（34 图标徽章 + 17/w700）
+[X] 区块间距 32、header→内容 14、卡片圆角 24
+[X] chevron / sidebar accent 统一 palette + Cupertino
